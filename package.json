@@ -1,0 +1,13 @@
+{
+  "name": "foodscanner",
+  "private": true,
+  "packageManager": "pnpm@10.15.1",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "pnpm -r run build",
+    "compose:up": "docker compose up -d",
+    "compose:down": "docker compose down"
+  }
+}

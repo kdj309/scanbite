@@ -1,0 +1,42 @@
+{
+  "name": "api",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "build": "nest build",
+    "dev": "nest start --watch",
+    "start": "node dist/main",
+    "worker": "nest start --watch --entryFile worker",
+    "start:worker": "node dist/worker",
+    "test": "node --test dist/scoring/evaluate-rules.test.js dist/personalization/apply-personalization.test.js"
+  },
+  "dependencies": {
+    "@foodscanner/shared": "workspace:*",
+    "@nestjs/common": "^11.1.6",
+    "@nestjs/config": "^4.0.2",
+    "@nestjs/core": "^11.1.6",
+    "@nestjs/jwt": "^11.0.0",
+    "@nestjs/mongoose": "^11.0.3",
+    "@nestjs/passport": "^11.0.5",
+    "@nestjs/platform-express": "^11.1.6",
+    "@nestjs/terminus": "^11.0.0",
+    "bcryptjs": "^3.0.3",
+    "mongoose": "^8.18.1",
+    "passport": "^0.7.0",
+    "passport-jwt": "^4.0.1",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^11.0.10",
+    "@nestjs/schematics": "^11.0.7",
+    "@types/bcryptjs": "^3.0.0",
+    "@types/express": "^5.0.3",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/multer": "^2.2.0",
+    "@types/node": "^22.18.6",
+    "@types/passport-jwt": "^4.0.1",
+    "typescript": "^5.8.2"
+  }
+}
