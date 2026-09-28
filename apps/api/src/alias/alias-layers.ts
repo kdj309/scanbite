@@ -18,7 +18,7 @@ export class ExactAliasLayer implements AliasLayer {
     @InjectModel(IngredientAlias.name)
     private readonly aliases: Model<IngredientAliasDocument>,
     @InjectModel(Ingredient.name)
-    private readonly ingredients: Model<IngredientDocument>,
+    private readonly ingredients: Model<IngredientDocument>
   ) {}
 
   async resolve(raw: string): Promise<AliasMatch | null> {

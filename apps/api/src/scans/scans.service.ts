@@ -15,11 +15,9 @@ import {
   ProductVersionDocument,
 } from "../database/schemas/product-version.schema";
 import { Scan, ScanDocument } from "../database/schemas/scan.schema";
-import {
-  ScoringRecord,
-  ScoringRecordDocument,
-} from "../database/schemas/scoring-record.schema";
 import { HouseholdService } from "../household/household.service";
+import { PersonalizationService } from "../personalization/personalization.service";
+import { ScoringService } from "../scoring/scoring.service";
 import { serializeScan } from "./serialize-scan";
 
 @Injectable()
@@ -28,29 +26,51 @@ export class ScansService {
     @InjectModel(Scan.name) private readonly scans: Model<ScanDocument>,
     @InjectModel(ProductVersion.name)
     private readonly versions: Model<ProductVersionDocument>,
-    @InjectModel(ScoringRecord.name)
-    private readonly scoringRecords: Model<ScoringRecordDocument>,
     private readonly household: HouseholdService,
+    private readonly scoring: ScoringService,
+    private readonly personalization: PersonalizationService
   ) {}
 
   async create(
     user: RequestUser,
-    body: CreateScanRequest,
+    body: CreateScanRequest
   ): Promise<CreateScanResponse> {
     const member = await this.household.resolveMemberId(
       user.userId,
       body.member_id,
-      user.defaultMemberId,
+      user.defaultMemberId
     );
     const live = await this.versions
       .findOne({ barcode: body.barcode, status: "live" })
       .exec();
+
+    // Record what this member was actually shown, not what a later query
+    // would recompute — a scan is an audit entry, not a live join.
+    let severity: "green" | "yellow" | "red" | null = null;
+    let ruleSetVersion: string | null = null;
+    if (live) {
+      const cached = await this.scoring.getCachedObjectiveVerdict(live);
+      const personalized = await this.personalization.overlay({
+        base: {
+          severity: cached.severity,
+          breakdown: cached.breakdown,
+          unevaluated: cached.unevaluated,
+        },
+        facts: cached.facts,
+        memberConditions: member.conditions ?? [],
+      });
+      severity = personalized.severity;
+      ruleSetVersion = cached.rule_set_version;
+    }
+
     const created = await this.scans.create({
       user_id: new Types.ObjectId(user.userId),
       member_id: member._id,
       barcode: body.barcode,
       product_version_id: live?._id ?? null,
       found: Boolean(live),
+      severity,
+      rule_set_version: ruleSetVersion,
     });
     return serializeScan(created);
   }
@@ -58,7 +78,7 @@ export class ScansService {
   async list(
     user: RequestUser,
     memberId: string,
-    query: ListScansQuery,
+    query: ListScansQuery
   ): Promise<ListScansResponse> {
     await this.household.requireOwnedMember(user.userId, memberId);
     const limit = query.limit ?? 20;
@@ -74,7 +94,7 @@ export class ScansService {
         filter.created_at.$lte = new Date(query.to);
       }
     }
-    if (query.cursor) {
+    if (query.cursor && Types.ObjectId.isValid(query.cursor)) {
       const cursor = await this.scans.findById(query.cursor).exec();
       if (cursor) {
         filter.$or = [
@@ -103,7 +123,7 @@ export class ScansService {
   async summary(
     user: RequestUser,
     memberId: string,
-    query: MemberSummaryQuery,
+    query: MemberSummaryQuery
   ): Promise<MemberSummaryResponse> {
     await this.household.requireOwnedMember(user.userId, memberId);
     const now = new Date();
@@ -121,54 +141,40 @@ export class ScansService {
       })
       .exec();
 
+    // by_severity reads the severity recorded ON the scan at create time —
+    // not a fresh join to whatever scoring_record happens to be latest now.
+    // Rule content can change after the fact (it has, twice, this session);
+    // a member's history must keep showing what they were actually told.
     const versionIds = scans
       .map((scan) => scan.product_version_id)
       .filter((id): id is Types.ObjectId => Boolean(id));
-
     const versions =
       versionIds.length === 0
         ? []
         : await this.versions.find({ _id: { $in: versionIds } }).exec();
     const versionById = new Map(
-      versions.map((version) => [String(version._id), version]),
-    );
-
-    const records =
-      versionIds.length === 0
-        ? []
-        : await this.scoringRecords
-            .aggregate<{
-              _id: Types.ObjectId;
-              severity: "green" | "yellow" | "red";
-            }>([
-              { $match: { product_version_id: { $in: versionIds } } },
-              { $sort: { computed_at: -1 } },
-              {
-                $group: {
-                  _id: "$product_version_id",
-                  severity: { $first: "$severity" },
-                },
-              },
-            ])
-            .exec();
-    const severityByVersion = new Map(
-      records.map((record) => [String(record._id), record.severity]),
+      versions.map((version) => [String(version._id), version])
     );
 
     let totalSugar = 0;
     const bySeverity = { green: 0, yellow: 0, red: 0 };
     for (const scan of scans) {
+      if (scan.severity) {
+        bySeverity[scan.severity] += 1;
+      }
       if (!scan.product_version_id) {
         continue;
       }
       const version = versionById.get(String(scan.product_version_id));
-      const sugar = Number(version?.nutrition?.sugar_per_100g);
+      // Solid and liquid readings are mutually exclusive per product (see
+      // scoring/facts.ts) — fall back to the ml basis rather than silently
+      // treating every liquid product as contributing 0g of sugar.
+      const sugar = Number(
+        version?.nutrition?.sugar_per_100g ??
+          version?.nutrition?.sugar_per_100ml
+      );
       if (Number.isFinite(sugar) && sugar > 0) {
         totalSugar += sugar;
-      }
-      const severity = severityByVersion.get(String(scan.product_version_id));
-      if (severity) {
-        bySeverity[severity] += 1;
       }
     }
 

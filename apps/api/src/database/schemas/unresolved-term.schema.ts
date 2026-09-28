@@ -22,6 +22,7 @@ export class UnresolvedTerm {
 }
 
 export type UnresolvedTermDocument = HydratedDocument<UnresolvedTerm>;
-export const UnresolvedTermSchema = SchemaFactory.createForClass(UnresolvedTerm);
+export const UnresolvedTermSchema =
+  SchemaFactory.createForClass(UnresolvedTerm);
 
 UnresolvedTermSchema.index({ status: 1, occurrence_count: -1 });

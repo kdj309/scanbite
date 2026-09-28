@@ -19,7 +19,9 @@ export type ProductSummary = z.infer<typeof productSummarySchema>;
 export const productNotFoundResponseSchema = z.object({
   found: z.literal(false),
 });
-export type ProductNotFoundResponse = z.infer<typeof productNotFoundResponseSchema>;
+export type ProductNotFoundResponse = z.infer<
+  typeof productNotFoundResponseSchema
+>;
 
 export const productFoundResponseSchema = z.object({
   found: z.literal(true),

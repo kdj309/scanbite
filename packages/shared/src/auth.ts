@@ -1,6 +1,10 @@
 import { z } from "zod";
 import { householdMemberSchema } from "./household";
-import { authProviderSchema, isoDateTimeSchema, objectIdSchema } from "./primitives";
+import {
+  authProviderSchema,
+  isoDateTimeSchema,
+  objectIdSchema,
+} from "./primitives";
 
 export const userSchema = z
   .object({

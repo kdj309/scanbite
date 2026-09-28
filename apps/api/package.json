@@ -8,10 +8,14 @@
     "start": "node dist/main",
     "worker": "nest start --watch --entryFile worker",
     "start:worker": "node dist/worker",
-    "test": "node --test dist/scoring/evaluate-rules.test.js dist/personalization/apply-personalization.test.js"
+    "test": "node --test dist",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1141.0",
+    "@aws-sdk/s3-request-presigner": "^3.1141.0",
     "@foodscanner/shared": "workspace:*",
+    "@nestjs/bullmq": "^11.0.5",
     "@nestjs/common": "^11.1.6",
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.1.6",
@@ -21,7 +25,10 @@
     "@nestjs/platform-express": "^11.1.6",
     "@nestjs/terminus": "^11.0.0",
     "bcryptjs": "^3.0.3",
+    "bullmq": "^6.3.9",
+    "ioredis": "^6.0.0",
     "mongoose": "^8.18.1",
+    "multer": "^2.4.0",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "reflect-metadata": "^0.2.2",

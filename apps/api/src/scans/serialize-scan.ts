@@ -11,6 +11,8 @@ export function serializeScan(scan: ScanDocument): ScanDto {
       ? String(scan.product_version_id)
       : null,
     found: scan.found,
+    severity: scan.severity,
+    rule_set_version: scan.rule_set_version,
     created_at: toIso(scan.created_at),
   };
 }

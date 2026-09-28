@@ -20,7 +20,7 @@ export class AuthController {
   @Public()
   @Post("auth/signup")
   signup(
-    @Body(new ZodValidationPipe(signupRequestSchema)) body: SignupRequest,
+    @Body(new ZodValidationPipe(signupRequestSchema)) body: SignupRequest
   ) {
     return this.auth.signup(body);
   }
@@ -28,7 +28,7 @@ export class AuthController {
   @Public()
   @Post("auth/verify-otp")
   verifyOtp(
-    @Body(new ZodValidationPipe(verifyOtpRequestSchema)) body: VerifyOtpRequest,
+    @Body(new ZodValidationPipe(verifyOtpRequestSchema)) body: VerifyOtpRequest
   ) {
     return this.auth.verifyOtp(body);
   }

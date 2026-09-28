@@ -14,6 +14,7 @@ import { ProductsModule } from "./products/products.module";
 import { ScansModule } from "./scans/scans.module";
 import { ScoringModule } from "./scoring/scoring.module";
 import { SubmissionsModule } from "./submissions/submissions.module";
+import { WorkersModule } from "./workers/workers.module";
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { SubmissionsModule } from "./submissions/submissions.module";
     }),
     CommonModule,
     DatabaseModule,
+    WorkersModule,
     AuthModule,
     HealthModule,
     HouseholdModule,

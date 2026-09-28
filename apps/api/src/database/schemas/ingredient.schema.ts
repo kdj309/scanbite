@@ -11,7 +11,11 @@ export class Ingredient {
 
   @Prop({ trim: true })
   ins_code?: string;
+
+  @Prop({ trim: true })
+  off_taxonomy_id?: string;
 }
 
 export type IngredientDocument = HydratedDocument<Ingredient>;
 export const IngredientSchema = SchemaFactory.createForClass(Ingredient);
+IngredientSchema.index({ off_taxonomy_id: 1 }, { unique: true, sparse: true });

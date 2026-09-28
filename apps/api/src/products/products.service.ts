@@ -3,17 +3,12 @@ import { InjectModel } from "@nestjs/mongoose";
 import type { ProductLookupResponse } from "@foodscanner/shared";
 import { Model } from "mongoose";
 import type { RequestUser } from "../auth/auth.types";
-import { VerdictCacheService } from "../common/verdict-cache.service";
 import {
   ProductVersion,
   ProductVersionDocument,
 } from "../database/schemas/product-version.schema";
 import { HouseholdService } from "../household/household.service";
 import { PersonalizationService } from "../personalization/personalization.service";
-import {
-  confidenceFromUnresolved,
-  unresolvedIngredientNames,
-} from "../scoring/facts";
 import { ScoringService } from "../scoring/scoring.service";
 
 @Injectable()
@@ -23,19 +18,18 @@ export class ProductsService {
     private readonly versions: Model<ProductVersionDocument>,
     private readonly scoring: ScoringService,
     private readonly personalization: PersonalizationService,
-    private readonly household: HouseholdService,
-    private readonly cache: VerdictCacheService,
+    private readonly household: HouseholdService
   ) {}
 
   async lookup(
     barcode: string,
     user: RequestUser,
-    memberId?: string,
+    memberId?: string
   ): Promise<ProductLookupResponse> {
     const member = await this.household.resolveMemberId(
       user.userId,
       memberId,
-      user.defaultMemberId,
+      user.defaultMemberId
     );
 
     const version = await this.versions
@@ -45,41 +39,31 @@ export class ProductsService {
       return { found: false };
     }
 
-    const versionId = version.id as string;
-    let cached = this.cache.get(barcode, versionId);
-    if (!cached) {
-      const scored = await this.scoring.ensureScoringRecord(version);
-      const unresolved = unresolvedIngredientNames(version);
-      cached = {
-        product: {
-          name: version.name,
-          brand: version.brand,
-          product_version_id: versionId,
-        },
-        facts: scored.facts,
-        severity: scored.evaluation.severity,
-        breakdown: scored.evaluation.breakdown,
-        unresolved_ingredients: unresolved,
-        confidence: confidenceFromUnresolved(
-          unresolved.length,
-          version.ingredients.length,
-        ),
-      };
-      this.cache.set(barcode, versionId, cached);
-    }
+    const cached = await this.scoring.getCachedObjectiveVerdict(version);
 
     const personalized = await this.personalization.overlay({
-      base: { severity: cached.severity, breakdown: cached.breakdown },
+      base: {
+        severity: cached.severity,
+        breakdown: cached.breakdown,
+        unevaluated: cached.unevaluated,
+      },
       facts: cached.facts,
       memberConditions: member.conditions ?? [],
     });
+    const reasons = [
+      ...personalized.reasons,
+      ...(personalized.severity === "green"
+        ? cached.unevaluated.map((u) => u.reason)
+        : []),
+      ...personalized.unevaluated.map((u) => u.reason), // personalization gaps always surface, per our earlier call
+    ];
 
     return {
       found: true,
       product: cached.product,
       verdict: {
         severity: personalized.severity,
-        reasons: personalized.reasons,
+        reasons,
       },
       confidence: cached.confidence,
       unresolved_ingredients: cached.unresolved_ingredients,

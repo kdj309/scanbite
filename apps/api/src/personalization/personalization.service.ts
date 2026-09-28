@@ -15,7 +15,7 @@ import {
 export class PersonalizationService {
   constructor(
     @InjectModel(PersonalizationRule.name)
-    private readonly rules: Model<PersonalizationRuleDocument>,
+    private readonly rules: Model<PersonalizationRuleDocument>
   ) {}
 
   async overlay(input: {
@@ -23,7 +23,16 @@ export class PersonalizationService {
     facts: Record<string, unknown>;
     memberConditions: string[];
   }): Promise<PersonalizedVerdict> {
-    const rules = await this.rules.find().exec();
+    const now = new Date();
+    // Same "currently effective" window as ScoringService.findActiveRuleSet
+    // — unlike a rule_set (one document per version), personalization rules
+    // are many independent documents, so this is a filter, not a findOne.
+    const rules = await this.rules
+      .find({
+        effective_from: { $lte: now },
+        $or: [{ effective_to: null }, { effective_to: { $gt: now } }],
+      })
+      .exec();
     return applyPersonalization({
       base: input.base,
       facts: input.facts,

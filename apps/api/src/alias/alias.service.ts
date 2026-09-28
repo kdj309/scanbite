@@ -10,7 +10,6 @@ import {
   ExactAliasLayer,
   SimilarityAliasLayer,
 } from "./alias-layers";
-import type { AliasMatch } from "./alias-layer";
 
 export type ResolvedIngredient =
   | { status: "resolved"; canonical_id: string; layer: 1 | 2 | 3 }
@@ -23,7 +22,7 @@ export class AliasService {
     private readonly similarity: SimilarityAliasLayer,
     private readonly embedding: EmbeddingAliasLayer,
     @InjectModel(UnresolvedTerm.name)
-    private readonly unresolved: Model<UnresolvedTermDocument>,
+    private readonly unresolved: Model<UnresolvedTermDocument>
   ) {}
 
   async resolveRaw(raw: string): Promise<ResolvedIngredient> {
@@ -60,13 +59,8 @@ export class AliasService {
             status: "pending",
           },
         },
-        { upsert: true },
+        { upsert: true }
       )
       .exec();
-  }
-
-  /** Exposed for tests / workers that want a single layer-1 lookup. */
-  async resolveLayer1(raw: string): Promise<AliasMatch | null> {
-    return this.exact.resolve(raw);
   }
 }

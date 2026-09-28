@@ -19,7 +19,8 @@ export class ScansController {
   @Post("scans")
   create(
     @CurrentUser() user: RequestUser,
-    @Body(new ZodValidationPipe(createScanRequestSchema)) body: CreateScanRequest,
+    @Body(new ZodValidationPipe(createScanRequestSchema))
+    body: CreateScanRequest
   ) {
     return this.scans.create(user, body);
   }
@@ -28,7 +29,7 @@ export class ScansController {
   list(
     @CurrentUser() user: RequestUser,
     @Param("id") id: string,
-    @Query(new ZodValidationPipe(listScansQuerySchema)) query: ListScansQuery,
+    @Query(new ZodValidationPipe(listScansQuerySchema)) query: ListScansQuery
   ) {
     return this.scans.list(user, id, query);
   }
@@ -38,7 +39,7 @@ export class ScansController {
     @CurrentUser() user: RequestUser,
     @Param("id") id: string,
     @Query(new ZodValidationPipe(memberSummaryQuerySchema))
-    query: MemberSummaryQuery,
+    query: MemberSummaryQuery
   ) {
     return this.scans.summary(user, id, query);
   }

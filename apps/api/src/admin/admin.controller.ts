@@ -17,7 +17,7 @@ export class AdminController {
   @Get()
   list(
     @Query(new ZodValidationPipe(listUnresolvedTermsQuerySchema))
-    _query: ListUnresolvedTermsQuery,
+    _query: ListUnresolvedTermsQuery
   ) {
     return this.admin.listUnresolved();
   }
@@ -26,7 +26,7 @@ export class AdminController {
   resolve(
     @Param("id") id: string,
     @Body(new ZodValidationPipe(resolveUnresolvedTermRequestSchema))
-    body: ResolveUnresolvedTermRequest,
+    body: ResolveUnresolvedTermRequest
   ) {
     return this.admin.resolve(id, body);
   }

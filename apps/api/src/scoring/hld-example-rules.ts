@@ -1,14 +1,65 @@
 import type { RuleInput } from "./evaluate-rules";
 
-/** HLD §6b illustration rows — used for evaluator tests, not auto-seeded here. */
+/** HLD §6b illustration rows — evaluator tests and the dev rule_set seed. */
 export const HLD_EXAMPLE_RULES: RuleInput[] = [
   {
-    id: "sugar_who",
+    id: "sugar_uk_fop",
     field: "sugar_per_100g",
     operator: ">",
     threshold: 22.5,
     severity: "red",
-    reason: "Exceeds WHO free-sugar guidance",
+    reason: "High total sugars (UK FoP 2016 band) — illustration, not WHO",
+    applies_to: "solid",
+  },
+  {
+    id: "fssai_cannot_claim_low_sugar",
+    field: "sugar_per_100g",
+    operator: ">",
+    threshold: 5,
+    severity: "yellow",
+    reason:
+      'Exceeds FSSAI "low sugars" claim threshold (Claims 2018, 5 g/100 g)',
+    applies_to: "solid",
+  },
+  {
+    id: "fssai_cannot_claim_low_sodium",
+    field: "sodium_per_100g",
+    operator: ">",
+    threshold: 120,
+    severity: "yellow",
+    reason:
+      'Exceeds FSSAI "low sodium" claim threshold (Claims 2018, 120 mg/100 g)',
+    applies_to: "solid",
+  },
+  {
+    id: "sugar_uk_fop_liquid",
+    field: "sugar_per_100ml",
+    operator: ">",
+    threshold: 11.25,
+    severity: "red",
+    reason:
+      "High total sugars for a drink (UK FoP 2016 liquid band) — illustration, not WHO",
+    applies_to: "liquid",
+  },
+  {
+    id: "fssai_cannot_claim_low_sugar_liquid",
+    field: "sugar_per_100ml",
+    operator: ">",
+    threshold: 2.5,
+    severity: "yellow",
+    reason:
+      'Exceeds FSSAI "low sugars" claim threshold for drinks (Claims 2018, 2.5 g/100 ml)',
+    applies_to: "liquid",
+  },
+  {
+    id: "fssai_cannot_claim_low_sodium_liquid",
+    field: "sodium_per_100ml",
+    operator: ">",
+    threshold: 120,
+    severity: "yellow",
+    reason:
+      'Exceeds FSSAI "low sodium" claim threshold for drinks (Claims 2018, 120 mg/100 ml)',
+    applies_to: "liquid",
   },
   {
     id: "palm_oil",

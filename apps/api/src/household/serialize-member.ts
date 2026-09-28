@@ -3,7 +3,7 @@ import { toIso } from "../common/dates";
 import type { HouseholdMemberDocument } from "../database/schemas/household-member.schema";
 
 export function serializeHouseholdMember(
-  member: HouseholdMemberDocument,
+  member: HouseholdMemberDocument
 ): HouseholdMemberDto {
   return {
     id: member.id as string,

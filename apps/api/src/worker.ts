@@ -1,11 +1,12 @@
-import { Logger } from "@nestjs/common";
-import { NestFactory } from "@nestjs/core";
-import { AppModule } from "./app.module";
+process.env.WORKER_MODE = "true";
 
 async function bootstrap() {
+  const { Logger } = await import("@nestjs/common");
+  const { NestFactory } = await import("@nestjs/core");
+  const { AppModule } = await import("./app.module");
   await NestFactory.createApplicationContext(AppModule);
   Logger.log(
-    "Worker process started (queue processors are wired in a later task)",
+    "Worker process started (extraction, notification, promote, rescore, DLQ)"
   );
 }
 

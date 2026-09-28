@@ -3,6 +3,8 @@ import { HydratedDocument } from "mongoose";
 
 export type RuleOperator = ">" | ">=" | "<" | "<=" | "==" | "contains";
 export type Severity = "green" | "yellow" | "red";
+/** Which product form a rule applies to. "any" (default) = solids and liquids. */
+export type ProductForm = "solid" | "liquid" | "any";
 
 @Schema({ _id: false })
 export class RuleDefinition {
@@ -26,6 +28,10 @@ export class RuleDefinition {
 
   @Prop()
   reason?: string;
+
+  /** Scopes this rule to solid or liquid products; omitted/"any" = both. */
+  @Prop({ enum: ["solid", "liquid", "any"] })
+  applies_to?: ProductForm;
 }
 
 const RuleDefinitionSchema = SchemaFactory.createForClass(RuleDefinition);

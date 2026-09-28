@@ -1,4 +1,8 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import {
+  HEALTH_CONDITION_CODES,
+  type HealthConditionCode,
+} from "@foodscanner/shared";
 import { HydratedDocument, Types } from "mongoose";
 
 export type Relationship = "self" | "spouse" | "child" | "parent" | "other";
@@ -23,8 +27,11 @@ export class HouseholdMember {
   @Prop()
   age_band?: string;
 
-  @Prop({ type: [String], default: [] })
-  conditions!: string[];
+  @Prop({
+    type: [{ type: String, enum: [...HEALTH_CONDITION_CODES] }],
+    default: [],
+  })
+  conditions!: HealthConditionCode[];
 
   @Prop({ type: [String], default: [] })
   allergies!: string[];

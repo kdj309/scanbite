@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument, Types } from "mongoose";
+import type { Severity } from "./scoring-record.schema";
 
 @Schema({
   collection: "scans",
@@ -20,6 +21,15 @@ export class Scan {
 
   @Prop({ required: true })
   found!: boolean;
+
+  // The personalized verdict actually shown to this member at scan time —
+  // an audit record, not a live query. Must not be back-filled from a
+  // later, possibly different, scoring_record/rule_set once rules change.
+  @Prop({ type: String, enum: ["green", "yellow", "red"], default: null })
+  severity!: Severity | null;
+
+  @Prop({ type: String, default: null })
+  rule_set_version!: string | null;
 
   created_at!: Date;
 }

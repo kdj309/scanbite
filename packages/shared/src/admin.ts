@@ -43,7 +43,7 @@ export const resolveUnresolvedTermRequestSchema = z
     {
       message:
         "Provide either canonical_ingredient_id or new_ingredient, not both",
-    },
+    }
   );
 export type ResolveUnresolvedTermRequest = z.infer<
   typeof resolveUnresolvedTermRequestSchema

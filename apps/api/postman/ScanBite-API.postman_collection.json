@@ -1,0 +1,461 @@
+{
+  "info": {
+    "name": "ScanBite API",
+    "description": "Backend for a packaged-food label scanner (India). See apps/api/README.md for setup. Signup/Login auto-capture the bearer token and default member_id into collection variables — run those first.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000", "type": "string" },
+    { "key": "token", "value": "", "type": "string" },
+    { "key": "member_id", "value": "", "type": "string" },
+    { "key": "barcode", "value": "8900000000000", "type": "string" },
+    { "key": "submission_id", "value": "", "type": "string" },
+    { "key": "unresolved_term_id", "value": "", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health check",
+          "request": {
+            "method": "GET",
+            "auth": { "type": "noauth" },
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            },
+            "description": "Not under /v1 — pings Mongo, Redis, and S3."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Signup",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.access_token) pm.collectionVariables.set('token', json.access_token);",
+                  "if (json.user && json.user.default_member_id) pm.collectionVariables.set('member_id', json.user.default_member_id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": { "type": "noauth" },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"me@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/auth/signup",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "auth", "signup"]
+            },
+            "description": "email or phone + (password or otp). Creates a default 'self' household member automatically. Sets {{token}} and {{member_id}} on success."
+          },
+          "response": []
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.access_token) pm.collectionVariables.set('token', json.access_token);",
+                  "if (json.user && json.user.default_member_id) pm.collectionVariables.set('member_id', json.user.default_member_id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": { "type": "noauth" },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"me@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "auth", "login"]
+            },
+            "description": "email/phone + password, or email/phone + otp. If otp is omitted/expired on an OTP account, the response is a 401 that means \"a new code was just issued\" (OtpSentException), not a real credential failure."
+          },
+          "response": []
+        },
+        {
+          "name": "Verify OTP",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.access_token) pm.collectionVariables.set('token', json.access_token);",
+                  "if (json.user && json.user.default_member_id) pm.collectionVariables.set('member_id', json.user.default_member_id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": { "type": "noauth" },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+911234567890\",\n  \"otp\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/auth/verify-otp",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "auth", "verify-otp"]
+            },
+            "description": "OTP is logged to the server console in non-production (never actually texted)."
+          },
+          "response": []
+        },
+        {
+          "name": "Me",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "me"]
+            },
+            "description": "Current user + full household member list."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Household Members",
+      "item": [
+        {
+          "name": "List household members",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/household-members",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "household-members"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create household member",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Grandma\",\n  \"relationship\": \"parent\",\n  \"age_band\": \"60+\",\n  \"conditions\": [\"diabetic\", \"hypertensive\"],\n  \"allergies\": [\"peanuts\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/household-members",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "household-members"]
+            },
+            "description": "relationship: self | spouse | child | parent | other. conditions must be from the canonical list: diabetic, hypertensive, obesity, cardiovascular, dyslipidemia, chronic_kidney_disease, fatty_liver, gout, pcos, hypothyroidism."
+          },
+          "response": []
+        },
+        {
+          "name": "Update household member",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"conditions\": [\"diabetic\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/household-members/{{member_id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "household-members", "{{member_id}}"]
+            },
+            "description": "Partial update — at least one field required. age_band: omit to leave unchanged, null to clear, a value to set."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete household member",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/household-members/{{member_id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "household-members", "{{member_id}}"]
+            },
+            "description": "204 on success. Cannot delete a user's own default member (403)."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Products",
+      "item": [
+        {
+          "name": "Lookup product by barcode",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/products/{{barcode}}?member_id={{member_id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "products", "{{barcode}}"],
+              "query": [
+                {
+                  "key": "member_id",
+                  "value": "{{member_id}}",
+                  "description": "Optional — defaults to the caller's default household member server-side."
+                }
+              ]
+            },
+            "description": "8900000000000 is the dev fixture barcode, always present. Unknown barcodes return {\"found\": false}, not a 404."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Submissions",
+      "item": [
+        {
+          "name": "Submit label photo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.submission_id) pm.collectionVariables.set('submission_id', json.submission_id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "photo",
+                  "type": "file",
+                  "src": [],
+                  "description": "Max 10MB. VISION_PROVIDER=stub means the actual photo content doesn't affect extraction yet."
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/products/1234567890123/submissions",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "products", "1234567890123", "submissions"]
+            },
+            "description": "Returns 202 immediately; extraction runs async on the worker process. Sets {{submission_id}} on success."
+          },
+          "response": []
+        },
+        {
+          "name": "Get submission status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/submissions/{{submission_id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "submissions", "{{submission_id}}"]
+            },
+            "description": "status: processing -> ready | needs_review | failed. Requires the worker process to be running to ever leave 'processing'. Only visible to the submitting user."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Scans",
+      "item": [
+        {
+          "name": "Log a scan",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"barcode\": \"{{barcode}}\",\n  \"member_id\": \"{{member_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/scans",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "scans"]
+            },
+            "description": "member_id is optional (defaults to caller's default member). Records the personalized severity/rule_set_version actually shown at scan time — an audit entry, not a live join."
+          },
+          "response": []
+        },
+        {
+          "name": "List scan history",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/household-members/{{member_id}}/scans?limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "household-members", "{{member_id}}", "scans"],
+              "query": [
+                { "key": "limit", "value": "20" },
+                {
+                  "key": "from",
+                  "value": "",
+                  "disabled": true,
+                  "description": "ISO datetime"
+                },
+                {
+                  "key": "to",
+                  "value": "",
+                  "disabled": true,
+                  "description": "ISO datetime"
+                },
+                {
+                  "key": "cursor",
+                  "value": "",
+                  "disabled": true,
+                  "description": "id of the last item from a previous page, for keyset pagination"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Household summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/household-members/{{member_id}}/summary?period=week",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "household-members", "{{member_id}}", "summary"],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "week",
+                  "description": "week | month"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "item": [
+        {
+          "name": "List unresolved ingredient terms",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.items && json.items.length > 0) pm.collectionVariables.set('unresolved_term_id', json.items[0].id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/unresolved-terms",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "admin", "unresolved-terms"]
+            },
+            "description": "Requires the admin role — signup with the email matching ADMIN_EMAIL in .env to get it. Sets {{unresolved_term_id}} from the first result."
+          },
+          "response": []
+        },
+        {
+          "name": "Resolve unresolved term (existing ingredient)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"canonical_ingredient_id\": \"<existing ingredient _id>\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/unresolved-terms/{{unresolved_term_id}}/resolve",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "v1",
+                "admin",
+                "unresolved-terms",
+                "{{unresolved_term_id}}",
+                "resolve"
+              ]
+            },
+            "description": "Provide exactly one of canonical_ingredient_id or new_ingredient — see the sibling request for the new_ingredient form."
+          },
+          "response": []
+        },
+        {
+          "name": "Resolve unresolved term (new ingredient)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"new_ingredient\": {\n    \"canonical_name\": \"Palm Kernel Oil\",\n    \"category\": \"palm_oil\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/unresolved-terms/{{unresolved_term_id}}/resolve",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "v1",
+                "admin",
+                "unresolved-terms",
+                "{{unresolved_term_id}}",
+                "resolve"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

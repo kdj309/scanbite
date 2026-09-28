@@ -23,18 +23,18 @@ export class SubmissionsController {
     FileInterceptor("photo", {
       storage: memoryStorage(),
       limits: { fileSize: 10 * 1024 * 1024 },
-    }),
+    })
   )
   create(
     @CurrentUser() user: RequestUser,
     @Param("barcode") barcode: string,
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFile() file: Express.Multer.File
   ) {
     return this.submissions.create(barcode, user.userId, file);
   }
 
   @Get("submissions/:id")
-  getStatus(@Param("id") id: string) {
-    return this.submissions.getStatus(id);
+  getStatus(@CurrentUser() user: RequestUser, @Param("id") id: string) {
+    return this.submissions.getStatus(id, user.userId);
   }
 }

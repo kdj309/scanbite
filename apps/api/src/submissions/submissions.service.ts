@@ -10,12 +10,13 @@ import type {
 } from "@foodscanner/shared";
 import { createHash } from "node:crypto";
 import { Model } from "mongoose";
-import { ExtractionQueueService } from "../common/extraction-queue.service";
+import { isDuplicateKeyError } from "../common/mongo-errors";
 import { ObjectStorageService } from "../common/object-storage.service";
 import {
   Submission,
   SubmissionDocument,
 } from "../database/schemas/submission.schema";
+import { JobQueuesService } from "../workers/job-queues.service";
 
 @Injectable()
 export class SubmissionsService {
@@ -23,13 +24,13 @@ export class SubmissionsService {
     @InjectModel(Submission.name)
     private readonly submissions: Model<SubmissionDocument>,
     private readonly storage: ObjectStorageService,
-    private readonly queue: ExtractionQueueService,
+    private readonly queues: JobQueuesService
   ) {}
 
   async create(
     barcode: string,
     userId: string,
-    file: { buffer: Buffer; mimetype: string; originalname: string } | undefined,
+    file: { buffer: Buffer; mimetype: string; originalname: string } | undefined
   ): Promise<CreateSubmissionResponse> {
     if (!file?.buffer?.length) {
       throw new BadRequestException("photo file is required");
@@ -55,10 +56,10 @@ export class SubmissionsService {
         status: "processing",
         product_version_id: null,
       });
-      await this.queue.enqueueExtraction(created.id as string);
+      await this.queues.enqueueExtraction(created.id as string);
       return { submission_id: created.id as string };
     } catch (error) {
-      if (isDuplicateKey(error)) {
+      if (isDuplicateKeyError(error)) {
         const dup = await this.submissions
           .findOne({ barcode, photo_hash: photoHash })
           .exec();
@@ -70,9 +71,12 @@ export class SubmissionsService {
     }
   }
 
-  async getStatus(id: string): Promise<SubmissionStatusResponse> {
+  async getStatus(
+    id: string,
+    userId: string
+  ): Promise<SubmissionStatusResponse> {
     const submission = await this.submissions.findById(id).exec();
-    if (!submission) {
+    if (!submission || String(submission.user_id) !== userId) {
       throw new NotFoundException("Submission not found");
     }
     return {
@@ -87,13 +91,4 @@ export class SubmissionsService {
 function extension(filename: string): string {
   const match = filename.match(/\.[a-zA-Z0-9]+$/);
   return match ? match[0] : "";
-}
-
-function isDuplicateKey(error: unknown): boolean {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "code" in error &&
-    (error as { code: number }).code === 11000
-  );
 }

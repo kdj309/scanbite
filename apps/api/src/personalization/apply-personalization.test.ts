@@ -16,13 +16,16 @@ describe("applyPersonalization", () => {
             reason: "Ultra-processed",
           },
         ],
+        unevaluated: [],
       },
       facts: { sugar_per_100g: 18 },
       memberConditions: ["diabetic"],
       rules: [
         {
           condition: "diabetic",
-          trigger: "sugar_per_100g > 15",
+          field: "sugar_per_100g",
+          operator: ">",
+          threshold: 15,
           effect: "escalate one level",
           message: "Escalated: high sugar flagged for diabetic profile",
         },
@@ -37,13 +40,15 @@ describe("applyPersonalization", () => {
 
   it("does not apply when the member lacks the condition", () => {
     const result = applyPersonalization({
-      base: { severity: "green", breakdown: [] },
+      base: { severity: "green", breakdown: [], unevaluated: [] },
       facts: { sugar_per_100g: 18 },
       memberConditions: [],
       rules: [
         {
           condition: "diabetic",
-          trigger: "sugar_per_100g > 15",
+          field: "sugar_per_100g",
+          operator: ">",
+          threshold: 15,
           effect: "escalate one level",
           message: "Escalated: high sugar flagged for diabetic profile",
         },

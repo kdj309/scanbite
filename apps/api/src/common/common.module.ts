@@ -1,18 +1,21 @@
 import { Global, Module } from "@nestjs/common";
-import { ExtractionQueueService } from "./extraction-queue.service";
 import { ObjectStorageService } from "./object-storage.service";
+import { RedisCacheService } from "./redis-cache.service";
+import { S3StorageService } from "./s3-storage.service";
 import { VerdictCacheService } from "./verdict-cache.service";
 
 @Global()
 @Module({
   providers: [
     ObjectStorageService,
-    ExtractionQueueService,
+    RedisCacheService,
+    S3StorageService,
     VerdictCacheService,
   ],
   exports: [
     ObjectStorageService,
-    ExtractionQueueService,
+    RedisCacheService,
+    S3StorageService,
     VerdictCacheService,
   ],
 })

@@ -1,0 +1,17 @@
+# Generated / vendor
+dist
+node_modules
+coverage
+pnpm-lock.yaml
+.pnpm-store
+.git
+
+# Local / ignored content
+.env
+.env.*
+*.log
+
+.agents
+/docs/designs
+/docs/research
+smoketests

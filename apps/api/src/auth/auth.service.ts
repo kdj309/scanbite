@@ -16,7 +16,9 @@ import type {
 } from "@foodscanner/shared";
 import { compare, hash } from "bcryptjs";
 import { randomInt } from "node:crypto";
+import type { ClientSession } from "mongoose";
 import { Connection, Model, Types } from "mongoose";
+import { withTransactionFallback } from "../common/with-transaction";
 import type { Env } from "../config/env";
 import {
   HouseholdMember,
@@ -28,11 +30,33 @@ import {
   type AuthProvider,
   type UserRole,
 } from "../database/schemas/user.schema";
-import { serializeHouseholdMember } from "../household/serialize-member";
+import { HouseholdService } from "../household/household.service";
 import type { JwtPayload } from "./auth.types";
 import { serializeUser } from "./serialize-user";
 
 const OTP_TTL_MS = 10 * 60 * 1000;
+
+/**
+ * Not a login failure — credentials were fine, there was just no live OTP
+ * to check yet, so one was issued. Kept as a distinct class (rather than
+ * reusing UnauthorizedException's generic message) so this specific case
+ * is catchable/testable by type instead of string-matching the message.
+ */
+export class OtpSentException extends UnauthorizedException {
+  constructor() {
+    super("OTP sent — check your phone for a new code");
+  }
+}
+
+type NewUserFields = {
+  email?: string;
+  phone?: string;
+  auth_provider: AuthProvider;
+  password_hash?: string;
+  otp_code?: string;
+  otp_expires_at?: Date;
+  role: UserRole;
+};
 
 @Injectable()
 export class AuthService {
@@ -43,11 +67,18 @@ export class AuthService {
     private readonly config: ConfigService<Env, true>,
     @InjectConnection() private readonly connection: Connection,
     @InjectModel(User.name) private readonly users: Model<UserDocument>,
+    // Write path only (signup's transactional self-member insert needs the
+    // raw model to share AuthService's session) — reads go through
+    // HouseholdService below so the query/serialization live in one place.
     @InjectModel(HouseholdMember.name)
     private readonly members: Model<HouseholdMemberDocument>,
+    private readonly household: HouseholdService
   ) {}
 
-  signAccessToken(user: { id: string; role: UserRole }): Promise<string> {
+  private signAccessToken(user: {
+    id: string;
+    role: UserRole;
+  }): Promise<string> {
     const payload: JwtPayload = { sub: user.id, role: user.role };
     return this.jwt.signAsync(payload);
   }
@@ -81,10 +112,10 @@ export class AuthService {
   async verifyOtp(body: VerifyOtpRequest): Promise<AuthTokenResponse> {
     const user = await this.users.findOne({ phone: body.phone }).exec();
     this.assertValidOtp(user, body.otp);
-    user!.otp_code = undefined;
-    user!.otp_expires_at = undefined;
-    await user!.save();
-    return this.tokenResponse(user!);
+    user.otp_code = undefined;
+    user.otp_expires_at = undefined;
+    await user.save();
+    return this.tokenResponse(user);
   }
 
   async login(body: LoginRequest): Promise<AuthTokenResponse> {
@@ -117,7 +148,7 @@ export class AuthService {
         if (user.phone) {
           this.logOtp(user.phone, otp);
         }
-        throw new UnauthorizedException("OTP sent");
+        throw new OtpSentException();
       }
       this.assertValidOtp(user, body.otp);
       user.otp_code = undefined;
@@ -134,13 +165,10 @@ export class AuthService {
     if (!user) {
       throw new UnauthorizedException();
     }
-    const members = await this.members
-      .find({ owner_user_id: user._id })
-      .sort({ created_at: 1 })
-      .exec();
+    const { members } = await this.household.listForUser(userId);
     return {
       user: serializeUser(user),
-      household_members: members.map(serializeHouseholdMember),
+      household_members: members,
     };
   }
 
@@ -158,7 +186,11 @@ export class AuthService {
 
   private resolveSignupRole(email?: string): UserRole {
     const adminEmail = this.config.get("ADMIN_EMAIL", { infer: true });
-    if (email && adminEmail && email.toLowerCase() === adminEmail.toLowerCase()) {
+    if (
+      email &&
+      adminEmail &&
+      email.toLowerCase() === adminEmail.toLowerCase()
+    ) {
       return "admin";
     }
     return "user";
@@ -175,7 +207,10 @@ export class AuthService {
     }
   }
 
-  private assertValidOtp(user: UserDocument | null, otp: string): void {
+  private assertValidOtp(
+    user: UserDocument | null,
+    otp: string
+  ): asserts user is UserDocument {
     if (
       !user ||
       !user.otp_code ||
@@ -189,10 +224,12 @@ export class AuthService {
 
   private async assertUniqueIdentity(
     email?: string,
-    phone?: string,
+    phone?: string
   ): Promise<void> {
     if (email) {
-      const existing = await this.users.findOne({ email: email.toLowerCase() }).exec();
+      const existing = await this.users
+        .findOne({ email: email.toLowerCase() })
+        .exec();
       if (existing) {
         throw new ConflictException("Email already registered");
       }
@@ -205,43 +242,17 @@ export class AuthService {
     }
   }
 
-  private async createUserWithSelfMember(fields: {
-    email?: string;
-    phone?: string;
-    auth_provider: AuthProvider;
-    password_hash?: string;
-    otp_code?: string;
-    otp_expires_at?: Date;
-    role: UserRole;
-  }): Promise<UserDocument> {
-    const session = await this.connection.startSession();
-    try {
-      session.startTransaction();
-      const user = await this.insertUserAndSelf(fields, session);
-      await session.commitTransaction();
-      return user;
-    } catch (error) {
-      await session.abortTransaction().catch(() => undefined);
-      if (isTransactionUnsupported(error)) {
-        return this.insertUserAndSelf(fields);
-      }
-      throw error;
-    } finally {
-      await session.endSession();
-    }
+  private createUserWithSelfMember(
+    fields: NewUserFields
+  ): Promise<UserDocument> {
+    return withTransactionFallback(this.connection, (session) =>
+      this.insertUserAndSelf(fields, session)
+    );
   }
 
   private async insertUserAndSelf(
-    fields: {
-      email?: string;
-      phone?: string;
-      auth_provider: AuthProvider;
-      password_hash?: string;
-      otp_code?: string;
-      otp_expires_at?: Date;
-      role: UserRole;
-    },
-    session?: import("mongoose").ClientSession,
+    fields: NewUserFields,
+    session?: ClientSession
   ): Promise<UserDocument> {
     const opts = session ? { session } : {};
     const [user] = await this.users.create(
@@ -256,7 +267,7 @@ export class AuthService {
           role: fields.role,
         },
       ],
-      opts,
+      opts
     );
     const [member] = await this.members.create(
       [
@@ -268,18 +279,10 @@ export class AuthService {
           allergies: [],
         },
       ],
-      opts,
+      opts
     );
     user.default_member_id = member._id as Types.ObjectId;
     await user.save(opts);
     return user;
   }
-}
-
-function isTransactionUnsupported(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error);
-  return (
-    message.includes("Transaction numbers are only allowed") ||
-    message.includes("replica set")
-  );
 }

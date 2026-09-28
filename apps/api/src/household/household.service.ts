@@ -22,7 +22,7 @@ export class HouseholdService {
     @InjectModel(HouseholdMember.name)
     private readonly members: Model<HouseholdMemberDocument>,
     @InjectModel(User.name)
-    private readonly users: Model<UserDocument>,
+    private readonly users: Model<UserDocument>
   ) {}
 
   async listForUser(userId: string) {
@@ -48,7 +48,7 @@ export class HouseholdService {
   async updateForUser(
     userId: string,
     memberId: string,
-    body: UpdateHouseholdMemberRequest,
+    body: UpdateHouseholdMemberRequest
   ) {
     const member = await this.requireOwnedMember(userId, memberId);
     if (body.name !== undefined) {
@@ -75,15 +75,20 @@ export class HouseholdService {
   async deleteForUser(userId: string, memberId: string): Promise<void> {
     const member = await this.requireOwnedMember(userId, memberId);
     const owner = await this.users.findById(userId).exec();
-    if (owner?.default_member_id && String(owner.default_member_id) === memberId) {
-      throw new ForbiddenException("Cannot delete the default household member");
+    if (
+      owner?.default_member_id &&
+      String(owner.default_member_id) === memberId
+    ) {
+      throw new ForbiddenException(
+        "Cannot delete the default household member"
+      );
     }
     await member.deleteOne();
   }
 
   async requireOwnedMember(
     userId: string,
-    memberId: string,
+    memberId: string
   ): Promise<HouseholdMemberDocument> {
     if (!Types.ObjectId.isValid(memberId)) {
       throw new NotFoundException("Household member not found");
@@ -98,7 +103,7 @@ export class HouseholdService {
   async resolveMemberId(
     userId: string,
     requestedMemberId: string | undefined,
-    defaultMemberId: string | null,
+    defaultMemberId: string | null
   ): Promise<HouseholdMemberDocument> {
     const memberId = requestedMemberId ?? defaultMemberId;
     if (!memberId) {

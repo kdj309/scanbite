@@ -15,7 +15,7 @@ export class DatabaseIndexSyncService implements OnModuleInit {
       `Synced indexes for ${models.length} collections: ${models
         .map((model) => model.collection.collectionName)
         .sort()
-        .join(", ")}`,
+        .join(", ")}`
     );
   }
 }

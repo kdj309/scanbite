@@ -12,7 +12,7 @@ import type { JwtPayload, RequestUser } from "./auth.types";
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
     config: ConfigService<Env, true>,
-    @InjectModel(User.name) private readonly users: Model<UserDocument>,
+    @InjectModel(User.name) private readonly users: Model<UserDocument>
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),

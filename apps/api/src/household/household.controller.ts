@@ -32,7 +32,7 @@ export class HouseholdController {
   create(
     @CurrentUser() user: RequestUser,
     @Body(new ZodValidationPipe(createHouseholdMemberRequestSchema))
-    body: CreateHouseholdMemberRequest,
+    body: CreateHouseholdMemberRequest
   ) {
     return this.household.createForUser(user.userId, body);
   }
@@ -42,7 +42,7 @@ export class HouseholdController {
     @CurrentUser() user: RequestUser,
     @Param("id") id: string,
     @Body(new ZodValidationPipe(updateHouseholdMemberRequestSchema))
-    body: UpdateHouseholdMemberRequest,
+    body: UpdateHouseholdMemberRequest
   ) {
     return this.household.updateForUser(user.userId, id, body);
   }

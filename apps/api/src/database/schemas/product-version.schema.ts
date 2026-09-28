@@ -51,8 +51,8 @@ export class ProductVersion {
   @Prop({ type: Number })
   additive_count?: number;
 
-  @Prop({ required: true, min: 0, max: 1 })
-  extraction_confidence!: number;
+  @Prop({ min: 0, max: 1 })
+  extraction_confidence?: number;
 
   @Prop({ required: true, enum: ["off", "user_submission"] })
   source!: ProductVersionSource;
@@ -64,7 +64,8 @@ export class ProductVersion {
 }
 
 export type ProductVersionDocument = HydratedDocument<ProductVersion>;
-export const ProductVersionSchema = SchemaFactory.createForClass(ProductVersion);
+export const ProductVersionSchema =
+  SchemaFactory.createForClass(ProductVersion);
 
 ProductVersionSchema.index({ product_id: 1, status: 1 });
 ProductVersionSchema.index({ barcode: 1, status: 1 });

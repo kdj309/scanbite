@@ -1,61 +1,46 @@
+import type { HealthConditionCode } from "@foodscanner/shared";
 import type { RuleOperator } from "../database/schemas/rule-set.schema";
 import type { Severity } from "../database/schemas/scoring-record.schema";
 import {
+  checkOperator,
   escalateOneLevel,
-  operatorMatches,
   readFact,
   worstSeverity,
   type EvaluationResult,
 } from "../scoring/evaluate-rules";
 
 export type PersonalizationRuleInput = {
-  condition: string;
-  trigger: string;
+  condition: HealthConditionCode;
+  field: string;
+  operator: RuleOperator;
+  threshold?: number;
+  value?: unknown;
   effect: string;
   message: string;
 };
 
-const TRIGGER_RE = /^([A-Za-z0-9_]+)\s*(>=|<=|==|>|<)\s*(.+)$/;
-
-export function parseTrigger(trigger: string): {
-  field: string;
-  operator: RuleOperator;
-  value: unknown;
-  threshold?: number;
-} | null {
-  const match = trigger.trim().match(TRIGGER_RE);
-  if (!match) {
-    return null;
-  }
-  const [, field, operator, rawValue] = match;
-  const trimmed = rawValue.trim();
-  const asNumber = Number(trimmed);
-  if (trimmed !== "" && Number.isFinite(asNumber)) {
-    return {
-      field,
-      operator: operator as RuleOperator,
-      value: asNumber,
-      threshold: asNumber,
-    };
-  }
-  return {
-    field,
-    operator: operator as RuleOperator,
-    value: trimmed.replace(/^['"]|['"]$/g, ""),
-  };
-}
-
 export function conditionMatches(
   memberConditions: string[],
-  condition: string,
+  condition: string
 ): boolean {
   const needle = condition.trim().toLowerCase();
   return memberConditions.some((item) => item.trim().toLowerCase() === needle);
 }
 
+/** A personalization rule that DID apply to this member (condition
+ *  matched) but whose trigger fact was missing — we could not determine
+ *  whether it should have fired. Distinct from a rule whose condition
+ *  simply didn't apply to this member at all. */
+export type PersonalizationUnevaluated = {
+  condition: string;
+  field: string;
+  reason: string;
+};
+
 export type PersonalizedVerdict = {
   severity: Severity;
   reasons: string[];
+  unevaluated: PersonalizationUnevaluated[];
 };
 
 export function applyPersonalization(input: {
@@ -66,21 +51,37 @@ export function applyPersonalization(input: {
 }): PersonalizedVerdict {
   const reasons = input.base.breakdown.map((item) => item.reason);
   const overlaySeverities: Severity[] = [];
+  const unevaluated: PersonalizationUnevaluated[] = [];
 
   for (const rule of input.rules) {
     if (!conditionMatches(input.memberConditions, rule.condition)) {
+      continue; // rule doesn't apply to this member at all — not a data gap
+    }
+    const fact = readFact(input.facts, rule.field);
+    const result = checkOperator(
+      rule.operator,
+      fact,
+      rule.threshold,
+      rule.value
+    );
+
+    if (result === "inapplicable") {
+      // This condition DOES apply to the member, and we genuinely could
+      // not check whether it should have escalated. Silence here is the
+      // riskier failure mode than for base scoring — this is specifically
+      // about a health condition the member actually has.
+      unevaluated.push({
+        condition: rule.condition,
+        field: rule.field,
+        reason: `Could not check ${rule.field} for your ${rule.condition} profile — data unavailable`,
+      });
       continue;
     }
-    const trigger = parseTrigger(rule.trigger);
-    if (!trigger) {
+
+    if (result !== "matched") {
       continue;
     }
-    const fact = readFact(input.facts, trigger.field);
-    if (
-      !operatorMatches(trigger.operator, fact, trigger.threshold, trigger.value)
-    ) {
-      continue;
-    }
+
     if (rule.effect.toLowerCase().includes("escalate")) {
       overlaySeverities.push(escalateOneLevel(input.base.severity));
     }
@@ -92,5 +93,6 @@ export function applyPersonalization(input: {
   return {
     severity: worstSeverity([input.base.severity, ...overlaySeverities]),
     reasons,
+    unevaluated,
   };
 }

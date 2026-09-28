@@ -42,6 +42,10 @@ export class ScoringRecord {
   breakdown!: ScoringBreakdownItem[];
 
   computed_at!: Date;
+
+  // new field for unevaluated rules
+  @Prop({ type: [Object], default: [] })
+  unevaluated!: { rule_id: string; field: string; reason: string }[];
 }
 
 export type ScoringRecordDocument = HydratedDocument<ScoringRecord>;

@@ -13,10 +13,7 @@ export type {
 export { Product, ProductSchema } from "./product.schema";
 export type { ProductDocument } from "./product.schema";
 
-export {
-  ProductVersion,
-  ProductVersionSchema,
-} from "./product-version.schema";
+export { ProductVersion, ProductVersionSchema } from "./product-version.schema";
 export type {
   ProductVersionDocument,
   VersionIngredient,

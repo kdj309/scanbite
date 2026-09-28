@@ -17,7 +17,7 @@ export class ProductsController {
     @CurrentUser() user: RequestUser,
     @Param("barcode") barcode: string,
     @Query(new ZodValidationPipe(productLookupQuerySchema))
-    query: ProductLookupQuery,
+    query: ProductLookupQuery
   ) {
     return this.products.lookup(barcode, user, query.member_id);
   }

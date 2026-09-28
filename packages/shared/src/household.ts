@@ -1,12 +1,17 @@
 import { z } from "zod";
-import { isoDateTimeSchema, objectIdSchema, relationshipSchema } from "./primitives";
+import { healthConditionListSchema } from "./conditions";
+import {
+  isoDateTimeSchema,
+  objectIdSchema,
+  relationshipSchema,
+} from "./primitives";
 
 export const householdMemberSchema = z.object({
   id: objectIdSchema,
   name: z.string().min(1),
   relationship: relationshipSchema,
   age_band: z.string().min(1).optional(),
-  conditions: z.array(z.string()).default([]),
+  conditions: healthConditionListSchema.default([]),
   allergies: z.array(z.string()).default([]),
   created_at: isoDateTimeSchema,
   updated_at: isoDateTimeSchema,
@@ -17,7 +22,7 @@ export const createHouseholdMemberRequestSchema = z.object({
   name: z.string().min(1),
   relationship: relationshipSchema,
   age_band: z.string().min(1).optional(),
-  conditions: z.array(z.string()).optional(),
+  conditions: healthConditionListSchema.optional(),
   allergies: z.array(z.string()).optional(),
 });
 export type CreateHouseholdMemberRequest = z.infer<
@@ -29,7 +34,7 @@ export const updateHouseholdMemberRequestSchema = z
     name: z.string().min(1).optional(),
     relationship: relationshipSchema.optional(),
     age_band: z.string().min(1).nullable().optional(),
-    conditions: z.array(z.string()).optional(),
+    conditions: healthConditionListSchema.optional(),
     allergies: z.array(z.string()).optional(),
   })
   .refine((body) => Object.keys(body).length > 0, {

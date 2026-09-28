@@ -19,6 +19,8 @@ export const scanSchema = z.object({
   member_id: objectIdSchema,
   product_version_id: objectIdSchema.nullable(),
   found: z.boolean(),
+  severity: severitySchema.nullable(),
+  rule_set_version: z.string().nullable(),
   created_at: isoDateTimeSchema,
 });
 export type Scan = z.infer<typeof scanSchema>;

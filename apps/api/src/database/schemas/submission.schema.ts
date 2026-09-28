@@ -2,10 +2,7 @@ import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument, Types } from "mongoose";
 
 export type SubmissionStatus =
-  | "processing"
-  | "ready"
-  | "needs_review"
-  | "failed";
+  "processing" | "ready" | "needs_review" | "failed";
 
 @Schema({
   collection: "submissions",

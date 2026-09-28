@@ -34,7 +34,7 @@ export class AdminService {
     @InjectModel(Ingredient.name)
     private readonly ingredients: Model<IngredientDocument>,
     @InjectModel(IngredientAlias.name)
-    private readonly aliases: Model<IngredientAliasDocument>,
+    private readonly aliases: Model<IngredientAliasDocument>
   ) {}
 
   async listUnresolved(): Promise<ListUnresolvedTermsResponse> {
@@ -47,7 +47,7 @@ export class AdminService {
 
   async resolve(
     id: string,
-    body: ResolveUnresolvedTermRequest,
+    body: ResolveUnresolvedTermRequest
   ): Promise<ResolveUnresolvedTermResponse> {
     const term = await this.terms.findById(id).exec();
     if (!term) {
@@ -67,7 +67,7 @@ export class AdminService {
           ingredient_id: ingredientId,
         },
       },
-      { upsert: true },
+      { upsert: true }
     );
 
     term.status = "resolved";
@@ -88,7 +88,7 @@ export class AdminService {
   }
 
   private async createIngredient(
-    body: ResolveUnresolvedTermRequest,
+    body: ResolveUnresolvedTermRequest
   ): Promise<string> {
     if (!body.new_ingredient) {
       throw new BadRequestException("new_ingredient is required");
