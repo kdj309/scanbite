@@ -2,14 +2,8 @@ import { Inject, Injectable, Logger } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { UnrecoverableError } from "bullmq";
 import { Model, Types } from "mongoose";
-import { AliasService } from "../alias/alias.service";
-import { isDuplicateKeyError } from "../common/mongo-errors";
 import type { PromoteResult } from "../consensus/consensus.service";
-import {
-  planAfterExtraction,
-  type VersionSnapshot,
-} from "../consensus/conflict";
-import { Product, ProductDocument } from "../database/schemas/product.schema";
+import { planAfterExtraction } from "../consensus/conflict";
 import {
   ProductVersion,
   ProductVersionDocument,
@@ -18,9 +12,13 @@ import {
   Submission,
   SubmissionDocument,
 } from "../database/schemas/submission.schema";
+import { ProductVersionIngestionService } from "../product-versions/product-version-ingestion.service";
+import {
+  snapshotFromIncoming,
+  snapshotFromVersion,
+} from "../product-versions/product-version-snapshot";
 import { ScoringService } from "../scoring/scoring.service";
 import { JobQueuesService } from "./job-queues.service";
-import type { ExtractionOutput } from "./vision/extraction-output";
 import { VISION_PORT, type VisionPort } from "./vision/vision.port";
 
 @Injectable()
@@ -30,12 +28,10 @@ export class ExtractionPipeline {
   constructor(
     @InjectModel(Submission.name)
     private readonly submissions: Model<SubmissionDocument>,
-    @InjectModel(Product.name)
-    private readonly products: Model<ProductDocument>,
     @InjectModel(ProductVersion.name)
     private readonly versions: Model<ProductVersionDocument>,
     @Inject(VISION_PORT) private readonly vision: VisionPort,
-    private readonly alias: AliasService,
+    private readonly ingestion: ProductVersionIngestionService,
     private readonly scoring: ScoringService,
     private readonly queues: JobQueuesService
   ) {}
@@ -51,10 +47,38 @@ export class ExtractionPipeline {
 
     const extracted = await this.vision.extract({
       barcode: submission.barcode,
-      photoKey: submission.photo_key,
+      photoKeys: submission.photo_keys,
     });
-    const ingredients = await this.resolveIngredients(extracted.ingredients);
-    const product = await this.findOrCreateProduct(submission.barcode);
+    const ingredients = await this.ingestion.resolveIngredients(
+      extracted.ingredients
+    );
+
+    if (extracted.photo_consistency === "inconsistent") {
+      // Confidently-extracted data from a mismatched photo set is worse than
+      // low confidence on one product — always send to review, never promote.
+      const pending = await this.ingestion.createPendingVersion({
+        barcode: submission.barcode,
+        name: extracted.name,
+        brand: extracted.brand,
+        category: extracted.category,
+        ingredients,
+        nutrition: extracted.nutrition,
+        nova_group: extracted.nova_group,
+        additive_count: extracted.additive_count,
+        extraction_confidence: extracted.extraction_confidence,
+        source: "user_submission",
+      });
+      await this.finishSubmission(submission, {
+        status: "needs_review",
+        productVersionId: pending._id as Types.ObjectId,
+        event: "needs_review",
+      });
+      this.logger.log(
+        `Submission ${submissionId} flagged needs_review: photos were inconsistent`
+      );
+      return;
+    }
+
     const live = await this.versions
       .findOne({ barcode: submission.barcode, status: "live" })
       .exec();
@@ -74,8 +98,7 @@ export class ExtractionPipeline {
       return;
     }
 
-    const pending = await this.versions.create({
-      product_id: product._id,
+    const pending = await this.ingestion.createPendingVersion({
       barcode: submission.barcode,
       name: extracted.name,
       brand: extracted.brand,
@@ -86,9 +109,7 @@ export class ExtractionPipeline {
       additive_count: extracted.additive_count,
       extraction_confidence: extracted.extraction_confidence,
       source: "user_submission",
-      status: "pending",
     });
-    await this.scoring.ensureScoringRecord(pending);
     submission.product_version_id = pending._id as Types.ObjectId;
     await submission.save();
     await this.queues.enqueuePromote({
@@ -98,44 +119,6 @@ export class ExtractionPipeline {
     this.logger.log(
       `Queued promote for submission ${submissionId} version ${pending.id as string}`
     );
-  }
-
-  private async resolveIngredients(raws: string[]): Promise<
-    Array<{
-      raw: string;
-      canonical_id: Types.ObjectId | null;
-      status: "resolved" | "unresolved";
-    }>
-  > {
-    const resolved = await Promise.all(
-      raws.map((raw) => this.alias.resolveRaw(raw))
-    );
-    return raws.map((raw, index) => ({
-      raw,
-      canonical_id: resolved[index].canonical_id
-        ? new Types.ObjectId(resolved[index].canonical_id)
-        : null,
-      status: resolved[index].status,
-    }));
-  }
-
-  private async findOrCreateProduct(barcode: string): Promise<ProductDocument> {
-    const existing = await this.products.findOne({ barcode }).exec();
-    if (existing) {
-      return existing;
-    }
-    try {
-      return await this.products.create({ barcode });
-    } catch (error) {
-      if (!isDuplicateKeyError(error)) {
-        throw error;
-      }
-      const raced = await this.products.findOne({ barcode }).exec();
-      if (!raced) {
-        throw error;
-      }
-      return raced;
-    }
   }
 
   private async finishSubmission(
@@ -191,48 +174,4 @@ function statusForPromoteResult(
     return "ready";
   }
   return "needs_review";
-}
-
-type ResolvedIngredient = {
-  raw: string;
-  canonical_id: Types.ObjectId | null;
-};
-
-function ingredientSetsFromRows(ingredients: ResolvedIngredient[]): {
-  resolvedCanonicalIds: string[];
-  unresolvedRaw: string[];
-} {
-  const resolvedCanonicalIds: string[] = [];
-  const unresolvedRaw: string[] = [];
-  for (const ingredient of ingredients) {
-    if (ingredient.canonical_id) {
-      resolvedCanonicalIds.push(String(ingredient.canonical_id));
-    } else {
-      unresolvedRaw.push(ingredient.raw);
-    }
-  }
-  return { resolvedCanonicalIds, unresolvedRaw };
-}
-
-function snapshotFromVersion(version: ProductVersionDocument): VersionSnapshot {
-  return {
-    name: version.name,
-    brand: version.brand,
-    nutrition: version.nutrition ?? {},
-    ...ingredientSetsFromRows(version.ingredients),
-    extraction_confidence: version.extraction_confidence ?? 0,
-  };
-}
-
-function snapshotFromIncoming(
-  extracted: ExtractionOutput,
-  ingredients: ResolvedIngredient[]
-): VersionSnapshot {
-  return {
-    name: extracted.name,
-    brand: extracted.brand,
-    nutrition: extracted.nutrition,
-    ...ingredientSetsFromRows(ingredients),
-    extraction_confidence: extracted.extraction_confidence,
-  };
 }

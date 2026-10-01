@@ -12,11 +12,12 @@ export class Submission {
   @Prop({ required: true, trim: true })
   barcode!: string;
 
+  /** Hash of the sorted individual photo hashes — identifies this exact photo set for dedup. */
   @Prop({ required: true })
   photo_hash!: string;
 
-  @Prop({ required: true })
-  photo_key!: string;
+  @Prop({ required: true, type: [String] })
+  photo_keys!: string[];
 
   @Prop({ type: Types.ObjectId, ref: "User", required: true })
   user_id!: Types.ObjectId;

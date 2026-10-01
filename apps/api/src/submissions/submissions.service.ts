@@ -30,28 +30,44 @@ export class SubmissionsService {
   async create(
     barcode: string,
     userId: string,
-    file: { buffer: Buffer; mimetype: string; originalname: string } | undefined
+    files:
+      | Array<{ buffer: Buffer; mimetype: string; originalname: string }>
+      | undefined
   ): Promise<CreateSubmissionResponse> {
-    if (!file?.buffer?.length) {
-      throw new BadRequestException("photo file is required");
+    if (!files?.length) {
+      throw new BadRequestException("at least one photo is required");
     }
 
-    const photoHash = createHash("sha256").update(file.buffer).digest("hex");
+    const photoHashes = files.map((file) =>
+      createHash("sha256").update(file.buffer).digest("hex")
+    );
+    // Order-independent so the same 3 photos uploaded in a different order still dedup.
+    const setHash = createHash("sha256")
+      .update([...photoHashes].sort().join(":"))
+      .digest("hex");
+
     const existing = await this.submissions
-      .findOne({ barcode, photo_hash: photoHash })
+      .findOne({ barcode, photo_hash: setHash })
       .exec();
     if (existing) {
       return { submission_id: existing.id as string };
     }
 
-    const photoKey = `labels/${barcode}/${photoHash}${extension(file.originalname)}`;
-    await this.storage.putLabelPhoto(photoKey, file.buffer, file.mimetype);
+    const photoKeys = files.map(
+      (file, index) =>
+        `labels/${barcode}/${setHash}/${photoHashes[index]}${extension(file.originalname)}`
+    );
+    await Promise.all(
+      files.map((file, index) =>
+        this.storage.putLabelPhoto(photoKeys[index], file.buffer, file.mimetype)
+      )
+    );
 
     try {
       const created = await this.submissions.create({
         barcode,
-        photo_hash: photoHash,
-        photo_key: photoKey,
+        photo_hash: setHash,
+        photo_keys: photoKeys,
         user_id: userId,
         status: "processing",
         product_version_id: null,
@@ -61,7 +77,7 @@ export class SubmissionsService {
     } catch (error) {
       if (isDuplicateKeyError(error)) {
         const dup = await this.submissions
-          .findOne({ barcode, photo_hash: photoHash })
+          .findOne({ barcode, photo_hash: setHash })
           .exec();
         if (dup) {
           return { submission_id: dup.id as string };

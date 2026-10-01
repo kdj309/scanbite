@@ -23,3 +23,6 @@ export function verdictCacheKeyPattern(
 }
 
 export const API_VERSION_PREFIX = "/v1";
+
+/** Max photos accepted per submission (vision-LLM fallback path only). */
+export const MAX_SUBMISSION_PHOTOS = 3;

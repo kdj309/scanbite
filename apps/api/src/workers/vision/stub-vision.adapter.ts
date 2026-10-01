@@ -28,15 +28,16 @@ export const STUB_LABEL_EXTRACTION: ExtractionOutput =
     nova_group: 4,
     additive_count: 4,
     extraction_confidence: 0.95,
+    photo_consistency: "consistent",
   });
 
 @Injectable()
 export class StubVisionAdapter implements VisionPort {
   async extract(input: {
     barcode: string;
-    photoKey: string;
+    photoKeys: string[];
   }): Promise<ExtractionOutput> {
-    void input.photoKey;
+    void input.photoKeys;
     if (input.barcode === DEV_FIXTURE_BARCODE) {
       return DEV_FIXTURE_EXTRACTION;
     }

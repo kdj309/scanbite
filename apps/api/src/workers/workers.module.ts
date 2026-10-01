@@ -1,9 +1,9 @@
 import { BullModule } from "@nestjs/bullmq";
 import { Global, Module, type Provider } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { AliasModule } from "../alias/alias.module";
 import { ConsensusModule } from "../consensus/consensus.module";
 import type { Env } from "../config/env";
+import { ProductVersionIngestionModule } from "../product-versions/product-version-ingestion.module";
 import { ScoringModule } from "../scoring/scoring.module";
 import { ExtractionPipeline } from "./extraction.pipeline";
 import { JobQueuesService } from "./job-queues.service";
@@ -22,8 +22,11 @@ import {
 } from "./queue-names";
 import { bullmqConnection } from "./redis-connection";
 import { SeedService } from "./seed/seed.service";
+import { ClaudeVisionAdapter } from "./vision/claude-vision.adapter";
+import { GeminiVisionAdapter } from "./vision/gemini-vision.adapter";
 import { StubVisionAdapter } from "./vision/stub-vision.adapter";
-import { VISION_PORT } from "./vision/vision.port";
+import { TieredVisionAdapter } from "./vision/tiered-vision.adapter";
+import { VISION_PORT, type VisionPort } from "./vision/vision.port";
 
 function workerModeEnabled(): boolean {
   const raw = process.env.WORKER_MODE;
@@ -56,14 +59,28 @@ const processors: Provider[] = workerModeEnabled()
       { name: QUEUE_RESCORE },
       { name: QUEUE_DLQ }
     ),
-    AliasModule,
     ScoringModule,
     ConsensusModule,
+    ProductVersionIngestionModule,
   ],
   providers: [
     JobQueuesService,
     StubVisionAdapter,
-    { provide: VISION_PORT, useExisting: StubVisionAdapter },
+    GeminiVisionAdapter,
+    ClaudeVisionAdapter,
+    TieredVisionAdapter,
+    {
+      provide: VISION_PORT,
+      useFactory: (
+        config: ConfigService<Env, true>,
+        stub: StubVisionAdapter,
+        tiered: TieredVisionAdapter
+      ): VisionPort =>
+        config.get("VISION_PROVIDER", { infer: true }) === "tiered"
+          ? tiered
+          : stub,
+      inject: [ConfigService, StubVisionAdapter, TieredVisionAdapter],
+    },
     SeedService,
     ExtractionPipeline,
     NoopNotifier,

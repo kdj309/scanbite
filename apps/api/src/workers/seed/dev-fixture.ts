@@ -12,4 +12,5 @@ export const DEV_FIXTURE_EXTRACTION: ExtractionOutput = {
   nova_group: 1,
   additive_count: 0,
   extraction_confidence: 1,
+  photo_consistency: "consistent",
 };

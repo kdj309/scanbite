@@ -4,10 +4,11 @@ import {
   HttpCode,
   Param,
   Post,
-  UploadedFile,
+  UploadedFiles,
   UseInterceptors,
 } from "@nestjs/common";
-import { FileInterceptor } from "@nestjs/platform-express";
+import { FilesInterceptor } from "@nestjs/platform-express";
+import { MAX_SUBMISSION_PHOTOS } from "@foodscanner/shared";
 import { CurrentUser } from "../auth/current-user.decorator";
 import type { RequestUser } from "../auth/auth.types";
 import { memoryStorage } from "multer";
@@ -20,7 +21,7 @@ export class SubmissionsController {
   @Post("products/:barcode/submissions")
   @HttpCode(202)
   @UseInterceptors(
-    FileInterceptor("photo", {
+    FilesInterceptor("photos", MAX_SUBMISSION_PHOTOS, {
       storage: memoryStorage(),
       limits: { fileSize: 10 * 1024 * 1024 },
     })
@@ -28,9 +29,9 @@ export class SubmissionsController {
   create(
     @CurrentUser() user: RequestUser,
     @Param("barcode") barcode: string,
-    @UploadedFile() file: Express.Multer.File
+    @UploadedFiles() files: Express.Multer.File[]
   ) {
-    return this.submissions.create(barcode, user.userId, file);
+    return this.submissions.create(barcode, user.userId, files);
   }
 
   @Get("submissions/:id")

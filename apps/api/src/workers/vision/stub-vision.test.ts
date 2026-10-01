@@ -13,7 +13,7 @@ describe("StubVisionAdapter", () => {
   it("returns schema-valid JSON for an unknown barcode", async () => {
     const result = await vision.extract({
       barcode: "999",
-      photoKey: "labels/999/hash.jpg",
+      photoKeys: ["labels/999/hash.jpg"],
     });
     assert.deepEqual(
       extractionOutputSchema.parse(result),
@@ -28,7 +28,7 @@ describe("StubVisionAdapter", () => {
   it("returns the seeded fixture extraction for the fixture barcode", async () => {
     const result = await vision.extract({
       barcode: DEV_FIXTURE_BARCODE,
-      photoKey: "labels/fixture/hash.jpg",
+      photoKeys: ["labels/fixture/hash.jpg"],
     });
     assert.equal(result.name, "Fixture Oats");
     assert.equal(result.nutrition.sugar_per_100g, 20);
