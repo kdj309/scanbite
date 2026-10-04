@@ -8,6 +8,7 @@ export const HLD_RULE_SET_SEED = {
 };
 
 export const HLD_PERSONALIZATION_SEED = {
+  id: "diabetic_sugar_escalation",
   version: "1",
   effective_from: new Date("2026-01-01T00:00:00.000Z"),
   effective_to: null as Date | null,

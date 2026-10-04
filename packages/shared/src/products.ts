@@ -3,9 +3,18 @@ import { confidenceSchema, objectIdSchema, severitySchema } from "./primitives";
 
 export const barcodeSchema = z.string().min(1);
 
+// rule_id lets a client fetch this reason's explainer (GET /rule-explainers,
+// see rule-explainers.ts) instead of only showing the bare display text.
+// null for a reason with no identifiable source rule.
+export const verdictReasonSchema = z.object({
+  text: z.string(),
+  rule_id: z.string().nullable(),
+});
+export type VerdictReason = z.infer<typeof verdictReasonSchema>;
+
 export const verdictSchema = z.object({
   severity: severitySchema,
-  reasons: z.array(z.string()),
+  reasons: z.array(verdictReasonSchema),
 });
 export type Verdict = z.infer<typeof verdictSchema>;
 

@@ -22,6 +22,7 @@ export default defineConfig(
       // wiring outside Nest's DI container, not a throwaway test) — not in
       // that directory since it writes permanent seed data, not test data.
       "apps/api/src/admin/seed-common-products.ts",
+      "apps/api/src/admin/seed-rule-explainers.ts",
     ],
   },
   {

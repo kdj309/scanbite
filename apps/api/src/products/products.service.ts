@@ -17,7 +17,10 @@ import {
 } from "../database/schemas/product-version.schema";
 import { HouseholdService } from "../household/household.service";
 import { OffLookupService } from "../off/off-lookup.service";
-import type { PersonalizedVerdict } from "../personalization/apply-personalization";
+import type {
+  PersonalizedVerdict,
+  VerdictReason,
+} from "../personalization/apply-personalization";
 import { PersonalizationService } from "../personalization/personalization.service";
 import { ProductVersionIngestionService } from "../product-versions/product-version-ingestion.service";
 import { ScoringService } from "../scoring/scoring.service";
@@ -171,17 +174,27 @@ export class ProductsService {
     });
   }
 
-  /** Merges base-rule reasons with personalization escalations/gaps into one list (HLD §10). */
+  /**
+   * Merges base-rule reasons with personalization escalations/gaps into
+   * one list (HLD §10), keeping each reason's rule_id so a client can
+   * look up its explainer (HLD §16) instead of a bare display string.
+   */
   private buildReasons(
     cached: CachedObjectiveVerdict,
     personalized: PersonalizedVerdict
-  ): string[] {
+  ): VerdictReason[] {
     return [
       ...personalized.reasons,
       ...(personalized.severity === "green"
-        ? cached.unevaluated.map((u) => u.reason)
+        ? cached.unevaluated.map((u) => ({
+            text: u.reason,
+            rule_id: u.rule_id,
+          }))
         : []),
-      ...personalized.unevaluated.map((u) => u.reason), // personalization gaps always surface, per our earlier call
+      ...personalized.unevaluated.map((u) => ({
+        text: u.reason,
+        rule_id: u.rule_id,
+      })), // personalization gaps always surface, per our earlier call
     ];
   }
 

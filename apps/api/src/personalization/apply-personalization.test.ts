@@ -22,6 +22,7 @@ describe("applyPersonalization", () => {
       memberConditions: ["diabetic"],
       rules: [
         {
+          id: "diabetic_sugar_escalation",
           condition: "diabetic",
           field: "sugar_per_100g",
           operator: ">",
@@ -33,8 +34,11 @@ describe("applyPersonalization", () => {
     });
     assert.equal(result.severity, "red");
     assert.deepEqual(result.reasons, [
-      "Ultra-processed",
-      "Escalated: high sugar flagged for diabetic profile",
+      { text: "Ultra-processed", rule_id: "nova4" },
+      {
+        text: "Escalated: high sugar flagged for diabetic profile",
+        rule_id: "diabetic_sugar_escalation",
+      },
     ]);
   });
 
@@ -45,6 +49,7 @@ describe("applyPersonalization", () => {
       memberConditions: [],
       rules: [
         {
+          id: "diabetic_sugar_escalation",
           condition: "diabetic",
           field: "sugar_per_100g",
           operator: ">",

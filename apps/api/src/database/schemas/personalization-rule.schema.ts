@@ -8,6 +8,9 @@ import type { RuleOperator } from "./rule-set.schema";
 
 @Schema({ collection: "personalization_rules", timestamps: false })
 export class PersonalizationRule {
+  @Prop({ required: true, trim: true })
+  id!: string;
+
   @Prop({ required: true })
   version!: string;
 
@@ -20,9 +23,6 @@ export class PersonalizationRule {
   @Prop({ required: true, enum: [...HEALTH_CONDITION_CODES] })
   condition!: HealthConditionCode;
 
-  // Trigger, structured the same way base scoring rules are (RuleDefinition)
-  // instead of a string like "sugar_per_100g > 15" parsed back apart at
-  // evaluation time — one condition shape for the whole rules engine.
   @Prop({ required: true })
   field!: string;
 

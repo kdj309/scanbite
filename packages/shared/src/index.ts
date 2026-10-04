@@ -5,5 +5,6 @@ export * from "./constants";
 export * from "./household";
 export * from "./primitives";
 export * from "./products";
+export * from "./rule-explainers";
 export * from "./scans";
 export * from "./submissions";

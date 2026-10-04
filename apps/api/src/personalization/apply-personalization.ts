@@ -10,6 +10,7 @@ import {
 } from "../scoring/evaluate-rules";
 
 export type PersonalizationRuleInput = {
+  id: string;
   condition: HealthConditionCode;
   field: string;
   operator: RuleOperator;
@@ -17,6 +18,14 @@ export type PersonalizationRuleInput = {
   value?: unknown;
   effect: string;
   message: string;
+};
+
+/** A verdict reason paired with the rule that produced it, so a client can
+ *  look up that rule's explainer (rule_explainers collection) — rule_id is
+ *  null only for a reason with no identifiable source rule. */
+export type VerdictReason = {
+  text: string;
+  rule_id: string | null;
 };
 
 export function conditionMatches(
@@ -34,12 +43,13 @@ export function conditionMatches(
 export type PersonalizationUnevaluated = {
   condition: string;
   field: string;
+  rule_id: string;
   reason: string;
 };
 
 export type PersonalizedVerdict = {
   severity: Severity;
-  reasons: string[];
+  reasons: VerdictReason[];
   unevaluated: PersonalizationUnevaluated[];
 };
 
@@ -49,7 +59,10 @@ export function applyPersonalization(input: {
   memberConditions: string[];
   rules: PersonalizationRuleInput[];
 }): PersonalizedVerdict {
-  const reasons = input.base.breakdown.map((item) => item.reason);
+  const reasons: VerdictReason[] = input.base.breakdown.map((item) => ({
+    text: item.reason,
+    rule_id: item.rule_id,
+  }));
   const overlaySeverities: Severity[] = [];
   const unevaluated: PersonalizationUnevaluated[] = [];
 
@@ -73,6 +86,7 @@ export function applyPersonalization(input: {
       unevaluated.push({
         condition: rule.condition,
         field: rule.field,
+        rule_id: rule.id,
         reason: `Could not check ${rule.field} for your ${rule.condition} profile — data unavailable`,
       });
       continue;
@@ -86,7 +100,7 @@ export function applyPersonalization(input: {
       overlaySeverities.push(escalateOneLevel(input.base.severity));
     }
     if (rule.message.trim()) {
-      reasons.push(rule.message);
+      reasons.push({ text: rule.message, rule_id: rule.id });
     }
   }
 

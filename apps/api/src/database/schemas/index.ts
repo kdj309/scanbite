@@ -48,3 +48,6 @@ export type { PersonalizationRuleDocument } from "./personalization-rule.schema"
 
 export { Submission, SubmissionSchema } from "./submission.schema";
 export type { SubmissionDocument } from "./submission.schema";
+
+export { RuleExplainer, RuleExplainerSchema } from "./rule-explainer.schema";
+export type { RuleExplainerDocument } from "./rule-explainer.schema";

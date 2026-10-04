@@ -14,6 +14,8 @@ import {
   ProductSchema,
   ProductVersion,
   ProductVersionSchema,
+  RuleExplainer,
+  RuleExplainerSchema,
   RuleSet,
   RuleSetSchema,
   Scan,
@@ -41,6 +43,7 @@ const models = [
   { name: RuleSet.name, schema: RuleSetSchema },
   { name: PersonalizationRule.name, schema: PersonalizationRuleSchema },
   { name: Submission.name, schema: SubmissionSchema },
+  { name: RuleExplainer.name, schema: RuleExplainerSchema },
 ];
 
 @Global()

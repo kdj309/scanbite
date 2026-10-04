@@ -11,6 +11,7 @@ import { HealthModule } from "./health/health.module";
 import { HouseholdModule } from "./household/household.module";
 import { PersonalizationModule } from "./personalization/personalization.module";
 import { ProductsModule } from "./products/products.module";
+import { RuleExplainersModule } from "./rule-explainers/rule-explainers.module";
 import { ScansModule } from "./scans/scans.module";
 import { ScoringModule } from "./scoring/scoring.module";
 import { SubmissionsModule } from "./submissions/submissions.module";
@@ -43,6 +44,7 @@ import { WorkersModule } from "./workers/workers.module";
     SubmissionsModule,
     ScansModule,
     AdminModule,
+    RuleExplainersModule,
   ],
 })
 export class AppModule {}
