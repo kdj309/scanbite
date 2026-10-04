@@ -8,6 +8,7 @@ import {
   UseInterceptors,
 } from "@nestjs/common";
 import { FilesInterceptor } from "@nestjs/platform-express";
+import { Throttle } from "@nestjs/throttler";
 import { MAX_SUBMISSION_PHOTOS } from "@foodscanner/shared";
 import { CurrentUser } from "../auth/current-user.decorator";
 import type { RequestUser } from "../auth/auth.types";
@@ -18,6 +19,12 @@ import { SubmissionsService } from "./submissions.service";
 export class SubmissionsController {
   constructor(private readonly submissions: SubmissionsService) {}
 
+  // Tighter than the global default — each submission eventually triggers
+  // a real paid Gemini/Claude call once it reaches the extraction worker
+  // (not synchronously here, but this is the only entry point to it), so
+  // this caps worst-case vision-LLM cost from one account, not just
+  // request volume. Tracked by user id (AppThrottlerGuard), not IP.
+  @Throttle({ default: { limit: 5, ttl: 600_000 } })
   @Post("products/:barcode/submissions")
   @HttpCode(202)
   @UseInterceptors(
