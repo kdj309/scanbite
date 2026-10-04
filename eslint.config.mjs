@@ -18,6 +18,10 @@ export default defineConfig(
       "pnpm-lock.yaml",
       ".agents/**",
       "apps/api/src/admin/smoketests/**",
+      // Same standalone-script pattern as smoketests (manual mongoose model
+      // wiring outside Nest's DI container, not a throwaway test) — not in
+      // that directory since it writes permanent seed data, not test data.
+      "apps/api/src/admin/seed-common-products.ts",
     ],
   },
   {

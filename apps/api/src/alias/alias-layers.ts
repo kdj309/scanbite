@@ -9,6 +9,7 @@ import {
   IngredientAlias,
   IngredientAliasDocument,
 } from "../database/schemas/ingredient-alias.schema";
+import { escapeRegex } from "../common/escape-regex";
 import type { AliasLayer, AliasMatch } from "./alias-layer";
 import { normalizeAliasText } from "./alias-layer";
 
@@ -55,8 +56,4 @@ export class EmbeddingAliasLayer implements AliasLayer {
   async resolve(_raw: string): Promise<AliasMatch | null> {
     return null;
   }
-}
-
-function escapeRegex(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

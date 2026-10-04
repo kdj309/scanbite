@@ -74,6 +74,17 @@ describe("nutritionFromProduct", () => {
     const result = nutritionFromProduct({ nutriments: {} });
     assert.deepEqual(result, {});
   });
+
+  it("treats an out-of-range per-100g value as missing rather than using it", () => {
+    // Real case found seeding production data: sodium_100g: 118 — a
+    // contributor entered milligrams into a grams-documented field.
+    // 118g of sodium in 100g of product is physically impossible.
+    const result = nutritionFromProduct({
+      nutriments: { sugars_100g: 37, sodium_100g: 118 },
+    });
+    assert.equal(result.sugar_per_100g, 37);
+    assert.equal(result.sodium_per_100g, undefined);
+  });
 });
 
 describe("numberOrUndefined", () => {

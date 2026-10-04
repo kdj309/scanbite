@@ -1,8 +1,15 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import type { ProductLookupResponse } from "@foodscanner/shared";
-import { Model } from "mongoose";
+import type {
+  CatalogItem,
+  CatalogQuery,
+  CatalogResponse,
+  ProductLookupResponse,
+} from "@foodscanner/shared";
+import type { CachedObjectiveVerdict } from "../common/verdict-cache.service";
+import { FilterQuery, Model, Types } from "mongoose";
 import type { RequestUser } from "../auth/auth.types";
+import { escapeRegex } from "../common/escape-regex";
 import { ConsensusService } from "../consensus/consensus.service";
 import {
   ProductVersion,
@@ -10,6 +17,7 @@ import {
 } from "../database/schemas/product-version.schema";
 import { HouseholdService } from "../household/household.service";
 import { OffLookupService } from "../off/off-lookup.service";
+import type { PersonalizedVerdict } from "../personalization/apply-personalization";
 import { PersonalizationService } from "../personalization/personalization.service";
 import { ProductVersionIngestionService } from "../product-versions/product-version-ingestion.service";
 import { ScoringService } from "../scoring/scoring.service";
@@ -47,34 +55,134 @@ export class ProductsService {
     }
 
     const cached = await this.scoring.getCachedObjectiveVerdict(version);
+    const personalized = await this.personalize(cached, member.conditions);
 
-    const personalized = await this.personalization.overlay({
+    return {
+      found: true,
+      member_has_conditions: (member.conditions ?? []).length > 0,
+      product: cached.product,
+      verdict: {
+        severity: personalized.severity,
+        reasons: this.buildReasons(cached, personalized),
+      },
+      confidence: cached.confidence,
+      unresolved_ingredients: cached.unresolved_ingredients,
+    };
+  }
+
+  /**
+   * Catalog search/filter (HLD §15) — a second entry point into the exact
+   * same scoring+personalization pipeline `lookup()` uses, run across a
+   * filtered set of already-live products instead of one barcode. No new
+   * scoring logic here, only query/pagination plumbing.
+   */
+  async catalog(
+    user: RequestUser,
+    query: CatalogQuery
+  ): Promise<CatalogResponse> {
+    const member = await this.household.resolveMemberId(
+      user.userId,
+      query.member_id,
+      user.defaultMemberId
+    );
+    const memberHasConditions = (member.conditions ?? []).length > 0;
+    const limit = query.limit ?? 20;
+
+    const filter: FilterQuery<ProductVersionDocument> = { status: "live" };
+    if (query.category) {
+      filter.category = query.category;
+    }
+    if (query.brand) {
+      filter.brand = query.brand;
+    }
+    if (query.q) {
+      const pattern = new RegExp(escapeRegex(query.q), "i");
+      filter.$or = [{ name: pattern }, { brand: pattern }];
+    }
+    if (query.cursor && Types.ObjectId.isValid(query.cursor)) {
+      const cursorDoc = await this.versions.findById(query.cursor).exec();
+      if (cursorDoc) {
+        // Pagination sorts on created_at/_id, never on severity — severity
+        // is computed below, after this query runs, so Mongo can't sort or
+        // cursor on it (HLD §15's "query and ranking" correctness note).
+        const cursorRange = {
+          $or: [
+            { created_at: { $lt: cursorDoc.created_at } },
+            { created_at: cursorDoc.created_at, _id: { $lt: cursorDoc._id } },
+          ],
+        };
+        if (filter.$or) {
+          filter.$and = [{ $or: filter.$or }, cursorRange];
+          delete filter.$or;
+        } else {
+          Object.assign(filter, cursorRange);
+        }
+      }
+    }
+
+    const candidates = await this.versions
+      .find(filter)
+      .sort({ created_at: -1, _id: -1 })
+      .limit(limit + 1)
+      .exec();
+    const hasMore = candidates.length > limit;
+    const page = hasMore ? candidates.slice(0, limit) : candidates;
+
+    const items: CatalogItem[] = [];
+    for (const version of page) {
+      const cached = await this.scoring.getCachedObjectiveVerdict(version);
+      const personalized = await this.personalize(cached, member.conditions);
+      // Severity is a post-filter, not a DB filter (HLD §15) — a page can
+      // return fewer than `limit` items when this is set; the cursor still
+      // advances off the last *fetched* document (page[page.length - 1]
+      // below), not the last one that survives this filter.
+      if (query.severity && personalized.severity !== query.severity) {
+        continue;
+      }
+      items.push({
+        product: cached.product,
+        verdict: {
+          severity: personalized.severity,
+          reasons: this.buildReasons(cached, personalized),
+        },
+        confidence: cached.confidence,
+      });
+    }
+
+    return {
+      member_has_conditions: memberHasConditions,
+      items,
+      next_cursor: hasMore ? (page[page.length - 1].id as string) : null,
+    };
+  }
+
+  private personalize(
+    cached: CachedObjectiveVerdict,
+    memberConditions: string[]
+  ): Promise<PersonalizedVerdict> {
+    return this.personalization.overlay({
       base: {
         severity: cached.severity,
         breakdown: cached.breakdown,
         unevaluated: cached.unevaluated,
       },
       facts: cached.facts,
-      memberConditions: member.conditions ?? [],
+      memberConditions: memberConditions ?? [],
     });
-    const reasons = [
+  }
+
+  /** Merges base-rule reasons with personalization escalations/gaps into one list (HLD §10). */
+  private buildReasons(
+    cached: CachedObjectiveVerdict,
+    personalized: PersonalizedVerdict
+  ): string[] {
+    return [
       ...personalized.reasons,
       ...(personalized.severity === "green"
         ? cached.unevaluated.map((u) => u.reason)
         : []),
       ...personalized.unevaluated.map((u) => u.reason), // personalization gaps always surface, per our earlier call
     ];
-
-    return {
-      found: true,
-      product: cached.product,
-      verdict: {
-        severity: personalized.severity,
-        reasons,
-      },
-      confidence: cached.confidence,
-      unresolved_ingredients: cached.unresolved_ingredients,
-    };
   }
 
   private liveVersion(barcode: string): Promise<ProductVersionDocument | null> {

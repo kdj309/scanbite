@@ -2,7 +2,13 @@ import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument, Types } from "mongoose";
 
 export type IngredientStatus = "resolved" | "unresolved";
-export type ProductVersionSource = "off" | "user_submission";
+/**
+ * "manual_seed" is distinct from "off" even though the underlying data
+ * originates from OFF — it's a committed snapshot curated before launch
+ * (see admin/seed-common-products.ts), not a live, completeness-tag-scored
+ * API fetch. Keeping it separate preserves accurate provenance.
+ */
+export type ProductVersionSource = "off" | "user_submission" | "manual_seed";
 export type ProductVersionStatus = "live" | "pending" | "superseded";
 
 @Schema({ _id: false })
@@ -54,7 +60,7 @@ export class ProductVersion {
   @Prop({ min: 0, max: 1 })
   extraction_confidence?: number;
 
-  @Prop({ required: true, enum: ["off", "user_submission"] })
+  @Prop({ required: true, enum: ["off", "user_submission", "manual_seed"] })
   source!: ProductVersionSource;
 
   @Prop({ required: true, enum: ["live", "pending", "superseded"] })
@@ -69,3 +75,7 @@ export const ProductVersionSchema =
 
 ProductVersionSchema.index({ product_id: 1, status: 1 });
 ProductVersionSchema.index({ barcode: 1, status: 1 });
+// Catalog search/filter (HLD §15) — the indexes above only serve
+// single-barcode lookups, not category/brand filter queries.
+ProductVersionSchema.index({ status: 1, category: 1 });
+ProductVersionSchema.index({ status: 1, brand: 1 });

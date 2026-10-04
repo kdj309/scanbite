@@ -53,6 +53,26 @@ export function isLiquidProduct(product: OffProduct): boolean {
 }
 
 /** Only maps the two nutrients the rule engine actually reads (sugar, sodium) — see hld-example-rules.ts. */
+/**
+ * A gram quantity "per 100g" can never physically exceed 100 — you can't
+ * have more than 100g of any one component in 100g of product. OFF is
+ * community-edited and this bound catches real unit mix-ups (e.g. a
+ * contributor entering milligrams into a field documented as grams), not
+ * just hypothetical bad input — found via a sodium_100g value of 118 in
+ * real seed data, which is impossible as grams but unremarkable as mg.
+ * Treated as missing rather than clamped, so it flows through the
+ * existing "missing data" handling instead of silently using a wrong
+ * number.
+ */
+const MAX_GRAMS_PER_100G = 100;
+
+function validGramsPer100g(value: number | undefined): number | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  return value >= 0 && value <= MAX_GRAMS_PER_100G ? value : undefined;
+}
+
 export function nutritionFromProduct(
   product: OffProduct
 ): Record<string, number | string | null> {
@@ -60,13 +80,15 @@ export function nutritionFromProduct(
   const liquid = isLiquidProduct(product);
   const nutrition: Record<string, number | string | null> = {};
 
-  const sugar = numberOrUndefined(nutriments["sugars_100g"]);
+  const sugar = validGramsPer100g(numberOrUndefined(nutriments["sugars_100g"]));
   if (sugar !== undefined) {
     nutrition[liquid ? "sugar_per_100ml" : "sugar_per_100g"] = sugar;
   }
 
   // OFF reports sodium in grams/100g; our rules threshold in mg/100g.
-  const sodiumGrams = numberOrUndefined(nutriments["sodium_100g"]);
+  const sodiumGrams = validGramsPer100g(
+    numberOrUndefined(nutriments["sodium_100g"])
+  );
   if (sodiumGrams !== undefined) {
     nutrition[liquid ? "sodium_per_100ml" : "sodium_per_100g"] =
       sodiumGrams * 1000;
