@@ -8,7 +8,7 @@
     "start": "node dist/main",
     "worker": "nest start --watch --entryFile worker",
     "start:worker": "node dist/worker",
-    "test": "node --test dist",
+    "test": "node --test \"dist/**/*.test.js\"",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
