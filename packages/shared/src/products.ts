@@ -3,11 +3,23 @@ import { confidenceSchema, objectIdSchema, severitySchema } from "./primitives";
 
 export const barcodeSchema = z.string().min(1);
 
-// rule_id lets a client fetch this reason's explainer (GET /rule-explainers,
-// see rule-explainers.ts) instead of only showing the bare display text.
-// null for a reason with no identifiable source rule.
+export const verdictReasonKindSchema = z.enum(["flag", "unchecked"]);
+export type VerdictReasonKind = z.infer<typeof verdictReasonKindSchema>;
+
+// `reasons` is ordered: flags first, worst severity first (on a tie the
+// member's condition rule before a general one), then "unchecked" gaps.
+// So reasons[0], when it is a flag, is the main reason for the verdict.
 export const verdictReasonSchema = z.object({
+  // "flag": the rule matched. "unchecked": the fact it needs was missing,
+  // so we couldn't tell — never a pass.
+  kind: verdictReasonKindSchema,
+  // null for "unchecked".
+  severity: severitySchema.nullable(),
+  // Short chip text, e.g. "High sugar".
+  label: z.string(),
   text: z.string(),
+  // Lets a client fetch the explainer (GET /rule-explainers); null for a
+  // reason with no identifiable source rule.
   rule_id: z.string().nullable(),
 });
 export type VerdictReason = z.infer<typeof verdictReasonSchema>;

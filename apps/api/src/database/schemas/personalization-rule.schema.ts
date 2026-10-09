@@ -4,7 +4,7 @@ import {
   type HealthConditionCode,
 } from "@foodscanner/shared";
 import { HydratedDocument } from "mongoose";
-import type { RuleOperator } from "./rule-set.schema";
+import type { ProductForm, RuleOperator } from "./rule-set.schema";
 
 @Schema({ collection: "personalization_rules", timestamps: false })
 export class PersonalizationRule {
@@ -40,6 +40,14 @@ export class PersonalizationRule {
 
   @Prop({ required: true })
   message!: string;
+
+  /** Short chip text for the app, e.g. "Too sweet for diabetes". */
+  @Prop()
+  label?: string;
+
+  /** Scopes this rule to solid or liquid products; omitted/"any" = both. */
+  @Prop({ enum: ["solid", "liquid", "any"] })
+  applies_to?: ProductForm;
 }
 
 export type PersonalizationRuleDocument = HydratedDocument<PersonalizationRule>;

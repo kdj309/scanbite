@@ -29,6 +29,10 @@ export class RuleDefinition {
   @Prop()
   reason?: string;
 
+  /** Short chip text for the app, e.g. "High sugar". */
+  @Prop()
+  label?: string;
+
   /** Scopes this rule to solid or liquid products; omitted/"any" = both. */
   @Prop({ enum: ["solid", "liquid", "any"] })
   applies_to?: ProductForm;

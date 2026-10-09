@@ -1,10 +1,14 @@
-import type { HealthConditionCode } from "@foodscanner/shared";
-import type { RuleOperator } from "../database/schemas/rule-set.schema";
+import type { HealthConditionCode, VerdictReason } from "@foodscanner/shared";
+import type {
+  ProductForm,
+  RuleOperator,
+} from "../database/schemas/rule-set.schema";
 import type { Severity } from "../database/schemas/scoring-record.schema";
 import {
   checkOperator,
   escalateOneLevel,
   readFact,
+  ruleAppliesToForm,
   worstSeverity,
   type EvaluationResult,
 } from "../scoring/evaluate-rules";
@@ -18,15 +22,12 @@ export type PersonalizationRuleInput = {
   value?: unknown;
   effect: string;
   message: string;
+  label?: string;
+  applies_to?: ProductForm;
 };
 
-/** A verdict reason paired with the rule that produced it, so a client can
- *  look up that rule's explainer (rule_explainers collection) — rule_id is
- *  null only for a reason with no identifiable source rule. */
-export type VerdictReason = {
-  text: string;
-  rule_id: string | null;
-};
+/** Chip text when a rule has no `label` of its own. */
+export const FALLBACK_LABEL = { flag: "Flagged", unchecked: "Couldn't check" };
 
 export function conditionMatches(
   memberConditions: string[],
@@ -41,15 +42,17 @@ export function conditionMatches(
  *  whether it should have fired. Distinct from a rule whose condition
  *  simply didn't apply to this member at all. */
 export type PersonalizationUnevaluated = {
-  condition: string;
+  condition: HealthConditionCode;
   field: string;
   rule_id: string;
-  reason: string;
+  label?: string;
 };
 
 export type PersonalizedVerdict = {
   severity: Severity;
-  reasons: VerdictReason[];
+  /** Only the member's condition rules that matched; base flags stay in
+   *  `base.breakdown` (see buildVerdictReasons for the merged list). */
+  flags: VerdictReason[];
   unevaluated: PersonalizationUnevaluated[];
 };
 
@@ -59,16 +62,16 @@ export function applyPersonalization(input: {
   memberConditions: string[];
   rules: PersonalizationRuleInput[];
 }): PersonalizedVerdict {
-  const reasons: VerdictReason[] = input.base.breakdown.map((item) => ({
-    text: item.reason,
-    rule_id: item.rule_id,
-  }));
+  const flags: VerdictReason[] = [];
   const overlaySeverities: Severity[] = [];
   const unevaluated: PersonalizationUnevaluated[] = [];
 
   for (const rule of input.rules) {
     if (!conditionMatches(input.memberConditions, rule.condition)) {
       continue; // rule doesn't apply to this member at all — not a data gap
+    }
+    if (!ruleAppliesToForm(rule, readFact(input.facts, "product_form"))) {
+      continue; // e.g. the per-100g sugar rule on a drink — its twin covers it
     }
     const fact = readFact(input.facts, rule.field);
     const result = checkOperator(
@@ -87,7 +90,7 @@ export function applyPersonalization(input: {
         condition: rule.condition,
         field: rule.field,
         rule_id: rule.id,
-        reason: `Could not check ${rule.field} for your ${rule.condition} profile — data unavailable`,
+        label: rule.label,
       });
       continue;
     }
@@ -96,17 +99,26 @@ export function applyPersonalization(input: {
       continue;
     }
 
-    if (rule.effect.toLowerCase().includes("escalate")) {
-      overlaySeverities.push(escalateOneLevel(input.base.severity));
-    }
+    // An escalating rule's reason carries the level it escalated to, so it
+    // can be the main reason for the verdict it caused.
+    const severity = rule.effect.toLowerCase().includes("escalate")
+      ? escalateOneLevel(input.base.severity)
+      : input.base.severity;
+    overlaySeverities.push(severity);
     if (rule.message.trim()) {
-      reasons.push({ text: rule.message, rule_id: rule.id });
+      flags.push({
+        kind: "flag",
+        severity,
+        label: rule.label?.trim() || FALLBACK_LABEL.flag,
+        text: rule.message,
+        rule_id: rule.id,
+      });
     }
   }
 
   return {
     severity: worstSeverity([input.base.severity, ...overlaySeverities]),
-    reasons,
+    flags,
     unevaluated,
   };
 }

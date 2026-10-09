@@ -21,7 +21,7 @@ import {
   RuleSetDocument,
 } from "../../database/schemas/rule-set.schema";
 import { DEV_FIXTURE_BARCODE, DEV_FIXTURE_EXTRACTION } from "./dev-fixture";
-import { HLD_PERSONALIZATION_SEED, HLD_RULE_SET_SEED } from "./hld-seed";
+import { HLD_PERSONALIZATION_SEEDS, HLD_RULE_SET_SEED } from "./hld-seed";
 
 @Injectable()
 export class SeedService implements OnModuleInit {
@@ -61,17 +61,15 @@ export class SeedService implements OnModuleInit {
   }
 
   private async seedPersonalization(): Promise<void> {
-    const result = await this.personalizationRules.updateOne(
-      {
-        version: HLD_PERSONALIZATION_SEED.version,
-        condition: HLD_PERSONALIZATION_SEED.condition,
-        field: HLD_PERSONALIZATION_SEED.field,
-      },
-      { $setOnInsert: HLD_PERSONALIZATION_SEED },
-      { upsert: true }
-    );
-    if (result.upsertedCount) {
-      this.logger.log("Seeded diabetic personalization rule");
+    for (const rule of HLD_PERSONALIZATION_SEEDS) {
+      const result = await this.personalizationRules.updateOne(
+        { version: rule.version, condition: rule.condition, field: rule.field },
+        { $setOnInsert: rule },
+        { upsert: true }
+      );
+      if (result.upsertedCount) {
+        this.logger.log(`Seeded personalization rule ${rule.id}`);
+      }
     }
   }
 

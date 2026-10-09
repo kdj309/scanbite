@@ -18,6 +18,8 @@ export type RuleInput = {
   value?: unknown;
   severity: Severity;
   reason?: string;
+  /** Short chip text, e.g. "High sugar". */
+  label?: string;
   /** Scopes this rule to solid or liquid products; omitted/"any" = both. */
   applies_to?: ProductForm;
 };
@@ -27,7 +29,10 @@ export type RuleInput = {
  * solid snack) isn't a data gap — it never applied in the first place, so it
  * must be skipped entirely, not reported as breakdown OR unevaluated.
  */
-function ruleAppliesToForm(rule: RuleInput, productForm: unknown): boolean {
+export function ruleAppliesToForm(
+  rule: { applies_to?: ProductForm },
+  productForm: unknown
+): boolean {
   if (!rule.applies_to || rule.applies_to === "any") {
     return true;
   }

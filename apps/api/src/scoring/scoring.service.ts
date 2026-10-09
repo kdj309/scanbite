@@ -30,6 +30,13 @@ import {
   type ExtractionConfidence,
 } from "./facts";
 
+/** The cached verdict plus display labels read from the active rule set at
+ *  serve time — labels are copy, so changing one never needs a re-score or
+ *  a cache flush. */
+export type ObjectiveVerdict = CachedObjectiveVerdict & {
+  rule_labels: Record<string, string>;
+};
+
 @Injectable()
 export class ScoringService {
   constructor(
@@ -151,7 +158,7 @@ export class ScoringService {
    */
   async getCachedObjectiveVerdict(
     version: ProductVersionDocument
-  ): Promise<CachedObjectiveVerdict> {
+  ): Promise<ObjectiveVerdict> {
     let ruleSet: RuleSetDocument;
     try {
       ruleSet = requireActiveRuleSet(await this.findActiveRuleSet());
@@ -165,8 +172,9 @@ export class ScoringService {
       versionId,
       ruleSet.version
     );
+    const rule_labels = ruleLabels(ruleSet.rules);
     if (cached) {
-      return cached;
+      return { ...cached, rule_labels };
     }
 
     const scored = await this.ensureScoringRecord(version, ruleSet);
@@ -185,6 +193,12 @@ export class ScoringService {
       rule_set_version: ruleSet.version,
     };
     await this.cache.set(version.barcode, versionId, ruleSet.version, fresh);
-    return fresh;
+    return { ...fresh, rule_labels };
   }
+}
+
+function ruleLabels(rules: RuleSet["rules"]): Record<string, string> {
+  return Object.fromEntries(
+    rules.flatMap((rule) => (rule.label ? [[rule.id, rule.label]] : []))
+  );
 }

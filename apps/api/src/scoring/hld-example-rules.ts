@@ -4,6 +4,7 @@ import type { RuleInput } from "./evaluate-rules";
 export const HLD_EXAMPLE_RULES: RuleInput[] = [
   {
     id: "sugar_uk_fop",
+    label: "Very high sugar",
     field: "sugar_per_100g",
     operator: ">",
     threshold: 22.5,
@@ -13,6 +14,7 @@ export const HLD_EXAMPLE_RULES: RuleInput[] = [
   },
   {
     id: "fssai_cannot_claim_low_sugar",
+    label: "High sugar",
     field: "sugar_per_100g",
     operator: ">",
     threshold: 5,
@@ -23,6 +25,7 @@ export const HLD_EXAMPLE_RULES: RuleInput[] = [
   },
   {
     id: "fssai_cannot_claim_low_sodium",
+    label: "High salt",
     field: "sodium_per_100g",
     operator: ">",
     threshold: 120,
@@ -33,6 +36,7 @@ export const HLD_EXAMPLE_RULES: RuleInput[] = [
   },
   {
     id: "sugar_uk_fop_liquid",
+    label: "Very high sugar",
     field: "sugar_per_100ml",
     operator: ">",
     threshold: 11.25,
@@ -43,6 +47,7 @@ export const HLD_EXAMPLE_RULES: RuleInput[] = [
   },
   {
     id: "fssai_cannot_claim_low_sugar_liquid",
+    label: "High sugar",
     field: "sugar_per_100ml",
     operator: ">",
     threshold: 2.5,
@@ -53,6 +58,7 @@ export const HLD_EXAMPLE_RULES: RuleInput[] = [
   },
   {
     id: "fssai_cannot_claim_low_sodium_liquid",
+    label: "High salt",
     field: "sodium_per_100ml",
     operator: ">",
     threshold: 120,
@@ -63,6 +69,7 @@ export const HLD_EXAMPLE_RULES: RuleInput[] = [
   },
   {
     id: "palm_oil",
+    label: "Palm oil",
     field: "ingredient_category",
     operator: "contains",
     value: "palm_oil",
@@ -71,6 +78,7 @@ export const HLD_EXAMPLE_RULES: RuleInput[] = [
   },
   {
     id: "additives",
+    label: "Many additives",
     field: "additive_count",
     operator: ">=",
     threshold: 4,
@@ -79,6 +87,7 @@ export const HLD_EXAMPLE_RULES: RuleInput[] = [
   },
   {
     id: "nova4",
+    label: "Ultra-processed",
     field: "nova_group",
     operator: "==",
     value: 4,

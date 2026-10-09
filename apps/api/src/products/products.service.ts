@@ -6,7 +6,6 @@ import type {
   CatalogResponse,
   ProductLookupResponse,
 } from "@foodscanner/shared";
-import type { CachedObjectiveVerdict } from "../common/verdict-cache.service";
 import { FilterQuery, Model, Types } from "mongoose";
 import type { RequestUser } from "../auth/auth.types";
 import { escapeRegex } from "../common/escape-regex";
@@ -17,13 +16,14 @@ import {
 } from "../database/schemas/product-version.schema";
 import { HouseholdService } from "../household/household.service";
 import { OffLookupService } from "../off/off-lookup.service";
-import type {
-  PersonalizedVerdict,
-  VerdictReason,
-} from "../personalization/apply-personalization";
+import type { PersonalizedVerdict } from "../personalization/apply-personalization";
 import { PersonalizationService } from "../personalization/personalization.service";
+import { buildVerdictReasons } from "../personalization/verdict-reasons";
 import { ProductVersionIngestionService } from "../product-versions/product-version-ingestion.service";
-import { ScoringService } from "../scoring/scoring.service";
+import {
+  ScoringService,
+  type ObjectiveVerdict,
+} from "../scoring/scoring.service";
 
 @Injectable()
 export class ProductsService {
@@ -160,7 +160,7 @@ export class ProductsService {
   }
 
   private personalize(
-    cached: CachedObjectiveVerdict,
+    cached: ObjectiveVerdict,
     memberConditions: string[]
   ): Promise<PersonalizedVerdict> {
     return this.personalization.overlay({
@@ -174,28 +174,15 @@ export class ProductsService {
     });
   }
 
-  /**
-   * Merges base-rule reasons with personalization escalations/gaps into
-   * one list (HLD §10), keeping each reason's rule_id so a client can
-   * look up its explainer (HLD §16) instead of a bare display string.
-   */
   private buildReasons(
-    cached: CachedObjectiveVerdict,
+    cached: ObjectiveVerdict,
     personalized: PersonalizedVerdict
-  ): VerdictReason[] {
-    return [
-      ...personalized.reasons,
-      ...(personalized.severity === "green"
-        ? cached.unevaluated.map((u) => ({
-            text: u.reason,
-            rule_id: u.rule_id,
-          }))
-        : []),
-      ...personalized.unevaluated.map((u) => ({
-        text: u.reason,
-        rule_id: u.rule_id,
-      })), // personalization gaps always surface, per our earlier call
-    ];
+  ) {
+    return buildVerdictReasons({
+      base: cached,
+      personalized,
+      ruleLabels: cached.rule_labels,
+    });
   }
 
   private liveVersion(barcode: string): Promise<ProductVersionDocument | null> {

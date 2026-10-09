@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { HLD_PERSONALIZATION_SEED, HLD_RULE_SET_SEED } from "./hld-seed";
+import { HLD_PERSONALIZATION_SEEDS, HLD_RULE_SET_SEED } from "./hld-seed";
 
 describe("HLD seed documents", () => {
   it("seeds the HLD §6b illustration rules plus the citable FSSAI claim-gate rules", () => {
@@ -54,15 +54,19 @@ describe("HLD seed documents", () => {
     assert.equal(byId.nova4?.severity, "yellow");
   });
 
-  it("seeds the HLD §7 diabetic personalization example", () => {
-    assert.equal(HLD_PERSONALIZATION_SEED.condition, "diabetic");
-    assert.equal(HLD_PERSONALIZATION_SEED.field, "sugar_per_100g");
-    assert.equal(HLD_PERSONALIZATION_SEED.operator, ">");
-    assert.equal(HLD_PERSONALIZATION_SEED.threshold, 15);
-    assert.match(HLD_PERSONALIZATION_SEED.effect, /escalate/i);
-    assert.equal(
-      HLD_PERSONALIZATION_SEED.message,
-      "High sugar — caution advised for diabetics"
+  it("seeds the HLD §7 diabetic example for solids and drinks", () => {
+    const [solid, liquid] = HLD_PERSONALIZATION_SEEDS;
+    assert.deepEqual(
+      [solid.field, solid.threshold, solid.applies_to],
+      ["sugar_per_100g", 15, "solid"]
     );
+    assert.deepEqual(
+      [liquid.field, liquid.threshold, liquid.applies_to],
+      ["sugar_per_100ml", 7.5, "liquid"]
+    );
+    for (const rule of HLD_PERSONALIZATION_SEEDS) {
+      assert.equal(rule.condition, "diabetic");
+      assert.match(rule.effect, /escalate/i);
+    }
   });
 });
