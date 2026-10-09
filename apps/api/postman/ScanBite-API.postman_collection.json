@@ -1,20 +1,54 @@
 {
   "info": {
     "name": "ScanBite API",
-    "description": "Backend for a packaged-food label scanner (India). See apps/api/README.md for setup. Signup/Login auto-capture the bearer token and default member_id into collection variables — run those first.",
+    "description": "Backend for a packaged-food label scanner (India). See apps/api/README.md for setup. \"Create anonymous account\" auto-captures the tokens and default member_id into collection variables \u2014 run those first.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
     "type": "bearer",
-    "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
   },
   "variable": [
-    { "key": "baseUrl", "value": "http://localhost:3000", "type": "string" },
-    { "key": "token", "value": "", "type": "string" },
-    { "key": "member_id", "value": "", "type": "string" },
-    { "key": "barcode", "value": "8900000000000", "type": "string" },
-    { "key": "submission_id", "value": "", "type": "string" },
-    { "key": "unresolved_term_id", "value": "", "type": "string" }
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refresh_token",
+      "value": ""
+    },
+    {
+      "key": "member_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "barcode",
+      "value": "8900000000000",
+      "type": "string"
+    },
+    {
+      "key": "submission_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "unresolved_term_id",
+      "value": "",
+      "type": "string"
+    }
   ],
   "item": [
     {
@@ -24,14 +58,16 @@
           "name": "Health check",
           "request": {
             "method": "GET",
-            "auth": { "type": "noauth" },
+            "auth": {
+              "type": "noauth"
+            },
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/health",
               "host": ["{{baseUrl}}"],
               "path": ["health"]
             },
-            "description": "Not under /v1 — pings Mongo, Redis, and S3."
+            "description": "Not under /v1 \u2014 pings Mongo, Redis, and S3."
           },
           "response": []
         }
@@ -41,7 +77,30 @@
       "name": "Auth",
       "item": [
         {
-          "name": "Signup",
+          "name": "Create anonymous account",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/auth/anonymous",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "auth", "anonymous"]
+            },
+            "description": "What the app calls on first open. Creates an account with a default 'self' household member. Sets {{token}}, {{refresh_token}} and {{member_id}}.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          },
+          "response": [],
           "event": [
             {
               "listen": "test",
@@ -50,30 +109,38 @@
                 "exec": [
                   "const json = pm.response.json();",
                   "if (json.access_token) pm.collectionVariables.set('token', json.access_token);",
+                  "if (json.refresh_token) pm.collectionVariables.set('refresh_token', json.refresh_token);",
                   "if (json.user && json.user.default_member_id) pm.collectionVariables.set('member_id', json.user.default_member_id);"
                 ]
               }
             }
-          ],
-          "request": {
-            "method": "POST",
-            "auth": { "type": "noauth" },
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"me@example.com\",\n  \"password\": \"password123\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/v1/auth/signup",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "auth", "signup"]
-            },
-            "description": "email or phone + (password or otp). Creates a default 'self' household member automatically. Sets {{token}} and {{member_id}} on success."
-          },
-          "response": []
+          ]
         },
         {
-          "name": "Login",
+          "name": "Refresh tokens",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/auth/refresh",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "auth", "refresh"]
+            },
+            "description": "Swaps the refresh token for a new access + refresh pair. Each refresh token works once (a retry within 60 s is tolerated).",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{refresh_token}}\"\n}"
+            }
+          },
+          "response": [],
           "event": [
             {
               "listen": "test",
@@ -82,30 +149,35 @@
                 "exec": [
                   "const json = pm.response.json();",
                   "if (json.access_token) pm.collectionVariables.set('token', json.access_token);",
+                  "if (json.refresh_token) pm.collectionVariables.set('refresh_token', json.refresh_token);",
                   "if (json.user && json.user.default_member_id) pm.collectionVariables.set('member_id', json.user.default_member_id);"
                 ]
               }
             }
-          ],
-          "request": {
-            "method": "POST",
-            "auth": { "type": "noauth" },
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"me@example.com\",\n  \"password\": \"password123\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/v1/auth/login",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "auth", "login"]
-            },
-            "description": "email/phone + password, or email/phone + otp. If otp is omitted/expired on an OTP account, the response is a 401 that means \"a new code was just issued\" (OtpSentException), not a real credential failure."
-          },
-          "response": []
+          ]
         },
         {
-          "name": "Verify OTP",
+          "name": "Sign in with Google",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/auth/google",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "auth", "google"]
+            },
+            "description": "Send with the current Bearer token to link Google to that (anonymous) account; without it, signs in or creates an account. Needs GOOGLE_CLIENT_IDS, otherwise 503.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id_token\": \"<ID token from the Google SDK>\",\n  \"nonce\": \"<raw nonce; its SHA-256 hex was given to the SDK>\"\n}"
+            }
+          },
+          "response": [],
           "event": [
             {
               "listen": "test",
@@ -114,25 +186,73 @@
                 "exec": [
                   "const json = pm.response.json();",
                   "if (json.access_token) pm.collectionVariables.set('token', json.access_token);",
+                  "if (json.refresh_token) pm.collectionVariables.set('refresh_token', json.refresh_token);",
                   "if (json.user && json.user.default_member_id) pm.collectionVariables.set('member_id', json.user.default_member_id);"
                 ]
               }
             }
-          ],
+          ]
+        },
+        {
+          "name": "Sign in with Apple",
           "request": {
             "method": "POST",
-            "auth": { "type": "noauth" },
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/auth/apple",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "auth", "apple"]
+            },
+            "description": "Like Google, plus the authorization code (validated with Apple) and the first name Apple shares only once. Needs the Apple settings in .env, otherwise 503.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"phone\": \"+911234567890\",\n  \"otp\": \"123456\"\n}"
-            },
+              "raw": "{\n  \"id_token\": \"<identity token from Apple>\",\n  \"nonce\": \"<raw nonce>\",\n  \"authorization_code\": \"<one-time code from Apple>\",\n  \"given_name\": \"<optional, first sign-in only>\"\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.access_token) pm.collectionVariables.set('token', json.access_token);",
+                  "if (json.refresh_token) pm.collectionVariables.set('refresh_token', json.refresh_token);",
+                  "if (json.user && json.user.default_member_id) pm.collectionVariables.set('member_id', json.user.default_member_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "url": {
-              "raw": "{{baseUrl}}/v1/auth/verify-otp",
+              "raw": "{{baseUrl}}/v1/auth/logout",
               "host": ["{{baseUrl}}"],
-              "path": ["v1", "auth", "verify-otp"]
+              "path": ["v1", "auth", "logout"]
             },
-            "description": "OTP is logged to the server console in non-production (never actually texted)."
+            "description": "Ends this session (revokes the refresh token). Returns 204.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{refresh_token}}\"\n}"
+            }
           },
           "response": []
         },
@@ -147,6 +267,20 @@
               "path": ["v1", "me"]
             },
             "description": "Current user + full household member list."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete account",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "me"]
+            },
+            "description": "Deletes the account and everything tied to it (household, scans, submissions + photos, sessions) and revokes Apple tokens. Returns 204."
           },
           "response": []
         }
@@ -172,7 +306,12 @@
           "name": "Create household member",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"name\": \"Grandma\",\n  \"relationship\": \"parent\",\n  \"age_band\": \"60+\",\n  \"conditions\": [\"diabetic\", \"hypertensive\"],\n  \"allergies\": [\"peanuts\"]\n}"
@@ -190,7 +329,12 @@
           "name": "Update household member",
           "request": {
             "method": "PATCH",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"conditions\": [\"diabetic\"]\n}"
@@ -200,7 +344,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["v1", "household-members", "{{member_id}}"]
             },
-            "description": "Partial update — at least one field required. age_band: omit to leave unchanged, null to clear, a value to set."
+            "description": "Partial update \u2014 at least one field required. age_band: omit to leave unchanged, null to clear, a value to set."
           },
           "response": []
         },
@@ -236,7 +380,7 @@
                 {
                   "key": "member_id",
                   "value": "{{member_id}}",
-                  "description": "Optional — defaults to the caller's default household member server-side."
+                  "description": "Optional \u2014 defaults to the caller's default household member server-side."
                 }
               ]
             },
@@ -309,7 +453,12 @@
           "name": "Log a scan",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"barcode\": \"{{barcode}}\",\n  \"member_id\": \"{{member_id}}\"\n}"
@@ -319,7 +468,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["v1", "scans"]
             },
-            "description": "member_id is optional (defaults to caller's default member). Records the personalized severity/rule_set_version actually shown at scan time — an audit entry, not a live join."
+            "description": "member_id is optional (defaults to caller's default member). Records the personalized severity/rule_set_version actually shown at scan time \u2014 an audit entry, not a live join."
           },
           "response": []
         },
@@ -333,7 +482,10 @@
               "host": ["{{baseUrl}}"],
               "path": ["v1", "household-members", "{{member_id}}", "scans"],
               "query": [
-                { "key": "limit", "value": "20" },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
                 {
                   "key": "from",
                   "value": "",
@@ -404,7 +556,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["v1", "admin", "unresolved-terms"]
             },
-            "description": "Requires the admin role — signup with the email matching ADMIN_EMAIL in .env to get it. Sets {{unresolved_term_id}} from the first result."
+            "description": "Requires the admin role \u2014 sign in with Google as ADMIN_EMAIL from .env, or set role: \"admin\" on the user in Mongo. Sets {{unresolved_term_id}} from the first result."
           },
           "response": []
         },
@@ -412,7 +564,12 @@
           "name": "Resolve unresolved term (existing ingredient)",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"canonical_ingredient_id\": \"<existing ingredient _id>\"\n}"
@@ -428,7 +585,7 @@
                 "resolve"
               ]
             },
-            "description": "Provide exactly one of canonical_ingredient_id or new_ingredient — see the sibling request for the new_ingredient form."
+            "description": "Provide exactly one of canonical_ingredient_id or new_ingredient \u2014 see the sibling request for the new_ingredient form."
           },
           "response": []
         },
@@ -436,7 +593,12 @@
           "name": "Resolve unresolved term (new ingredient)",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"new_ingredient\": {\n    \"canonical_name\": \"Palm Kernel Oil\",\n    \"category\": \"palm_oil\"\n  }\n}"

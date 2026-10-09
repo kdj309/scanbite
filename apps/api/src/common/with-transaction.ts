@@ -3,7 +3,7 @@ import type { ClientSession, Connection } from "mongoose";
 /**
  * Dev/single-node Mongo has no replica set, so multi-document transactions
  * aren't available — this falls back to running the same operation without
- * a session rather than hard-failing signup/promotion locally.
+ * a session rather than hard-failing account creation/promotion locally.
  * Production must run a replica set: without one, a crash mid-fallback-run
  * can leave a partial write (e.g. user created but its default household
  * member not yet saved) with no transaction to roll it back.

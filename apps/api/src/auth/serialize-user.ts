@@ -1,13 +1,13 @@
 import type { User } from "@foodscanner/shared";
 import { toIso } from "../common/dates";
 import type { UserDocument } from "../database/schemas/user.schema";
+import { signInMethod } from "./sign-in-method";
 
 export function serializeUser(user: UserDocument): User {
   return {
     id: user.id as string,
     email: user.email,
-    phone: user.phone,
-    auth_provider: user.auth_provider,
+    auth_provider: signInMethod(user),
     default_member_id: user.default_member_id
       ? String(user.default_member_id)
       : "",

@@ -14,6 +14,8 @@ import {
   ProductSchema,
   ProductVersion,
   ProductVersionSchema,
+  RefreshToken,
+  RefreshTokenSchema,
   RuleExplainer,
   RuleExplainerSchema,
   RuleSet,
@@ -32,6 +34,7 @@ import {
 
 const models = [
   { name: User.name, schema: UserSchema },
+  { name: RefreshToken.name, schema: RefreshTokenSchema },
   { name: HouseholdMember.name, schema: HouseholdMemberSchema },
   { name: Product.name, schema: ProductSchema },
   { name: ProductVersion.name, schema: ProductVersionSchema },

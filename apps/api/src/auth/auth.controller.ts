@@ -1,55 +1,114 @@
-import { Body, Controller, Get, Post } from "@nestjs/common";
+import { Body, Controller, HttpCode, Post } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
 import {
-  loginRequestSchema,
-  signupRequestSchema,
-  verifyOtpRequestSchema,
-  type LoginRequest,
-  type SignupRequest,
-  type VerifyOtpRequest,
+  appleNotificationRequestSchema,
+  appleSignInRequestSchema,
+  refreshTokenRequestSchema,
+  socialSignInRequestSchema,
+  type AppleNotificationRequest,
+  type AppleSignInRequest,
+  type RefreshTokenRequest,
+  type SocialSignInRequest,
 } from "@foodscanner/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
-import { AuthService } from "./auth.service";
-import { CurrentUser } from "./current-user.decorator";
+import { AccountService } from "./account.service";
+import { AppleNotificationService } from "./apple/apple-notification.service";
 import type { RequestUser } from "./auth.types";
-import { Public } from "./public.decorator";
+import { CurrentUser } from "./current-user.decorator";
+import { OptionalAuth, Public } from "./public.decorator";
+import { SessionService } from "./session.service";
+import { SocialSignInService } from "./social-sign-in.service";
 
-// Tighter than the global default (60/min) — these are unauthenticated,
-// tracked by IP, and are exactly what brute-force/OTP-guessing/account-
-// enumeration attempts target.
-const AUTH_THROTTLE = { default: { limit: 5, ttl: 60_000 } };
+// Per IP (or per user when a token is sent), tighter than the global 60/min.
+// Creating/signing into accounts is what mass-account-creation targets.
+const SIGN_IN_LIMIT = { default: { limit: 5, ttl: 60_000 } };
+// Called routinely (refresh on every access-token expiry, logout, Apple's
+// low-volume notifications): more headroom, still bounded.
+const FREQUENT_LIMIT = { default: { limit: 30, ttl: 60_000 } };
 
-@Controller()
+@Controller("auth")
 export class AuthController {
-  constructor(private readonly auth: AuthService) {}
+  constructor(
+    private readonly accounts: AccountService,
+    private readonly sessions: SessionService,
+    private readonly socialSignIn: SocialSignInService,
+    private readonly appleNotifications: AppleNotificationService
+  ) {}
 
   @Public()
-  @Throttle(AUTH_THROTTLE)
-  @Post("auth/signup")
-  signup(
-    @Body(new ZodValidationPipe(signupRequestSchema)) body: SignupRequest
+  @Throttle(SIGN_IN_LIMIT)
+  @Post("anonymous")
+  anonymous() {
+    return this.accounts.createAnonymous();
+  }
+
+  /** With a Bearer token the identity is linked to that (anonymous) account. */
+  @OptionalAuth()
+  @Throttle(SIGN_IN_LIMIT)
+  @Post("google")
+  google(
+    @Body(new ZodValidationPipe(socialSignInRequestSchema))
+    body: SocialSignInRequest,
+    @CurrentUser() user?: RequestUser
   ) {
-    return this.auth.signup(body);
+    return this.socialSignIn.signIn(
+      "google",
+      body.id_token,
+      body.nonce,
+      user?.userId ?? null
+    );
   }
 
-  @Public()
-  @Throttle(AUTH_THROTTLE)
-  @Post("auth/verify-otp")
-  verifyOtp(
-    @Body(new ZodValidationPipe(verifyOtpRequestSchema)) body: VerifyOtpRequest
+  @OptionalAuth()
+  @Throttle(SIGN_IN_LIMIT)
+  @Post("apple")
+  apple(
+    @Body(new ZodValidationPipe(appleSignInRequestSchema))
+    body: AppleSignInRequest,
+    @CurrentUser() user?: RequestUser
   ) {
-    return this.auth.verifyOtp(body);
+    return this.socialSignIn.signIn(
+      "apple",
+      body.id_token,
+      body.nonce,
+      user?.userId ?? null,
+      {
+        appleAuthorizationCode: body.authorization_code,
+        givenName: body.given_name,
+      }
+    );
+  }
+
+  /** Apple server-to-server notifications; Apple signs the payload. */
+  @Public()
+  @Throttle(FREQUENT_LIMIT)
+  @Post("apple/notifications")
+  @HttpCode(200)
+  async receiveAppleNotification(
+    @Body(new ZodValidationPipe(appleNotificationRequestSchema))
+    body: AppleNotificationRequest
+  ): Promise<void> {
+    await this.appleNotifications.handle(body.payload);
   }
 
   @Public()
-  @Throttle(AUTH_THROTTLE)
-  @Post("auth/login")
-  login(@Body(new ZodValidationPipe(loginRequestSchema)) body: LoginRequest) {
-    return this.auth.login(body);
+  @Throttle(FREQUENT_LIMIT)
+  @Post("refresh")
+  refresh(
+    @Body(new ZodValidationPipe(refreshTokenRequestSchema))
+    body: RefreshTokenRequest
+  ) {
+    return this.sessions.refresh(body.refresh_token);
   }
 
-  @Get("me")
-  me(@CurrentUser() user: RequestUser) {
-    return this.auth.me(user.userId);
+  @Public()
+  @Throttle(FREQUENT_LIMIT)
+  @Post("logout")
+  @HttpCode(204)
+  async logout(
+    @Body(new ZodValidationPipe(refreshTokenRequestSchema))
+    body: RefreshTokenRequest
+  ): Promise<void> {
+    await this.sessions.logout(body.refresh_token);
   }
 }
