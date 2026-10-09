@@ -1,5 +1,35 @@
 import { z } from "zod";
 
+/** "a, b,," -> ["a", "b"]; unset -> [] (feature disabled). */
+const commaList = z
+  .string()
+  .optional()
+  .transform((raw) =>
+    (raw ?? "")
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean)
+  );
+
+/** Base64 key decoded once at startup; must be exactly 32 bytes (AES-256). */
+const aes256Key = z
+  .string()
+  .optional()
+  .transform((raw, ctx) => {
+    if (!raw) {
+      return undefined;
+    }
+    const key = Buffer.from(raw, "base64");
+    if (key.length !== 32) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "must be 32 bytes, base64-encoded",
+      });
+      return z.NEVER;
+    }
+    return key;
+  });
+
 const baseEnvSchema = z.object({
   NODE_ENV: z
     .enum(["development", "test", "production"])
@@ -9,7 +39,34 @@ const baseEnvSchema = z.object({
   REDIS_URL: z.string().min(1),
   VERDICT_CACHE_TTL_SECONDS: z.coerce.number().int().positive().default(3600),
   JWT_SECRET: z.string().min(16),
-  JWT_EXPIRES_IN: z.string().min(1).default("7d"),
+  // Access tokens are short-lived now that refresh tokens exist; the
+  // client refreshes silently. Value is a jsonwebtoken duration ("15m").
+  JWT_EXPIRES_IN: z.string().min(1).default("15m"),
+  // Long, because an anonymous account has no other way back in: losing
+  // the refresh token means losing the household. Rotated on every use.
+  REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().positive().default(180),
+  // Comma-separated OAuth client IDs whose Google ID tokens we accept —
+  // must include the WEB client id (Android's token audience). Empty =
+  // Google sign-in disabled.
+  GOOGLE_CLIENT_IDS: commaList,
+  // Comma-separated Apple audiences (iOS bundle id / Services ID). Empty =
+  // Apple sign-in disabled.
+  APPLE_CLIENT_IDS: commaList,
+  // Needed with APPLE_CLIENT_IDS: the Sign in with Apple key from Apple
+  // Developer (Keys) used to sign the client secret for /auth/token and
+  // /auth/revoke. APPLE_PRIVATE_KEY is the .p8 contents; "\n" escapes are
+  // accepted so it fits on one .env line.
+  APPLE_TEAM_ID: z.string().min(1).optional(),
+  APPLE_KEY_ID: z.string().min(1).optional(),
+  APPLE_PRIVATE_KEY: z
+    .string()
+    .min(1)
+    .optional()
+    .transform((pem) => pem?.replace(/\\n/g, "\n")),
+  // 32 random bytes, base64 — encrypts stored provider refresh tokens.
+  TOKEN_ENCRYPTION_KEY: aes256Key,
+  // Gets the admin role — only when proven by signing in with Google using
+  // this Gmail/Workspace address (the only email we treat as verified).
   ADMIN_EMAIL: z.string().email().optional(),
   S3_ENDPOINT: z.string().url(),
   S3_ACCESS_KEY: z.string().min(1),
@@ -39,6 +96,22 @@ const baseEnvSchema = z.object({
  * confusing runtime error inside TieredVisionAdapter's fallback chain.
  */
 export const envSchema = baseEnvSchema.superRefine((env, ctx) => {
+  if (env.APPLE_CLIENT_IDS.length > 0) {
+    for (const key of [
+      "APPLE_TEAM_ID",
+      "APPLE_KEY_ID",
+      "APPLE_PRIVATE_KEY",
+      "TOKEN_ENCRYPTION_KEY",
+    ] as const) {
+      if (!env[key]) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [key],
+          message: `${key} is required when APPLE_CLIENT_IDS is set`,
+        });
+      }
+    }
+  }
   if (env.VISION_PROVIDER !== "tiered") {
     return;
   }

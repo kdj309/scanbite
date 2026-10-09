@@ -69,8 +69,8 @@ without this does not process any jobs; submissions will sit at
 ## Trying it
 
 There's a Postman collection at `postman/ScanBite-API.postman_collection.json`
-covering every route below — Signup/Login/Verify OTP auto-capture the token
-and default `member_id` into collection variables, so you can just run
+covering every route below — "Create anonymous account" auto-captures the
+tokens and default `member_id` into collection variables, so you can just run
 requests top to bottom after that. Or use curl:
 
 Health check (Mongo, Redis, S3 — all three are real dependencies now, not
@@ -80,17 +80,29 @@ stubs):
 curl http://localhost:3000/health
 ```
 
-Sign up and grab a token:
+Create an account and grab a token (this is what the app does on first open):
 
 ```bash
-curl -X POST http://localhost:3000/v1/auth/signup \
-  -H 'Content-Type: application/json' \
-  -d '{"email":"me@example.com","password":"password123"}'
+curl -X POST http://localhost:3000/v1/auth/anonymous \
+  -H 'Content-Type: application/json' -d '{}'
 ```
 
-Signup creates a default "self" household member automatically — you don't
-need a separate call for that. Use the `access_token` from the response as a
-bearer token for everything below.
+Every new account gets a default "self" household member automatically —
+you don't need a separate call for that. Use the `access_token` from the
+response as a bearer token for everything below. It lasts 15 minutes; swap
+the `refresh_token` for a new pair with `POST /v1/auth/refresh`.
+
+Signing in with Google/Apple (`POST /v1/auth/google`, `/v1/auth/apple`) needs
+a real ID token from the phone's sign-in SDK plus the client IDs/keys in
+`.env` (see `.env.example`); without them those routes answer 503. There's no
+password sign-in. Admin access comes from signing in with Google as
+`ADMIN_EMAIL` (or setting `role: "admin"` on a user in Mongo).
+
+Delete the account and everything tied to it:
+
+```bash
+curl -X DELETE http://localhost:3000/v1/me -H "Authorization: Bearer $TOKEN"
+```
 
 Look up the seeded fixture product:
 
@@ -140,7 +152,9 @@ curl "http://localhost:3000/v1/household-members/<member_id>/summary?period=week
 - **Alias resolution layers 2 and 3** (similarity/embedding matching) are
   interfaces only — always return no match. Only layer 1 (exact/alias-table
   lookup) does real work today.
-- **OTP is logged to the console** in non-production, not actually texted.
+- **Google/Apple sign-in can't be exercised locally** without real client
+  IDs and an ID token from a device; the linking logic is covered by unit
+  tests and the `smoke-auth` script instead.
 
 None of these are silent — they're either explicit stub classes or
 documented in `docs/designs/scanbite-implementation-progress.md`.
@@ -194,7 +208,8 @@ database connection.
 
 ```
 src/
-  auth/            signup/login/OTP, JWT guard, roles guard
+  auth/            anonymous + Google/Apple sign-in, refresh tokens, account
+                   deletion, Apple notifications, JWT guard, roles guard
   household/       household member CRUD, ownership checks
   products/        GET /products/:barcode — the read path
   submissions/     photo upload -> extraction queue

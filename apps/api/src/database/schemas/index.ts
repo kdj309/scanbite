@@ -1,5 +1,8 @@
 export { User, UserSchema } from "./user.schema";
-export type { UserDocument, UserRole, AuthProvider } from "./user.schema";
+export type { UserDocument, UserRole } from "./user.schema";
+
+export { RefreshToken, RefreshTokenSchema } from "./refresh-token.schema";
+export type { RefreshTokenDocument } from "./refresh-token.schema";
 
 export {
   HouseholdMember,

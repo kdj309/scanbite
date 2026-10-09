@@ -15,7 +15,9 @@ export const relationshipSchema = z.enum([
 ]);
 export type Relationship = z.infer<typeof relationshipSchema>;
 
-export const authProviderSchema = z.enum(["otp", "password"]);
+// "anonymous" = created silently on first app open (no identity yet); a
+// Google/Apple sign-in later links that identity to the same account.
+export const authProviderSchema = z.enum(["anonymous", "google", "apple"]);
 export type AuthProvider = z.infer<typeof authProviderSchema>;
 
 export const submissionStatusSchema = z.enum([

@@ -5,13 +5,28 @@ on:
     branches: [main]
   pull_request:
 
-# No service containers needed — the test suite uses fakes for Redis/Mongo,
-# not live connections (see apps/api/src/**/*.test.ts).
+# Unit tests (*.test.ts) use fakes only. Integration tests (*.itest.ts) run
+# against the Mongo + Redis service containers below.
 jobs:
   ci:
     runs-on: ubuntu-latest
     env:
       HUSKY: "0" # skip git-hook install, not relevant in CI
+    services:
+      mongo:
+        image: mongo:7
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.adminCommand(\"ping\").ok'"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 5s --health-retries 10
     steps:
       - uses: actions/checkout@v4
 
@@ -39,3 +54,9 @@ jobs:
 
       - name: Test (api)
         run: pnpm --filter api test
+
+      - name: Integration test (api)
+        run: pnpm --filter api test:integration
+        env:
+          MONGODB_TEST_URI: mongodb://127.0.0.1:27017/foodscanner_test
+          REDIS_URL: redis://127.0.0.1:6379

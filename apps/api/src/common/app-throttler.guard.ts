@@ -6,7 +6,7 @@ import { ThrottlerGuard } from "@nestjs/throttler";
  * rate-limits a specific account regardless of which IP it calls from, so
  * one compromised/malicious account can't run up vision-LLM cost by
  * rotating IPs), falling back to IP for unauthenticated routes like
- * signup/login. Written defensively rather than assuming JwtAuthGuard has
+ * sign-in. Written defensively rather than assuming JwtAuthGuard has
  * already populated req.user by the time this runs — NestJS doesn't
  * guarantee ordering across multiple APP_GUARD providers from different
  * modules, so this degrades to IP-based tracking if user isn't set yet
