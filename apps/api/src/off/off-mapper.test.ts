@@ -75,6 +75,41 @@ describe("nutritionFromProduct", () => {
     assert.deepEqual(result, {});
   });
 
+  it("treats sodium a drink can't physically hold as missing (Coca-Cola India)", () => {
+    // OFF 8901764012808: sodium_100g 25 (g) — 25 mg typed as grams.
+    const result = nutritionFromProduct({
+      product_quantity_unit: "ml",
+      nutriments: { sugars_100g: 11, sodium_100g: 25 },
+    });
+    assert.equal(result.sugar_per_100ml, 11);
+    assert.equal(result.sodium_per_100ml, undefined);
+  });
+
+  it("keeps real high-sodium and high-sugar liquids", () => {
+    const soySauce = nutritionFromProduct({
+      quantity: "200 ml",
+      nutriments: { sodium_100g: 5.6 },
+    });
+    assert.equal(soySauce.sodium_per_100ml, 5600);
+    const syrup = nutritionFromProduct({
+      quantity: "750 ml",
+      nutriments: { sugars_100g: 80 },
+    });
+    assert.equal(syrup.sugar_per_100ml, 80);
+  });
+
+  it("keeps salt itself but not more sodium than salt contains", () => {
+    assert.equal(
+      nutritionFromProduct({ nutriments: { sodium_100g: 38.7 } })
+        .sodium_per_100g,
+      38700
+    );
+    assert.equal(
+      nutritionFromProduct({ nutriments: { sodium_100g: 45 } }).sodium_per_100g,
+      undefined
+    );
+  });
+
   it("treats an out-of-range per-100g value as missing rather than using it", () => {
     // Real case found seeding production data: sodium_100g: 118 — a
     // contributor entered milligrams into a grams-documented field.
