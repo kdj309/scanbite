@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { EvaluationResult } from "../scoring/evaluate-rules";
-import type { PersonalizedVerdict } from "./apply-personalization";
+import type { MemberOverlay } from "./member-overlay";
 import { buildVerdictReasons } from "./verdict-reasons";
 
 const base: EvaluationResult = {
@@ -31,10 +31,10 @@ const base: EvaluationResult = {
   ],
 };
 
-const noOverlay: PersonalizedVerdict = {
+const noOverlay: MemberOverlay = {
   severity: "red",
   flags: [],
-  unevaluated: [],
+  unchecked: [],
 };
 
 const labels = { palm_oil: "Palm oil", sugar_uk_fop: "Very high sugar" };
@@ -43,7 +43,7 @@ describe("buildVerdictReasons", () => {
   it("puts the worst flag first, so reasons[0] is the main reason", () => {
     const reasons = buildVerdictReasons({
       base,
-      personalized: noOverlay,
+      overlay: noOverlay,
       ruleLabels: labels,
     });
     assert.deepEqual(
@@ -58,7 +58,7 @@ describe("buildVerdictReasons", () => {
   it("on a tie, the member's condition rule beats a general rule", () => {
     const reasons = buildVerdictReasons({
       base,
-      personalized: {
+      overlay: {
         severity: "red",
         flags: [
           {
@@ -69,7 +69,7 @@ describe("buildVerdictReasons", () => {
             rule_id: "diabetic_sugar_escalation",
           },
         ],
-        unevaluated: [],
+        unchecked: [],
       },
       ruleLabels: labels,
     });
@@ -79,29 +79,19 @@ describe("buildVerdictReasons", () => {
     );
   });
 
-  it("lists gaps last as 'unchecked', without a severity", () => {
-    const reasons = buildVerdictReasons({
-      base,
-      personalized: {
-        severity: "red",
-        flags: [],
-        unevaluated: [
-          {
-            condition: "hypertensive",
-            field: "sodium_per_100g",
-            rule_id: "hypertension_sodium",
-            label: "Salty for BP",
-          },
-        ],
-      },
-      ruleLabels: labels,
-    });
-    assert.deepEqual(reasons.at(-1), {
-      kind: "unchecked",
+  it("lists the member's gaps last as 'unchecked', without a severity", () => {
+    const gap = {
+      kind: "unchecked" as const,
       label: "Salty for BP",
       text: "Couldn't check salt for hypertension",
       rule_id: "hypertension_sodium",
+    };
+    const reasons = buildVerdictReasons({
+      base,
+      overlay: { severity: "red", flags: [], unchecked: [gap] },
+      ruleLabels: labels,
     });
+    assert.deepEqual(reasons.at(-1), gap);
     // A general gap next to flags adds nothing, so it isn't listed.
     assert.equal(
       reasons.some((r) => r.rule_id === "fssai_cannot_claim_low_sodium"),
@@ -112,7 +102,7 @@ describe("buildVerdictReasons", () => {
   it("shows general gaps on a green verdict and falls back to generic labels", () => {
     const reasons = buildVerdictReasons({
       base: { ...base, severity: "green", breakdown: [] },
-      personalized: { severity: "green", flags: [], unevaluated: [] },
+      overlay: { severity: "green", flags: [], unchecked: [] },
       ruleLabels: {},
     });
     assert.deepEqual(

@@ -33,3 +33,16 @@ export type SummaryPeriod = z.infer<typeof summaryPeriodSchema>;
 
 export const isoDateTimeSchema = z.string().datetime({ offset: true });
 export const objectIdSchema = z.string().min(1);
+
+/** An array of `item` with no repeats (e.g. a member's conditions). */
+export function uniqueListOf<T extends z.ZodTypeAny>(item: T, message: string) {
+  return z.array(item).superRefine((values, ctx) => {
+    const seen = new Set<unknown>();
+    for (const [index, value] of values.entries()) {
+      if (seen.has(value)) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message, path: [index] });
+      }
+      seen.add(value);
+    }
+  });
+}

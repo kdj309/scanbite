@@ -5,6 +5,7 @@ import { HouseholdService } from "../household/household.service";
 import { productSummary } from "../product-versions/product-summary";
 import { ScoringService } from "../scoring/scoring.service";
 import { householdVerdict } from "./household-verdict";
+import { productContext } from "./product-context";
 import { PersonalizationService } from "./personalization.service";
 
 export type HouseholdProductVerdict = {
@@ -35,13 +36,7 @@ export class HouseholdVerdictService {
       response: {
         found: true,
         product: productSummary(version),
-        ...householdVerdict({
-          base: objective,
-          facts: objective.facts,
-          ruleLabels: objective.rule_labels,
-          members,
-          rules,
-        }),
+        ...householdVerdict(productContext(version, objective, rules), members),
         confidence: objective.confidence,
         unresolved_ingredients: objective.unresolved_ingredients,
       },

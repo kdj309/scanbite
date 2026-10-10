@@ -102,6 +102,7 @@ describe("household verdicts (integration)", () => {
             extraction_confidence: 0.9,
             image_url: "https://images.openfoodfacts.org/front.jpg",
             quantity: "100 g",
+            declared_allergens: { contains: ["gluten"], may_contain: [] },
           }
         : null,
   };
@@ -218,7 +219,7 @@ describe("household verdicts (integration)", () => {
       assert.deepEqual(
         result.members.map((m) => [
           m.name,
-          m.has_conditions,
+          m.has_health_profile,
           m.verdict.severity,
         ]),
         [
@@ -266,6 +267,35 @@ describe("household verdicts (integration)", () => {
     });
   });
 
+  describe("allergies", () => {
+    it("flags an allergen found in the ingredients, for that member only", async () => {
+      const { user, ids } = await newHousehold();
+      await members.updateOne({ _id: ids.you }, { allergies: ["peanuts"] });
+      const barcode = await liveProduct({ sugar_per_100g: 1 });
+      await versions.updateOne(
+        { barcode },
+        {
+          ingredients: [
+            { raw: "Groundnut Oil", canonical_id: null, status: "unresolved" },
+          ],
+        }
+      );
+
+      const result = (await products.lookup(
+        barcode,
+        user
+      )) as ProductFoundResponse;
+      const you = result.members[0];
+      assert.equal(you.has_health_profile, true);
+      assert.equal(you.verdict.severity, "red");
+      assert.equal(you.verdict.reasons[0].label, "Contains peanuts");
+      // The others aren't allergic.
+      assert.equal(result.members[1].verdict.severity, "green");
+      // An allergy alone makes You the one the screen opens on.
+      assert.deepEqual(result.overall, { severity: "red", member_id: ids.you });
+    });
+  });
+
   describe("catalog", () => {
     it("filters by category and answers for the chosen member", async () => {
       const { user, ids } = await newHousehold();
@@ -278,7 +308,7 @@ describe("household verdicts (integration)", () => {
         category,
         member_id: ids.papa,
       });
-      assert.equal(page.member_has_conditions, true);
+      assert.equal(page.member_has_health_profile, true);
       assert.deepEqual(
         page.items.map((item) => [item.product.name, item.verdict.severity]),
         [
@@ -364,7 +394,7 @@ describe("household verdicts (integration)", () => {
     it("tells the app when the member has no conditions yet", async () => {
       const { user } = await newHousehold(); // default member: You
       const page = await products.catalog(user, { category: newCategory() });
-      assert.equal(page.member_has_conditions, false);
+      assert.equal(page.member_has_health_profile, false);
     });
   });
 

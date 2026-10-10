@@ -17,18 +17,15 @@ import {
 import { HouseholdService } from "../household/household.service";
 import { OffLookupService } from "../off/off-lookup.service";
 import {
-  applyPersonalization,
-  type PersonalizedVerdict,
-} from "../personalization/apply-personalization";
+  hasHealthProfile,
+  verdictFor,
+} from "../personalization/household-verdict";
 import { HouseholdVerdictService } from "../personalization/household-verdict.service";
 import { PersonalizationService } from "../personalization/personalization.service";
-import { buildVerdictReasons } from "../personalization/verdict-reasons";
+import { productContext } from "../personalization/product-context";
 import { productSummary } from "../product-versions/product-summary";
 import { ProductVersionIngestionService } from "../product-versions/product-version-ingestion.service";
-import {
-  ScoringService,
-  type ObjectiveVerdict,
-} from "../scoring/scoring.service";
+import { ScoringService } from "../scoring/scoring.service";
 
 @Injectable()
 export class ProductsService {
@@ -80,7 +77,6 @@ export class ProductsService {
       query.member_id,
       user.defaultMemberId
     );
-    const memberHasConditions = (member.conditions ?? []).length > 0;
     const limit = query.limit ?? 20;
 
     const filter: FilterQuery<ProductVersionDocument> = { status: "live" };
@@ -127,45 +123,29 @@ export class ProductsService {
     const items: CatalogItem[] = [];
     for (const version of page) {
       const cached = await this.scoring.getCachedObjectiveVerdict(version);
-      const personalized = applyPersonalization({
-        base: cached,
-        facts: cached.facts,
-        memberConditions: member.conditions ?? [],
-        rules,
-      });
+      const verdict = verdictFor(
+        productContext(version, cached, rules),
+        member
+      );
       // Severity is a post-filter, not a DB filter (HLD §15) — a page can
       // return fewer than `limit` items when this is set; the cursor still
       // advances off the last *fetched* document (page[page.length - 1]
       // below), not the last one that survives this filter.
-      if (query.severity && personalized.severity !== query.severity) {
+      if (query.severity && verdict.severity !== query.severity) {
         continue;
       }
       items.push({
         product: productSummary(version),
-        verdict: {
-          severity: personalized.severity,
-          reasons: this.buildReasons(cached, personalized),
-        },
+        verdict,
         confidence: cached.confidence,
       });
     }
 
     return {
-      member_has_conditions: memberHasConditions,
+      member_has_health_profile: hasHealthProfile(member),
       items,
       next_cursor: hasMore ? (page[page.length - 1].id as string) : null,
     };
-  }
-
-  private buildReasons(
-    cached: ObjectiveVerdict,
-    personalized: PersonalizedVerdict
-  ) {
-    return buildVerdictReasons({
-      base: cached,
-      personalized,
-      ruleLabels: cached.rule_labels,
-    });
   }
 
   private liveVersion(barcode: string): Promise<ProductVersionDocument | null> {
@@ -203,6 +183,7 @@ export class ProductsService {
       source: "off",
       image_url: extracted.image_url,
       quantity: extracted.quantity,
+      declared_allergens: extracted.declared_allergens,
     });
 
     const result = await this.consensus.promoteIfEligible(pending.id as string);

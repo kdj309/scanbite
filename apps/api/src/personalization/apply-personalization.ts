@@ -1,10 +1,13 @@
-import type { FlagReason, HealthConditionCode } from "@foodscanner/shared";
+import type {
+  FlagReason,
+  HealthConditionCode,
+  UncheckedReason,
+} from "@foodscanner/shared";
 import type {
   ProductForm,
   RuleOperator,
 } from "../database/schemas/rule-set.schema";
 import type { PersonalizationEffect } from "../database/schemas/personalization-rule.schema";
-import type { Severity } from "../database/schemas/scoring-record.schema";
 import {
   checkOperator,
   escalateOneLevel,
@@ -13,6 +16,13 @@ import {
   worstSeverity,
   type EvaluationResult,
 } from "../scoring/evaluate-rules";
+import {
+  FALLBACK_LABEL,
+  conditionName,
+  factName,
+  uncheckedReason,
+  type MemberOverlay,
+} from "./member-overlay";
 
 export type PersonalizationRuleInput = {
   id: string;
@@ -27,36 +37,14 @@ export type PersonalizationRuleInput = {
   applies_to?: ProductForm;
 };
 
-/** Chip text when a rule has no `label` of its own. */
-export const FALLBACK_LABEL = { flag: "Flagged", unchecked: "Couldn't check" };
-
-/** A personalization rule that DID apply to this member (condition
- *  matched) but whose trigger fact was missing — we could not determine
- *  whether it should have fired. Distinct from a rule whose condition
- *  simply didn't apply to this member at all. */
-export type PersonalizationUnevaluated = {
-  condition: HealthConditionCode;
-  field: string;
-  rule_id: string;
-  label?: string;
-};
-
-export type PersonalizedVerdict = {
-  severity: Severity;
-  /** Only the member's condition rules that matched; base flags stay in
-   *  `base.breakdown` (see buildVerdictReasons for the merged list). */
-  flags: FlagReason[];
-  unevaluated: PersonalizationUnevaluated[];
-};
-
 export function applyPersonalization(input: {
   base: EvaluationResult;
   facts: Record<string, unknown>;
   memberConditions: HealthConditionCode[];
   rules: PersonalizationRuleInput[];
-}): PersonalizedVerdict {
+}): MemberOverlay {
   const flags: FlagReason[] = [];
-  const unevaluated: PersonalizationUnevaluated[] = [];
+  const unchecked: UncheckedReason[] = [];
   const productForm = readFact(input.facts, "product_form");
 
   for (const rule of input.rules) {
@@ -79,12 +67,13 @@ export function applyPersonalization(input: {
       // not check whether it should have escalated. Silence here is the
       // riskier failure mode than for base scoring — this is specifically
       // about a health condition the member actually has.
-      unevaluated.push({
-        condition: rule.condition,
-        field: rule.field,
-        rule_id: rule.id,
-        label: rule.label,
-      });
+      unchecked.push(
+        uncheckedReason(
+          `Couldn't check ${factName(rule.field)} for ${conditionName(rule.condition)}`,
+          rule.id,
+          rule.label
+        )
+      );
       continue;
     }
 
@@ -110,6 +99,6 @@ export function applyPersonalization(input: {
       ...flags.map((flag) => flag.severity),
     ]),
     flags,
-    unevaluated,
+    unchecked,
   };
 }

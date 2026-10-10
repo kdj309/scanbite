@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import type { AllergenCode, HealthConditionCode } from "@foodscanner/shared";
+import type { AllergenEvidence } from "../allergens/allergen-evidence";
 import type { EvaluationResult } from "../scoring/evaluate-rules";
 import type { PersonalizationRuleInput } from "./apply-personalization";
 import {
@@ -35,15 +37,26 @@ const rules: PersonalizationRuleInput[] = [
   },
 ];
 
-const verdictFor = (members: HouseholdMemberInput[]) =>
-  householdVerdict({ base, facts, ruleLabels: {}, members, rules });
+const noAllergens: AllergenEvidence = { findings: {}, hasIngredientList: true };
+
+const verdictFor = (
+  members: HouseholdMemberInput[],
+  allergens: AllergenEvidence = noAllergens
+) =>
+  householdVerdict({ base, facts, ruleLabels: {}, rules, allergens }, members);
+
+const member = (
+  id: string,
+  conditions: HealthConditionCode[] = [],
+  allergies: AllergenCode[] = []
+): HouseholdMemberInput => ({ id, name: id, conditions, allergies });
 
 describe("householdVerdict", () => {
-  it("opens on the most affected member with conditions", () => {
+  it("opens on the most affected member with a health profile", () => {
     const result = verdictFor([
-      { id: "you", name: "You", conditions: [] },
-      { id: "amma", name: "Amma", conditions: ["hypertensive"] },
-      { id: "papa", name: "Papa", conditions: ["diabetic"] },
+      member("you"),
+      member("amma", ["hypertensive"]),
+      member("papa", ["diabetic"]),
     ]);
     assert.deepEqual(result.overall, { severity: "red", member_id: "papa" });
     assert.deepEqual(
@@ -62,23 +75,42 @@ describe("householdVerdict", () => {
 
   it("takes the first member in household order on a tie", () => {
     const result = verdictFor([
-      { id: "amma", name: "Amma", conditions: ["hypertensive"] },
-      { id: "papa", name: "Papa", conditions: ["gout"] },
+      member("amma", ["hypertensive"]),
+      member("papa", ["gout"]),
     ]);
     assert.deepEqual(result.overall, { severity: "yellow", member_id: "amma" });
   });
 
-  it("never lets a member without conditions drive the overall verdict", () => {
+  it("never lets a member without conditions or allergies drive the overall verdict", () => {
     const result = verdictFor([
-      { id: "you", name: "You", conditions: [] },
-      { id: "amma", name: "Amma", conditions: ["hypertensive"] },
+      member("you"),
+      member("amma", ["hypertensive"]),
     ]);
     assert.equal(result.overall.member_id, "amma");
-    assert.equal(result.members[0].has_conditions, false);
+    assert.equal(result.members[0].has_health_profile, false);
   });
 
-  it("falls back to the general verdict when nobody has conditions", () => {
-    const result = verdictFor([{ id: "you", name: "You", conditions: [] }]);
+  it("lets an allergy alone drive the overall verdict", () => {
+    // Not "Safe for everyone" when it contains peanuts for Amma.
+    const result = verdictFor(
+      [member("papa", ["gout"]), member("amma", [], ["peanuts"])],
+      {
+        findings: {
+          peanuts: { presence: "contains", ingredient: "groundnut oil" },
+        },
+        hasIngredientList: true,
+      }
+    );
+    assert.deepEqual(result.overall, { severity: "red", member_id: "amma" });
+    assert.equal(result.members[1].has_health_profile, true);
+    assert.equal(
+      result.members[1].verdict.reasons[0].rule_id,
+      "allergen_peanuts"
+    );
+  });
+
+  it("falls back to the general verdict when nobody has a health profile", () => {
+    const result = verdictFor([member("you")]);
     assert.deepEqual(result.overall, { severity: "yellow", member_id: null });
     assert.equal(result.members[0].verdict.severity, "yellow");
   });

@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
+import type { DeclaredAllergens } from "../allergens/allergen-evidence";
 import { AliasService } from "../alias/alias.service";
 import { isDuplicateKeyError } from "../common/mongo-errors";
 import { Product, ProductDocument } from "../database/schemas/product.schema";
@@ -79,6 +80,7 @@ export class ProductVersionIngestionService {
     source: ProductVersionSource;
     image_url?: string | null;
     quantity?: string | null;
+    declared_allergens?: DeclaredAllergens | null;
     submitted_by?: Types.ObjectId;
   }): Promise<ProductVersionDocument> {
     const product = await this.findOrCreateProduct(input.barcode);
@@ -97,6 +99,7 @@ export class ProductVersionIngestionService {
       status: "pending",
       image_url: input.image_url ?? null,
       quantity: input.quantity ?? null,
+      declared_allergens: input.declared_allergens ?? null,
       submitted_by: input.submitted_by ?? null,
     });
     await this.scoring.ensureScoringRecord(pending);

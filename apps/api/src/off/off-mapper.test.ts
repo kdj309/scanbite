@@ -5,6 +5,7 @@ import {
   isLiquidProduct,
   mapOffProduct,
   nutritionFromProduct,
+  declaredAllergens,
   numberOrUndefined,
   offImageUrl,
   offQuantity,
@@ -218,5 +219,24 @@ describe("offQuantity", () => {
     assert.equal(offQuantity("   "), null);
     assert.equal(offQuantity("x".repeat(51)), null);
     assert.equal(offQuantity(undefined), null);
+  });
+});
+
+describe("declaredAllergens", () => {
+  it("maps OFF's allergen and trace tags to our codes", () => {
+    assert.deepEqual(
+      declaredAllergens({
+        allergens_tags: ["en:gluten", "en:milk", "en:soybeans", "en:celery"],
+        traces_tags: ["en:nuts", "en:crustaceans", "en:molluscs"],
+      }),
+      {
+        contains: ["gluten", "milk", "soy"],
+        may_contain: ["tree_nuts", "shellfish"],
+      }
+    );
+  });
+
+  it("is null — not 'declares none' — when OFF has no allergen data", () => {
+    assert.equal(declaredAllergens({}), null);
   });
 });

@@ -1,3 +1,5 @@
+import type { AllergenCode } from "@foodscanner/shared";
+import type { DeclaredAllergens } from "../allergens/allergen-evidence";
 import { offExtractionConfidence } from "./off-confidence";
 import type { OffExtraction, OffProductPayload } from "./off-extraction";
 
@@ -25,6 +27,42 @@ export function mapOffProduct(product: OffProduct): OffExtraction | null {
     extraction_confidence: confidence,
     image_url: offImageUrl(product.image_front_url),
     quantity: offQuantity(product.quantity),
+    declared_allergens: declaredAllergens(product),
+  };
+}
+
+/** OFF's allergen taxonomy -> our codes; tags we don't check are ignored. */
+const OFF_ALLERGEN_TAGS: Record<string, AllergenCode> = {
+  "en:peanuts": "peanuts",
+  "en:nuts": "tree_nuts",
+  "en:milk": "milk",
+  "en:gluten": "gluten",
+  "en:eggs": "egg",
+  "en:fish": "fish",
+  "en:crustaceans": "shellfish",
+  "en:molluscs": "shellfish",
+  "en:soybeans": "soy",
+  "en:sesame-seeds": "sesame",
+  "en:mustard": "mustard",
+  "en:sulphur-dioxide-and-sulphites": "sulphites",
+};
+
+/**
+ * What OFF says the pack declares. Null when OFF has no allergen data at
+ * all — empty lists would claim "declares none", which OFF doesn't know.
+ */
+export function declaredAllergens(
+  product: Pick<OffProduct, "allergens_tags" | "traces_tags">
+): DeclaredAllergens | null {
+  if (!product.allergens_tags && !product.traces_tags) {
+    return null;
+  }
+  const toCodes = (tags: string[] = []) => [
+    ...new Set(tags.flatMap((tag) => OFF_ALLERGEN_TAGS[tag] ?? [])),
+  ];
+  return {
+    contains: toCodes(product.allergens_tags),
+    may_contain: toCodes(product.traces_tags),
   };
 }
 

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { uniqueListOf } from "./primitives";
 
 /**
  * Canonical health-condition codes stored on household members and
@@ -22,21 +23,10 @@ export type HealthConditionCode = z.infer<typeof healthConditionCodeSchema>;
 export const HEALTH_CONDITION_CODES: readonly HealthConditionCode[] =
   healthConditionCodeSchema.options;
 
-export const healthConditionListSchema = z
-  .array(healthConditionCodeSchema)
-  .superRefine((codes, ctx) => {
-    const seen = new Set<string>();
-    for (const [index, code] of codes.entries()) {
-      if (seen.has(code)) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Duplicate condition",
-          path: [index],
-        });
-      }
-      seen.add(code);
-    }
-  });
+export const healthConditionListSchema = uniqueListOf(
+  healthConditionCodeSchema,
+  "Duplicate condition"
+);
 
 export const HEALTH_CONDITION_LABELS: Record<HealthConditionCode, string> = {
   diabetic: "Diabetes",

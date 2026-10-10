@@ -1,5 +1,7 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import { ALLERGEN_CODES } from "@foodscanner/shared";
 import { HydratedDocument, Types } from "mongoose";
+import type { DeclaredAllergens } from "../../allergens/allergen-evidence";
 
 export type IngredientStatus = "resolved" | "unresolved";
 /**
@@ -69,6 +71,18 @@ export class ProductVersion {
   /** Front-of-pack photo from OFF; photo-added products have none (yet). */
   @Prop({ type: String, default: null })
   image_url!: string | null;
+
+  /** What the pack declares ("Contains" / "May contain"); null = unknown.
+   *  Our own ingredient-name scan is added at serve time (allergens/). */
+  @Prop({
+    type: {
+      contains: [{ type: String, enum: ALLERGEN_CODES }],
+      may_contain: [{ type: String, enum: ALLERGEN_CODES }],
+    },
+    _id: false,
+    default: null,
+  })
+  declared_allergens!: DeclaredAllergens | null;
 
   /** Pack size as printed, e.g. "1.25 l". */
   @Prop({ type: String, default: null })

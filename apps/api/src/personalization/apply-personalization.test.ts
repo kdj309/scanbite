@@ -132,7 +132,7 @@ describe("applyPersonalization", () => {
         result.flags.map((f) => f.rule_id),
         ["diabetic_sugar_escalation_liquid"]
       );
-      assert.deepEqual(result.unevaluated, []);
+      assert.deepEqual(result.unchecked, []);
     });
 
     it("uses only the solid rule on a solid", () => {
@@ -146,7 +146,7 @@ describe("applyPersonalization", () => {
         result.flags.map((f) => f.rule_id),
         ["diabetic_sugar_escalation"]
       );
-      assert.deepEqual(result.unevaluated, []);
+      assert.deepEqual(result.unchecked, []);
     });
   });
 });

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { allergenListSchema } from "./allergens";
 import { healthConditionListSchema } from "./conditions";
 import {
   isoDateTimeSchema,
@@ -12,7 +13,7 @@ export const householdMemberSchema = z.object({
   relationship: relationshipSchema,
   age_band: z.string().min(1).optional(),
   conditions: healthConditionListSchema.default([]),
-  allergies: z.array(z.string()).default([]),
+  allergies: allergenListSchema.default([]),
   created_at: isoDateTimeSchema,
   updated_at: isoDateTimeSchema,
 });
@@ -23,7 +24,7 @@ export const createHouseholdMemberRequestSchema = z.object({
   relationship: relationshipSchema,
   age_band: z.string().min(1).optional(),
   conditions: healthConditionListSchema.optional(),
-  allergies: z.array(z.string()).optional(),
+  allergies: allergenListSchema.optional(),
 });
 export type CreateHouseholdMemberRequest = z.infer<
   typeof createHouseholdMemberRequestSchema
@@ -35,7 +36,7 @@ export const updateHouseholdMemberRequestSchema = z
     relationship: relationshipSchema.optional(),
     age_band: z.string().min(1).nullable().optional(),
     conditions: healthConditionListSchema.optional(),
-    allergies: z.array(z.string()).optional(),
+    allergies: allergenListSchema.optional(),
   })
   .refine((body) => Object.keys(body).length > 0, {
     message: "At least one field is required",

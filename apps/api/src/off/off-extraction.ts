@@ -1,3 +1,5 @@
+import type { DeclaredAllergens } from "../allergens/allergen-evidence";
+
 /** Subset of ExtractionOutput that OFF can actually supply — no photo_consistency, that's vision-specific. */
 export type OffExtraction = {
   name: string;
@@ -10,6 +12,7 @@ export type OffExtraction = {
   extraction_confidence: number;
   image_url: string | null;
   quantity: string | null;
+  declared_allergens: DeclaredAllergens | null;
 };
 
 /** Minimal shape we read off the OFF v2 product API response — only the fields we request. */
@@ -30,5 +33,7 @@ export type OffProductPayload = {
     quantity?: string;
     product_quantity_unit?: string;
     image_front_url?: string;
+    allergens_tags?: string[];
+    traces_tags?: string[];
   };
 };

@@ -71,9 +71,10 @@ export type ProductNotFoundResponse = z.infer<
 export const memberVerdictSchema = z.object({
   member_id: objectIdSchema,
   name: z.string(),
-  // false = no conditions yet: `verdict` is the general one, and the app
-  // shows "Analyze for you" instead of treating it as checked for them.
-  has_conditions: z.boolean(),
+  // false = no conditions or allergies yet: `verdict` is the general one,
+  // and the app shows "Analyze for you" instead of treating it as checked
+  // for them.
+  has_health_profile: z.boolean(),
   verdict: verdictSchema,
 });
 export type MemberVerdict = z.infer<typeof memberVerdictSchema>;
@@ -81,8 +82,9 @@ export type MemberVerdict = z.infer<typeof memberVerdictSchema>;
 export const productFoundResponseSchema = z.object({
   found: z.literal(true),
   product: productSummarySchema,
-  // Worst verdict among members WITH conditions, and whose it is (the
-  // person the verdict screen opens on). With no conditions anywhere yet,
+  // Worst verdict among members with a health profile (conditions or
+  // allergies), and whose it is (the person the verdict screen opens on).
+  // With no profile anywhere yet,
   // the general verdict and member_id null. When it's green everyone ties,
   // so member_id is just the first of them — the app opens on "All".
   overall: z.object({
@@ -122,7 +124,7 @@ export const catalogItemSchema = z.object({
 export type CatalogItem = z.infer<typeof catalogItemSchema>;
 
 export const catalogResponseSchema = z.object({
-  member_has_conditions: z.boolean(),
+  member_has_health_profile: z.boolean(),
   items: z.array(catalogItemSchema),
   next_cursor: objectIdSchema.nullable(),
 });

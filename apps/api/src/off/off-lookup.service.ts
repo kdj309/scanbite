@@ -19,6 +19,8 @@ const OFF_FIELDS = [
   "quantity",
   "product_quantity_unit",
   "image_front_url",
+  "allergens_tags",
+  "traces_tags",
 ].join(",");
 
 /** Identifies the app to OFF per their API usage guidelines, not an auth credential. */
