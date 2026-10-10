@@ -44,14 +44,29 @@ export type ProductNotFoundResponse = z.infer<
   typeof productNotFoundResponseSchema
 >;
 
+export const memberVerdictSchema = z.object({
+  member_id: objectIdSchema,
+  name: z.string(),
+  // false = no conditions yet: `verdict` is the general one, and the app
+  // shows "Analyze for you" instead of treating it as checked for them.
+  has_conditions: z.boolean(),
+  verdict: verdictSchema,
+});
+export type MemberVerdict = z.infer<typeof memberVerdictSchema>;
+
 export const productFoundResponseSchema = z.object({
   found: z.literal(true),
-  // True if the resolved member's conditions list is non-empty — tells the
-  // client whether this is a genuinely personalized verdict or an
-  // objective-only one with nothing to personalize against yet (HLD §10/§15).
-  member_has_conditions: z.boolean(),
   product: productSummarySchema,
-  verdict: verdictSchema,
+  // Worst verdict among members WITH conditions, and whose it is (the
+  // person the verdict screen opens on). With no conditions anywhere yet,
+  // the general verdict and member_id null.
+  overall: z.object({
+    severity: severitySchema,
+    member_id: objectIdSchema.nullable(),
+  }),
+  // Every household member, in household order — the "See it for"
+  // switcher reads from here without another request.
+  members: z.array(memberVerdictSchema),
   confidence: confidenceSchema,
   unresolved_ingredients: z.array(z.string()),
 });
@@ -62,11 +77,6 @@ export const productLookupResponseSchema = z.discriminatedUnion("found", [
   productFoundResponseSchema,
 ]);
 export type ProductLookupResponse = z.infer<typeof productLookupResponseSchema>;
-
-export const productLookupQuerySchema = z.object({
-  member_id: objectIdSchema.optional(),
-});
-export type ProductLookupQuery = z.infer<typeof productLookupQuerySchema>;
 
 export const catalogQuerySchema = z.object({
   member_id: objectIdSchema.optional(),

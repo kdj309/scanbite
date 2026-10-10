@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "ScanBite API",
-    "description": "Backend for a packaged-food label scanner (India). See apps/api/README.md for setup. \"Create anonymous account\" auto-captures the tokens and default member_id into collection variables \u2014 run those first.",
+    "description": "Backend for a packaged-food label scanner (India). See apps/api/README.md for setup. \"Create anonymous account\" auto-captures the tokens and default member_id into collection variables — run those first.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -67,7 +67,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["health"]
             },
-            "description": "Not under /v1 \u2014 pings Mongo, Redis, and S3."
+            "description": "Not under /v1 — pings Mongo, Redis, and S3."
           },
           "response": []
         }
@@ -344,7 +344,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["v1", "household-members", "{{member_id}}"]
             },
-            "description": "Partial update \u2014 at least one field required. age_band: omit to leave unchanged, null to clear, a value to set."
+            "description": "Partial update — at least one field required. age_band: omit to leave unchanged, null to clear, a value to set."
           },
           "response": []
         },
@@ -373,18 +373,11 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/v1/products/{{barcode}}?member_id={{member_id}}",
+              "raw": "{{baseUrl}}/v1/products/{{barcode}}",
               "host": ["{{baseUrl}}"],
-              "path": ["v1", "products", "{{barcode}}"],
-              "query": [
-                {
-                  "key": "member_id",
-                  "value": "{{member_id}}",
-                  "description": "Optional \u2014 defaults to the caller's default household member server-side."
-                }
-              ]
+              "path": ["v1", "products", "{{barcode}}"]
             },
-            "description": "8900000000000 is the dev fixture barcode, always present. Unknown barcodes return {\"found\": false}, not a 404."
+            "description": "Returns a verdict for every household member plus `overall` (the worst among members with conditions, and whose it is). 8900000000000 is the dev fixture barcode, always present. Unknown barcodes return {\"found\": false}, not a 404."
           },
           "response": []
         }
@@ -468,7 +461,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["v1", "scans"]
             },
-            "description": "member_id is optional (defaults to caller's default member). Records the personalized severity/rule_set_version actually shown at scan time \u2014 an audit entry, not a live join."
+            "description": "member_id is optional (defaults to caller's default member). Records the personalized severity/rule_set_version actually shown at scan time — an audit entry, not a live join."
           },
           "response": []
         },
@@ -556,7 +549,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["v1", "admin", "unresolved-terms"]
             },
-            "description": "Requires the admin role \u2014 sign in with Google as ADMIN_EMAIL from .env, or set role: \"admin\" on the user in Mongo. Sets {{unresolved_term_id}} from the first result."
+            "description": "Requires the admin role — sign in with Google as ADMIN_EMAIL from .env, or set role: \"admin\" on the user in Mongo. Sets {{unresolved_term_id}} from the first result."
           },
           "response": []
         },
@@ -585,7 +578,7 @@
                 "resolve"
               ]
             },
-            "description": "Provide exactly one of canonical_ingredient_id or new_ingredient \u2014 see the sibling request for the new_ingredient form."
+            "description": "Provide exactly one of canonical_ingredient_id or new_ingredient — see the sibling request for the new_ingredient form."
           },
           "response": []
         },

@@ -2,7 +2,7 @@
  * Integration tests for the auth flows against real Mongo + Redis (CI starts
  * both as service containers; locally `docker compose up -d`). Google/Apple
  * token checks, Apple's REST API and object storage are faked — they need
- * real credentials. Uses its own `foodscanner_test` database, dropped after.
+ * real credentials. Uses its own test database (see integration-db.ts).
  *
  *   pnpm --filter api build && pnpm --filter api test:integration
  */
@@ -14,6 +14,11 @@ import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import type { JWTPayload } from "jose";
 import mongoose, { Types } from "mongoose";
+import {
+  TEST_REDIS_URL,
+  connectTestDb,
+  dropTestDb,
+} from "../common/integration-db";
 import { RedisCacheService } from "../common/redis-cache.service";
 import { decryptSecret } from "../common/secret-box";
 import {
@@ -40,9 +45,6 @@ import { SessionService } from "./session.service";
 import type { SocialProvider } from "./social-sign-in";
 import { SocialSignInService } from "./social-sign-in.service";
 
-const MONGO_URI =
-  process.env.MONGODB_TEST_URI ?? "mongodb://127.0.0.1:27018/foodscanner_test";
-const REDIS_URL = process.env.REDIS_URL ?? "redis://127.0.0.1:6379";
 const ENCRYPTION_KEY = randomBytes(32);
 const ADMIN = "admin@gmail.com";
 
@@ -100,7 +102,7 @@ describe("auth (integration)", () => {
     REFRESH_TOKEN_TTL_DAYS: 180,
     TOKEN_ENCRYPTION_KEY: ENCRYPTION_KEY,
     ADMIN_EMAIL: ADMIN,
-    REDIS_URL,
+    REDIS_URL: TEST_REDIS_URL,
   });
   const redis = new RedisCacheService(config as never);
   const users = mongoose.model(User.name, UserSchema);
@@ -158,20 +160,10 @@ describe("auth (integration)", () => {
       patch as never
     );
 
-  before(async () => {
-    await mongoose.connect(MONGO_URI);
-    await mongoose.connection.dropDatabase();
-    // Dropping removes the indexes too; the unique ones are part of what's tested.
-    await Promise.all(
-      [users, members, refreshTokens, scans, submissions].map((m) =>
-        m.syncIndexes()
-      )
-    );
-  });
+  before(() => connectTestDb("foodscanner_test_auth"));
 
   after(async () => {
-    await mongoose.connection.dropDatabase();
-    await mongoose.disconnect();
+    await dropTestDb();
     await redis.client.quit();
   });
 

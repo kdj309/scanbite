@@ -111,8 +111,11 @@ curl http://localhost:3000/v1/products/8900000000000 \
   -H "Authorization: Bearer $TOKEN"
 ```
 
-An unknown barcode returns `{"found": false}` rather than a 404 — that's the
-documented shape, not a bug.
+The answer covers the whole household in one call: `members` holds each
+member's verdict (reasons ordered, main reason first) and `overall` the worst
+verdict among members with conditions plus whose it is. An unknown barcode
+returns `{"found": false}` rather than a 404 — that's the documented shape,
+not a bug.
 
 Submit a label photo for a new/changed product (returns 202, processed async
 by the worker):

@@ -16,7 +16,11 @@ import {
 } from "../database/schemas/product-version.schema";
 import { HouseholdService } from "../household/household.service";
 import { OffLookupService } from "../off/off-lookup.service";
-import type { PersonalizedVerdict } from "../personalization/apply-personalization";
+import {
+  applyPersonalization,
+  type PersonalizedVerdict,
+} from "../personalization/apply-personalization";
+import { householdVerdict } from "../personalization/household-verdict";
 import { PersonalizationService } from "../personalization/personalization.service";
 import { buildVerdictReasons } from "../personalization/verdict-reasons";
 import { ProductVersionIngestionService } from "../product-versions/product-version-ingestion.service";
@@ -40,34 +44,33 @@ export class ProductsService {
     private readonly consensus: ConsensusService
   ) {}
 
+  /** One request answers for the whole household (see householdVerdict). */
   async lookup(
     barcode: string,
-    user: RequestUser,
-    memberId?: string
+    user: RequestUser
   ): Promise<ProductLookupResponse> {
-    const member = await this.household.resolveMemberId(
-      user.userId,
-      memberId,
-      user.defaultMemberId
-    );
-
     const version =
       (await this.liveVersion(barcode)) ?? (await this.seedFromOff(barcode));
     if (!version) {
       return { found: false };
     }
 
-    const cached = await this.scoring.getCachedObjectiveVerdict(version);
-    const personalized = await this.personalize(cached, member.conditions);
+    const [cached, { members }, rules] = await Promise.all([
+      this.scoring.getCachedObjectiveVerdict(version),
+      this.household.listForUser(user.userId),
+      this.personalization.activeRules(),
+    ]);
 
     return {
       found: true,
-      member_has_conditions: (member.conditions ?? []).length > 0,
       product: cached.product,
-      verdict: {
-        severity: personalized.severity,
-        reasons: this.buildReasons(cached, personalized),
-      },
+      ...householdVerdict({
+        base: cached,
+        facts: cached.facts,
+        ruleLabels: cached.rule_labels,
+        members,
+        rules,
+      }),
       confidence: cached.confidence,
       unresolved_ingredients: cached.unresolved_ingredients,
     };
@@ -131,10 +134,16 @@ export class ProductsService {
     const hasMore = candidates.length > limit;
     const page = hasMore ? candidates.slice(0, limit) : candidates;
 
+    const rules = await this.personalization.activeRules();
     const items: CatalogItem[] = [];
     for (const version of page) {
       const cached = await this.scoring.getCachedObjectiveVerdict(version);
-      const personalized = await this.personalize(cached, member.conditions);
+      const personalized = applyPersonalization({
+        base: cached,
+        facts: cached.facts,
+        memberConditions: member.conditions ?? [],
+        rules,
+      });
       // Severity is a post-filter, not a DB filter (HLD §15) — a page can
       // return fewer than `limit` items when this is set; the cursor still
       // advances off the last *fetched* document (page[page.length - 1]
@@ -157,21 +166,6 @@ export class ProductsService {
       items,
       next_cursor: hasMore ? (page[page.length - 1].id as string) : null,
     };
-  }
-
-  private personalize(
-    cached: ObjectiveVerdict,
-    memberConditions: string[]
-  ): Promise<PersonalizedVerdict> {
-    return this.personalization.overlay({
-      base: {
-        severity: cached.severity,
-        breakdown: cached.breakdown,
-        unevaluated: cached.unevaluated,
-      },
-      facts: cached.facts,
-      memberConditions: memberConditions ?? [],
-    });
   }
 
   private buildReasons(
