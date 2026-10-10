@@ -1,5 +1,9 @@
 import { Controller, Get, Param, Query } from "@nestjs/common";
-import { catalogQuerySchema, type CatalogQuery } from "@foodscanner/shared";
+import {
+  barcodeSchema,
+  catalogQuerySchema,
+  type CatalogQuery,
+} from "@foodscanner/shared";
 import { CurrentUser } from "../auth/current-user.decorator";
 import type { RequestUser } from "../auth/auth.types";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
@@ -19,7 +23,10 @@ export class ProductsController {
 
   /** Verdicts for every household member — see ProductFoundResponse. */
   @Get(":barcode")
-  lookup(@CurrentUser() user: RequestUser, @Param("barcode") barcode: string) {
+  lookup(
+    @CurrentUser() user: RequestUser,
+    @Param("barcode", new ZodValidationPipe(barcodeSchema)) barcode: string
+  ) {
     return this.products.lookup(barcode, user);
   }
 }

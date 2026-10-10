@@ -47,7 +47,7 @@ describe("buildVerdictReasons", () => {
       ruleLabels: labels,
     });
     assert.deepEqual(
-      reasons.map((r) => [r.rule_id, r.severity, r.label]),
+      reasons.map((r) => [r.rule_id, r.kind === "flag" && r.severity, r.label]),
       [
         ["sugar_uk_fop", "red", "Very high sugar"],
         ["palm_oil", "yellow", "Palm oil"],
@@ -79,7 +79,7 @@ describe("buildVerdictReasons", () => {
     );
   });
 
-  it("lists gaps last as 'unchecked' with no severity", () => {
+  it("lists gaps last as 'unchecked', without a severity", () => {
     const reasons = buildVerdictReasons({
       base,
       personalized: {
@@ -98,7 +98,6 @@ describe("buildVerdictReasons", () => {
     });
     assert.deepEqual(reasons.at(-1), {
       kind: "unchecked",
-      severity: null,
       label: "Salty for BP",
       text: "Couldn't check salt for hypertension",
       rule_id: "hypertension_sodium",

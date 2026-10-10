@@ -1,8 +1,9 @@
-import type { HealthConditionCode, VerdictReason } from "@foodscanner/shared";
+import type { FlagReason, HealthConditionCode } from "@foodscanner/shared";
 import type {
   ProductForm,
   RuleOperator,
 } from "../database/schemas/rule-set.schema";
+import type { PersonalizationEffect } from "../database/schemas/personalization-rule.schema";
 import type { Severity } from "../database/schemas/scoring-record.schema";
 import {
   checkOperator,
@@ -20,7 +21,7 @@ export type PersonalizationRuleInput = {
   operator: RuleOperator;
   threshold?: number;
   value?: unknown;
-  effect: string;
+  effect: PersonalizationEffect;
   message: string;
   label?: string;
   applies_to?: ProductForm;
@@ -28,14 +29,6 @@ export type PersonalizationRuleInput = {
 
 /** Chip text when a rule has no `label` of its own. */
 export const FALLBACK_LABEL = { flag: "Flagged", unchecked: "Couldn't check" };
-
-export function conditionMatches(
-  memberConditions: string[],
-  condition: string
-): boolean {
-  const needle = condition.trim().toLowerCase();
-  return memberConditions.some((item) => item.trim().toLowerCase() === needle);
-}
 
 /** A personalization rule that DID apply to this member (condition
  *  matched) but whose trigger fact was missing — we could not determine
@@ -52,25 +45,25 @@ export type PersonalizedVerdict = {
   severity: Severity;
   /** Only the member's condition rules that matched; base flags stay in
    *  `base.breakdown` (see buildVerdictReasons for the merged list). */
-  flags: VerdictReason[];
+  flags: FlagReason[];
   unevaluated: PersonalizationUnevaluated[];
 };
 
 export function applyPersonalization(input: {
   base: EvaluationResult;
   facts: Record<string, unknown>;
-  memberConditions: string[];
+  memberConditions: HealthConditionCode[];
   rules: PersonalizationRuleInput[];
 }): PersonalizedVerdict {
-  const flags: VerdictReason[] = [];
-  const overlaySeverities: Severity[] = [];
+  const flags: FlagReason[] = [];
   const unevaluated: PersonalizationUnevaluated[] = [];
+  const productForm = readFact(input.facts, "product_form");
 
   for (const rule of input.rules) {
-    if (!conditionMatches(input.memberConditions, rule.condition)) {
+    if (!input.memberConditions.includes(rule.condition)) {
       continue; // rule doesn't apply to this member at all — not a data gap
     }
-    if (!ruleAppliesToForm(rule, readFact(input.facts, "product_form"))) {
+    if (!ruleAppliesToForm(rule, productForm)) {
       continue; // e.g. the per-100g sugar rule on a drink — its twin covers it
     }
     const fact = readFact(input.facts, rule.field);
@@ -99,25 +92,23 @@ export function applyPersonalization(input: {
       continue;
     }
 
-    // An escalating rule's reason carries the level it escalated to, so it
-    // can be the main reason for the verdict it caused.
-    const severity = rule.effect.toLowerCase().includes("escalate")
-      ? escalateOneLevel(input.base.severity)
-      : input.base.severity;
-    overlaySeverities.push(severity);
-    if (rule.message.trim()) {
-      flags.push({
-        kind: "flag",
-        severity,
-        label: rule.label?.trim() || FALLBACK_LABEL.flag,
-        text: rule.message,
-        rule_id: rule.id,
-      });
-    }
+    // "escalate one level" is the only effect. The reason carries the level
+    // it escalated to, so it can be the main reason for the verdict it
+    // caused — and every escalation gets one.
+    flags.push({
+      kind: "flag",
+      severity: escalateOneLevel(input.base.severity),
+      label: rule.label?.trim() || FALLBACK_LABEL.flag,
+      text: rule.message,
+      rule_id: rule.id,
+    });
   }
 
   return {
-    severity: worstSeverity([input.base.severity, ...overlaySeverities]),
+    severity: worstSeverity([
+      input.base.severity,
+      ...flags.map((flag) => flag.severity),
+    ]),
     flags,
     unevaluated,
   };

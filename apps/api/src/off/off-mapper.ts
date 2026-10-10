@@ -23,9 +23,34 @@ export function mapOffProduct(product: OffProduct): OffExtraction | null {
     nova_group: product.nova_group,
     additive_count: product.additives_n,
     extraction_confidence: confidence,
-    image_url: product.image_front_url?.trim() || null,
-    quantity: product.quantity?.trim() || null,
+    image_url: offImageUrl(product.image_front_url),
+    quantity: offQuantity(product.quantity),
   };
+}
+
+/**
+ * OFF is publicly editable and the app loads this URL directly, so only an
+ * https image on OFF's own image host is accepted — never a third-party
+ * URL (tracking pixels leak users' IPs) or plain http.
+ */
+export function offImageUrl(raw: string | undefined): string | null {
+  try {
+    const url = new URL(raw?.trim() ?? "");
+    return url.protocol === "https:" &&
+      url.hostname === "images.openfoodfacts.org"
+      ? url.toString()
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+const MAX_QUANTITY_LENGTH = 50;
+
+/** Pack size as printed ("1.25 l"); free text, so trimmed and bounded. */
+export function offQuantity(raw: string | undefined): string | null {
+  const quantity = raw?.trim() ?? "";
+  return quantity && quantity.length <= MAX_QUANTITY_LENGTH ? quantity : null;
 }
 
 export function ingredientsFromProduct(product: OffProduct): string[] {
@@ -42,11 +67,27 @@ export function ingredientsFromProduct(product: OffProduct): string[] {
     .filter(Boolean);
 }
 
+const LIQUID_UNITS = new Set(["ml", "cl", "l"]);
+// "500 ml", "1.25 l", "2L", "1 litre" — the number keeps a stray "l" in a
+// word from counting.
+const LIQUID_QUANTITY = /\d\s*(ml|cl|l|litres?|liters?)\b/i;
+// "125 mL / 67 g" (ice cream): could be either basis, so not a clear drink.
+const WEIGHT_QUANTITY = /\d\s*(g|kg|grams?)\b/i;
+
+/** Shared with admin/repair-nutrition.ts for stored pack sizes. */
+export function isLiquidQuantity(quantity: string | null | undefined): boolean {
+  return Boolean(
+    quantity &&
+    LIQUID_QUANTITY.test(quantity) &&
+    !WEIGHT_QUANTITY.test(quantity)
+  );
+}
+
 export function isLiquidProduct(product: OffProduct): boolean {
   if (product.product_quantity_unit) {
-    return product.product_quantity_unit.toLowerCase() === "ml";
+    return LIQUID_UNITS.has(product.product_quantity_unit.toLowerCase());
   }
-  if (product.quantity && /\bml\b/i.test(product.quantity)) {
+  if (isLiquidQuantity(product.quantity)) {
     return true;
   }
   return (product.categories_tags ?? []).some((tag) =>
@@ -70,12 +111,13 @@ const MAX_GRAMS = {
 };
 
 export type Nutrient = keyof typeof MAX_GRAMS;
-export type ProductForm = "solid" | "liquid";
+/** Whether OFF reports this product per 100 g or per 100 ml. */
+export type NutritionBasis = "solid" | "liquid";
 
-/** Shared with admin/repair-implausible-nutrition.ts for stored data. */
+/** Shared with admin/repair-nutrition.ts for stored data. */
 export function isPlausibleGrams(
   nutrient: Nutrient,
-  form: ProductForm,
+  form: NutritionBasis,
   grams: number
 ): boolean {
   return grams >= 0 && grams <= MAX_GRAMS[nutrient][form];
@@ -84,7 +126,7 @@ export function isPlausibleGrams(
 function plausibleGrams(
   value: unknown,
   nutrient: Nutrient,
-  form: ProductForm
+  form: NutritionBasis
 ): number | undefined {
   const grams = numberOrUndefined(value);
   return grams !== undefined && isPlausibleGrams(nutrient, form, grams)
@@ -97,7 +139,7 @@ export function nutritionFromProduct(
   product: OffProduct
 ): Record<string, number | string | null> {
   const nutriments = product.nutriments ?? {};
-  const form: ProductForm = isLiquidProduct(product) ? "liquid" : "solid";
+  const form: NutritionBasis = isLiquidProduct(product) ? "liquid" : "solid";
   const per = form === "liquid" ? "per_100ml" : "per_100g";
   const nutrition: Record<string, number | string | null> = {};
 

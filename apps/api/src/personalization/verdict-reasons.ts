@@ -1,6 +1,8 @@
 import {
   HEALTH_CONDITION_LABELS,
+  type FlagReason,
   type HealthConditionCode,
+  type UncheckedReason,
   type VerdictReason,
 } from "@foodscanner/shared";
 import {
@@ -30,7 +32,7 @@ export function buildVerdictReasons(input: {
 }): VerdictReason[] {
   const { base, personalized, ruleLabels } = input;
 
-  const generalFlags: VerdictReason[] = base.breakdown.map((item) => ({
+  const generalFlags: FlagReason[] = base.breakdown.map((item) => ({
     kind: "flag",
     severity: item.severity,
     label: ruleLabels[item.rule_id] ?? FALLBACK_LABEL.flag,
@@ -38,10 +40,10 @@ export function buildVerdictReasons(input: {
     rule_id: item.rule_id,
   }));
   const flags = [...personalized.flags, ...generalFlags].sort(
-    (a, b) => rank(b) - rank(a)
+    (a, b) => SEVERITY_RANK[b.severity] - SEVERITY_RANK[a.severity]
   );
 
-  const unchecked: VerdictReason[] = [
+  const unchecked: UncheckedReason[] = [
     ...personalized.unevaluated.map((gap) =>
       uncheckedReason(
         `Couldn't check ${factName(gap.field)} for ${conditionName(gap.condition)}`,
@@ -82,18 +84,13 @@ function conditionName(code: HealthConditionCode): string {
   return label === label.toUpperCase() ? label : label.toLowerCase();
 }
 
-function rank(reason: VerdictReason): number {
-  return reason.severity ? SEVERITY_RANK[reason.severity] : -1;
-}
-
 function uncheckedReason(
   text: string,
   ruleId: string,
   label: string | undefined
-): VerdictReason {
+): UncheckedReason {
   return {
     kind: "unchecked",
-    severity: null,
     label: label?.trim() || FALLBACK_LABEL.unchecked,
     text,
     rule_id: ruleId,

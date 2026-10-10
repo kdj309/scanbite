@@ -66,7 +66,7 @@ describe("HLD seed documents", () => {
     );
     for (const rule of HLD_PERSONALIZATION_SEEDS) {
       assert.equal(rule.condition, "diabetic");
-      assert.match(rule.effect, /escalate/i);
+      assert.equal(rule.effect, "escalate one level");
     }
   });
 });

@@ -1,5 +1,4 @@
 import { Injectable, ServiceUnavailableException } from "@nestjs/common";
-import type { ProductSummary } from "@foodscanner/shared";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
 import {
@@ -19,7 +18,6 @@ import {
   ScoringRecord,
   ScoringRecordDocument,
 } from "../database/schemas/scoring-record.schema";
-import { productSummary } from "../product-versions/product-summary";
 import {
   MISSING_ACTIVE_RULE_SET,
   requireActiveRuleSet,
@@ -37,7 +35,6 @@ import {
  *  a cache flush. */
 export type ObjectiveVerdict = CachedObjectiveVerdict & {
   rule_labels: Record<string, string>;
-  product: ProductSummary;
 };
 
 @Injectable()
@@ -102,14 +99,7 @@ export class ScoringService {
   }> {
     const facts = await this.factsForVersion(version);
     const coverage = confidenceForVersion(version);
-    let ruleSet: RuleSetDocument;
-    try {
-      ruleSet = requireActiveRuleSet(
-        preloadedRuleSet ?? (await this.findActiveRuleSet())
-      );
-    } catch {
-      throw new ServiceUnavailableException(MISSING_ACTIVE_RULE_SET);
-    }
+    const ruleSet = preloadedRuleSet ?? (await this.activeRuleSet());
 
     // Same (product_version_id, rule_set_version) returns the stored record;
     // a new rule set version inserts another row and leaves the old one.
@@ -162,12 +152,7 @@ export class ScoringService {
   async getCachedObjectiveVerdict(
     version: ProductVersionDocument
   ): Promise<ObjectiveVerdict> {
-    let ruleSet: RuleSetDocument;
-    try {
-      ruleSet = requireActiveRuleSet(await this.findActiveRuleSet());
-    } catch {
-      throw new ServiceUnavailableException(MISSING_ACTIVE_RULE_SET);
-    }
+    const ruleSet = await this.activeRuleSet();
 
     const versionId = version.id as string;
     const cached = await this.cache.get(
@@ -175,12 +160,9 @@ export class ScoringService {
       versionId,
       ruleSet.version
     );
-    const live = {
-      rule_labels: ruleLabels(ruleSet.rules),
-      product: productSummary(version),
-    };
+    const rule_labels = ruleLabels(ruleSet.rules);
     if (cached) {
-      return { ...cached, ...live };
+      return { ...cached, rule_labels };
     }
 
     const scored = await this.ensureScoringRecord(version, ruleSet);
@@ -194,7 +176,16 @@ export class ScoringService {
       rule_set_version: ruleSet.version,
     };
     await this.cache.set(version.barcode, versionId, ruleSet.version, fresh);
-    return { ...fresh, ...live };
+    return { ...fresh, rule_labels };
+  }
+
+  /** Scoring with no rules would make everything look green — refuse. */
+  private async activeRuleSet(): Promise<RuleSetDocument> {
+    try {
+      return requireActiveRuleSet(await this.findActiveRuleSet());
+    } catch {
+      throw new ServiceUnavailableException(MISSING_ACTIVE_RULE_SET);
+    }
   }
 }
 

@@ -67,6 +67,30 @@ describe("applyPersonalization", () => {
     assert.deepEqual(result.flags, []);
   });
 
+  it("explains every escalation, even when the rule's message is blank", () => {
+    const result = applyPersonalization({
+      base: { severity: "yellow", breakdown: [], unevaluated: [] },
+      facts: { sugar_per_100g: 18 },
+      memberConditions: ["diabetic"],
+      rules: [
+        {
+          id: "diabetic_sugar_escalation",
+          condition: "diabetic",
+          field: "sugar_per_100g",
+          operator: ">",
+          threshold: 15,
+          effect: "escalate one level",
+          message: "",
+        },
+      ],
+    });
+    assert.equal(result.severity, "red");
+    assert.deepEqual(
+      result.flags.map((f) => [f.rule_id, f.severity, f.label]),
+      [["diabetic_sugar_escalation", "red", "Flagged"]]
+    );
+  });
+
   describe("solid vs drink rules", () => {
     const rules = [
       {
@@ -75,7 +99,7 @@ describe("applyPersonalization", () => {
         field: "sugar_per_100g",
         operator: ">" as const,
         threshold: 15,
-        effect: "escalate one level",
+        effect: "escalate one level" as const,
         message: "High sugar",
         applies_to: "solid" as const,
       },
@@ -85,7 +109,7 @@ describe("applyPersonalization", () => {
         field: "sugar_per_100ml",
         operator: ">" as const,
         threshold: 7.5,
-        effect: "escalate one level",
+        effect: "escalate one level" as const,
         message: "High sugar",
         applies_to: "liquid" as const,
       },

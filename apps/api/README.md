@@ -133,12 +133,17 @@ Status goes `processing` → `ready` (or `needs_review` / `failed`) once the
 worker picks it up — the worker process has to actually be running for this
 to move.
 
-Log a scan and check the household summary:
+Scan a product the way the app's scanner does — one call that looks it up,
+records it for the household (add `"member_id"` for one person) and returns
+`{scan_id, result}` with the same verdict body as the lookup above — then
+list the household's recent scans and check a member's summary:
 
 ```bash
 curl -X POST http://localhost:3000/v1/scans \
   -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -d '{"barcode":"8900000000000"}'
+
+curl "http://localhost:3000/v1/scans?limit=20" -H "Authorization: Bearer $TOKEN"
 
 curl "http://localhost:3000/v1/household-members/<member_id>/summary?period=week" \
   -H "Authorization: Bearer $TOKEN"
@@ -216,7 +221,7 @@ src/
   household/       household member CRUD, ownership checks
   products/        GET /products/:barcode — the read path
   submissions/     photo upload -> extraction queue
-  scans/           scan history + household summary
+  scans/           scan recording, household recents, member summary
   scoring/         rules-as-data evaluator, active rule set resolution
   personalization/ per-member condition overlay on top of base scoring
   alias/           ingredient text -> canonical ingredient resolution

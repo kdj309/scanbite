@@ -63,7 +63,7 @@ export class SeedService implements OnModuleInit {
   private async seedPersonalization(): Promise<void> {
     for (const rule of HLD_PERSONALIZATION_SEEDS) {
       const result = await this.personalizationRules.updateOne(
-        { version: rule.version, condition: rule.condition, field: rule.field },
+        { id: rule.id, version: rule.version },
         { $setOnInsert: rule },
         { upsert: true }
       );

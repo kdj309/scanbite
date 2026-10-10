@@ -20,9 +20,10 @@ import {
   applyPersonalization,
   type PersonalizedVerdict,
 } from "../personalization/apply-personalization";
-import { householdVerdict } from "../personalization/household-verdict";
+import { HouseholdVerdictService } from "../personalization/household-verdict.service";
 import { PersonalizationService } from "../personalization/personalization.service";
 import { buildVerdictReasons } from "../personalization/verdict-reasons";
+import { productSummary } from "../product-versions/product-summary";
 import { ProductVersionIngestionService } from "../product-versions/product-version-ingestion.service";
 import {
   ScoringService,
@@ -38,42 +39,30 @@ export class ProductsService {
     private readonly versions: Model<ProductVersionDocument>,
     private readonly scoring: ScoringService,
     private readonly personalization: PersonalizationService,
+    private readonly householdVerdicts: HouseholdVerdictService,
     private readonly household: HouseholdService,
     private readonly off: OffLookupService,
     private readonly ingestion: ProductVersionIngestionService,
     private readonly consensus: ConsensusService
   ) {}
 
-  /** One request answers for the whole household (see householdVerdict). */
+  /** Read-only view (Explore, a recents tap): answers for the whole
+   *  household. Scanning goes through POST /scans, which also records it. */
   async lookup(
     barcode: string,
     user: RequestUser
   ): Promise<ProductLookupResponse> {
-    const version =
-      (await this.liveVersion(barcode)) ?? (await this.seedFromOff(barcode));
+    const version = await this.resolveLive(barcode);
     if (!version) {
       return { found: false };
     }
+    return (await this.householdVerdicts.forVersion(version, user.userId))
+      .response;
+  }
 
-    const [cached, { members }, rules] = await Promise.all([
-      this.scoring.getCachedObjectiveVerdict(version),
-      this.household.listForUser(user.userId),
-      this.personalization.activeRules(),
-    ]);
-
-    return {
-      found: true,
-      product: cached.product,
-      ...householdVerdict({
-        base: cached,
-        facts: cached.facts,
-        ruleLabels: cached.rule_labels,
-        members,
-        rules,
-      }),
-      confidence: cached.confidence,
-      unresolved_ingredients: cached.unresolved_ingredients,
-    };
+  /** The live version, importing it from Open Food Facts on first sight. */
+  async resolveLive(barcode: string): Promise<ProductVersionDocument | null> {
+    return (await this.liveVersion(barcode)) ?? this.seedFromOff(barcode);
   }
 
   /**
@@ -152,7 +141,7 @@ export class ProductsService {
         continue;
       }
       items.push({
-        product: cached.product,
+        product: productSummary(version),
         verdict: {
           severity: personalized.severity,
           reasons: this.buildReasons(cached, personalized),

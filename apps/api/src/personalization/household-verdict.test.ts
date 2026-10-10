@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { EvaluationResult } from "../scoring/evaluate-rules";
 import type { PersonalizationRuleInput } from "./apply-personalization";
-import { householdVerdict } from "./household-verdict";
+import {
+  householdVerdict,
+  type HouseholdMemberInput,
+} from "./household-verdict";
 
 // A yellow product (FSSAI low-sugar flag) with 18 g sugar/100 g.
 const base: EvaluationResult = {
@@ -32,9 +35,8 @@ const rules: PersonalizationRuleInput[] = [
   },
 ];
 
-const verdictFor = (
-  members: { id: string; name: string; conditions: string[] }[]
-) => householdVerdict({ base, facts, ruleLabels: {}, members, rules });
+const verdictFor = (members: HouseholdMemberInput[]) =>
+  householdVerdict({ base, facts, ruleLabels: {}, members, rules });
 
 describe("householdVerdict", () => {
   it("opens on the most affected member with conditions", () => {

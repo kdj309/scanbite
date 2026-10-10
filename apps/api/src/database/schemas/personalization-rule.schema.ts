@@ -4,7 +4,16 @@ import {
   type HealthConditionCode,
 } from "@foodscanner/shared";
 import { HydratedDocument } from "mongoose";
-import type { ProductForm, RuleOperator } from "./rule-set.schema";
+import {
+  PRODUCT_FORMS,
+  RULE_OPERATORS,
+  type ProductForm,
+  type RuleOperator,
+} from "./rule-set.schema";
+
+/** What a matching rule does. Matched by value, never by text search. */
+export const PERSONALIZATION_EFFECTS = ["escalate one level"] as const;
+export type PersonalizationEffect = (typeof PERSONALIZATION_EFFECTS)[number];
 
 @Schema({ collection: "personalization_rules", timestamps: false })
 export class PersonalizationRule {
@@ -26,7 +35,7 @@ export class PersonalizationRule {
   @Prop({ required: true })
   field!: string;
 
-  @Prop({ required: true, enum: [">", ">=", "<", "<=", "==", "contains"] })
+  @Prop({ required: true, enum: RULE_OPERATORS })
   operator!: RuleOperator;
 
   @Prop({ type: Number })
@@ -35,8 +44,8 @@ export class PersonalizationRule {
   @Prop({ type: Object })
   value?: unknown;
 
-  @Prop({ required: true })
-  effect!: string;
+  @Prop({ required: true, enum: PERSONALIZATION_EFFECTS })
+  effect!: PersonalizationEffect;
 
   @Prop({ required: true })
   message!: string;
@@ -46,7 +55,7 @@ export class PersonalizationRule {
   label?: string;
 
   /** Scopes this rule to solid or liquid products; omitted/"any" = both. */
-  @Prop({ enum: ["solid", "liquid", "any"] })
+  @Prop({ enum: PRODUCT_FORMS })
   applies_to?: ProductForm;
 }
 
@@ -55,3 +64,7 @@ export const PersonalizationRuleSchema =
   SchemaFactory.createForClass(PersonalizationRule);
 
 PersonalizationRuleSchema.index({ effective_from: 1, effective_to: 1 });
+// `id` is the rule's identity (reasons' rule_id, explainers); a rule may
+// have several versions, but never two copies of the same version — this
+// also makes concurrent seed upserts from several workers safe.
+PersonalizationRuleSchema.index({ id: 1, version: 1 }, { unique: true });

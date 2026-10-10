@@ -6,6 +6,8 @@ import {
   mapOffProduct,
   nutritionFromProduct,
   numberOrUndefined,
+  offImageUrl,
+  offQuantity,
 } from "./off-mapper";
 
 describe("ingredientsFromProduct", () => {
@@ -32,11 +34,25 @@ describe("ingredientsFromProduct", () => {
 describe("isLiquidProduct", () => {
   it("trusts product_quantity_unit when present", () => {
     assert.equal(isLiquidProduct({ product_quantity_unit: "ML" }), true);
+    assert.equal(isLiquidProduct({ product_quantity_unit: "l" }), true);
     assert.equal(isLiquidProduct({ product_quantity_unit: "g" }), false);
   });
 
   it("falls back to spotting ml in the free-text quantity", () => {
     assert.equal(isLiquidProduct({ quantity: "500 ml" }), true);
+    // Litres too — missing these made drinks score against solid limits.
+    for (const quantity of ["1.25 l", "2L", "1 litre", "1.5 Liters"]) {
+      assert.equal(isLiquidProduct({ quantity }), true, quantity);
+    }
+    for (const quantity of [
+      "250 g",
+      "1 kg",
+      "12 pieces",
+      "Pack of 10 lollipops",
+      "125 mL / 67 g", // ice cream: either basis — not a clear drink
+    ]) {
+      assert.equal(isLiquidProduct({ quantity }), false, quantity);
+    }
     assert.equal(isLiquidProduct({ quantity: "500 g" }), false);
   });
 
@@ -175,5 +191,32 @@ describe("mapOffProduct", () => {
     assert.equal(result?.quantity, null);
     assert.equal(result?.brand, "unknown");
     assert.equal(result?.category, "unknown");
+  });
+});
+
+describe("offImageUrl", () => {
+  it("accepts only https images on OFF's own image host", () => {
+    const ok =
+      "https://images.openfoodfacts.org/images/products/123/front_en.5.400.jpg";
+    assert.equal(offImageUrl(` ${ok} `), ok);
+    for (const bad of [
+      "http://images.openfoodfacts.org/front.jpg",
+      "https://tracker.example.com/pixel.gif",
+      "https://images.openfoodfacts.org.evil.com/front.jpg",
+      "javascript:alert(1)",
+      "not a url",
+      undefined,
+    ]) {
+      assert.equal(offImageUrl(bad), null, String(bad));
+    }
+  });
+});
+
+describe("offQuantity", () => {
+  it("trims pack sizes and drops empty or runaway text", () => {
+    assert.equal(offQuantity(" 1.25 l "), "1.25 l");
+    assert.equal(offQuantity("   "), null);
+    assert.equal(offQuantity("x".repeat(51)), null);
+    assert.equal(offQuantity(undefined), null);
   });
 });

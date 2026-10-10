@@ -18,6 +18,7 @@ import {
   ProductVersionSchema,
 } from "../database/schemas/product-version.schema";
 import { OFF_USER_AGENT } from "../off/off-lookup.service";
+import { offImageUrl, offQuantity } from "../off/off-mapper";
 
 const MONGO_URI =
   process.env.MONGODB_URI ?? "mongodb://127.0.0.1:27018/foodscanner";
@@ -69,8 +70,8 @@ async function main() {
   let filled = 0;
   for (const [index, barcode] of barcodes.entries()) {
     const fields = await fetchImageFields(barcode).catch(() => null);
-    const image = fields?.image_front_url?.trim();
-    const quantity = fields?.quantity?.trim();
+    const image = offImageUrl(fields?.image_front_url);
+    const quantity = offQuantity(fields?.quantity);
     if (image) {
       await versions.updateMany(
         { barcode, ...missing },

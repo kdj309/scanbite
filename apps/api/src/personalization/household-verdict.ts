@@ -1,4 +1,8 @@
-import type { MemberVerdict, ProductFoundResponse } from "@foodscanner/shared";
+import type {
+  HealthConditionCode,
+  MemberVerdict,
+  ProductFoundResponse,
+} from "@foodscanner/shared";
 import {
   SEVERITY_RANK,
   type EvaluationResult,
@@ -12,7 +16,7 @@ import { buildVerdictReasons } from "./verdict-reasons";
 export type HouseholdMemberInput = {
   id: string;
   name: string;
-  conditions: string[];
+  conditions: HealthConditionCode[];
 };
 
 /**

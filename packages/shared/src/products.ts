@@ -1,27 +1,41 @@
 import { z } from "zod";
 import { confidenceSchema, objectIdSchema, severitySchema } from "./primitives";
 
-export const barcodeSchema = z.string().min(1);
+// GTIN family: EAN-8, UPC-A (12), EAN-13, GTIN-14.
+export const barcodeSchema = z
+  .string()
+  .regex(/^\d{8,14}$/, "Barcode must be 8–14 digits");
 
-export const verdictReasonKindSchema = z.enum(["flag", "unchecked"]);
-export type VerdictReasonKind = z.infer<typeof verdictReasonKindSchema>;
+const reasonFields = {
+  // Short chip text, e.g. "High sugar".
+  label: z.string(),
+  text: z.string(),
+  // The rule behind it — the app fetches its explainer (GET /rule-explainers).
+  rule_id: z.string(),
+};
+
+/** The rule matched. */
+export const flagReasonSchema = z.object({
+  kind: z.literal("flag"),
+  severity: severitySchema,
+  ...reasonFields,
+});
+export type FlagReason = z.infer<typeof flagReasonSchema>;
+
+/** The fact the rule needs was missing, so we couldn't tell — never a pass. */
+export const uncheckedReasonSchema = z.object({
+  kind: z.literal("unchecked"),
+  ...reasonFields,
+});
+export type UncheckedReason = z.infer<typeof uncheckedReasonSchema>;
 
 // `reasons` is ordered: flags first, worst severity first (on a tie the
 // member's condition rule before a general one), then "unchecked" gaps.
 // So reasons[0], when it is a flag, is the main reason for the verdict.
-export const verdictReasonSchema = z.object({
-  // "flag": the rule matched. "unchecked": the fact it needs was missing,
-  // so we couldn't tell — never a pass.
-  kind: verdictReasonKindSchema,
-  // null for "unchecked".
-  severity: severitySchema.nullable(),
-  // Short chip text, e.g. "High sugar".
-  label: z.string(),
-  text: z.string(),
-  // Lets a client fetch the explainer (GET /rule-explainers); null for a
-  // reason with no identifiable source rule.
-  rule_id: z.string().nullable(),
-});
+export const verdictReasonSchema = z.discriminatedUnion("kind", [
+  flagReasonSchema,
+  uncheckedReasonSchema,
+]);
 export type VerdictReason = z.infer<typeof verdictReasonSchema>;
 
 export const verdictSchema = z.object({
@@ -69,7 +83,8 @@ export const productFoundResponseSchema = z.object({
   product: productSummarySchema,
   // Worst verdict among members WITH conditions, and whose it is (the
   // person the verdict screen opens on). With no conditions anywhere yet,
-  // the general verdict and member_id null.
+  // the general verdict and member_id null. When it's green everyone ties,
+  // so member_id is just the first of them — the app opens on "All".
   overall: z.object({
     severity: severitySchema,
     member_id: objectIdSchema.nullable(),

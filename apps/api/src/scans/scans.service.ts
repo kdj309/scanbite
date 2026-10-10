@@ -7,6 +7,7 @@ import type {
   ListScansResponse,
   MemberSummaryQuery,
   MemberSummaryResponse,
+  ProductFoundResponse,
 } from "@foodscanner/shared";
 import { FilterQuery, Model, Types } from "mongoose";
 import type { RequestUser } from "../auth/auth.types";
@@ -16,8 +17,10 @@ import {
 } from "../database/schemas/product-version.schema";
 import { Scan, ScanDocument } from "../database/schemas/scan.schema";
 import { HouseholdService } from "../household/household.service";
-import { PersonalizationService } from "../personalization/personalization.service";
-import { ScoringService } from "../scoring/scoring.service";
+import type { Severity } from "../database/schemas/scoring-record.schema";
+import { HouseholdVerdictService } from "../personalization/household-verdict.service";
+import { ProductsService } from "../products/products.service";
+import { productSummary } from "../product-versions/product-summary";
 import { serializeScan } from "./serialize-scan";
 
 @Injectable()
@@ -27,64 +30,71 @@ export class ScansService {
     @InjectModel(ProductVersion.name)
     private readonly versions: Model<ProductVersionDocument>,
     private readonly household: HouseholdService,
-    private readonly scoring: ScoringService,
-    private readonly personalization: PersonalizationService
+    private readonly householdVerdicts: HouseholdVerdictService,
+    private readonly products: ProductsService
   ) {}
 
+  /**
+   * A scan: looks the product up (importing from Open Food Facts on first
+   * sight), records what each member was shown at this moment — an audit
+   * entry, never re-scored — and returns the verdict to display, so the
+   * scanner makes one call. `member_id` omitted = scanned for everyone.
+   */
   async create(
     user: RequestUser,
     body: CreateScanRequest
   ): Promise<CreateScanResponse> {
-    const member = await this.household.resolveMemberId(
-      user.userId,
-      body.member_id,
-      user.defaultMemberId
-    );
-    const live = await this.versions
-      .findOne({ barcode: body.barcode, status: "live" })
-      .exec();
+    const forMember = body.member_id
+      ? await this.household.requireOwnedMember(user.userId, body.member_id)
+      : null;
+    const version = await this.products.resolveLive(body.barcode);
+    const verdict = version
+      ? await this.householdVerdicts.forVersion(version, user.userId)
+      : null;
 
-    // Record what this member was actually shown, not what a later query
-    // would recompute — a scan is an audit entry, not a live join.
-    let severity: "green" | "yellow" | "red" | null = null;
-    let ruleSetVersion: string | null = null;
-    if (live) {
-      const cached = await this.scoring.getCachedObjectiveVerdict(live);
-      const personalized = await this.personalization.overlay({
-        base: {
-          severity: cached.severity,
-          breakdown: cached.breakdown,
-          unevaluated: cached.unevaluated,
-        },
-        facts: cached.facts,
-        memberConditions: member.conditions ?? [],
-      });
-      severity = personalized.severity;
-      ruleSetVersion = cached.rule_set_version;
-    }
-
-    const created = await this.scans.create({
+    const scan = await this.scans.create({
       user_id: new Types.ObjectId(user.userId),
-      member_id: member._id,
+      member_id: forMember?._id ?? null,
       barcode: body.barcode,
-      product_version_id: live?._id ?? null,
-      found: Boolean(live),
-      severity,
-      rule_set_version: ruleSetVersion,
+      product_version_id: version?._id ?? null,
+      found: Boolean(version),
+      severity: verdict ? severityFor(verdict.response, forMember?.id) : null,
+      verdicts:
+        verdict?.response.members.map((member) => ({
+          member_id: new Types.ObjectId(member.member_id),
+          severity: member.verdict.severity,
+        })) ?? [],
+      rule_set_version: verdict?.ruleSetVersion ?? null,
     });
-    return serializeScan(created);
+    return {
+      scan_id: scan.id as string,
+      result: verdict?.response ?? { found: false },
+    };
   }
 
-  async list(
+  /** Household recents (Home), newest first. */
+  listForHousehold(
+    user: RequestUser,
+    query: ListScansQuery
+  ): Promise<ListScansResponse> {
+    return this.page({ user_id: new Types.ObjectId(user.userId) }, query);
+  }
+
+  /** Scans made for one member. */
+  async listForMember(
     user: RequestUser,
     memberId: string,
     query: ListScansQuery
   ): Promise<ListScansResponse> {
     await this.household.requireOwnedMember(user.userId, memberId);
+    return this.page({ member_id: new Types.ObjectId(memberId) }, query);
+  }
+
+  private async page(
+    filter: FilterQuery<ScanDocument>,
+    query: ListScansQuery
+  ): Promise<ListScansResponse> {
     const limit = query.limit ?? 20;
-    const filter: FilterQuery<ScanDocument> = {
-      member_id: new Types.ObjectId(memberId),
-    };
     if (query.from || query.to) {
       filter.created_at = {};
       if (query.from) {
@@ -114,8 +124,25 @@ export class ScansService {
       .exec();
     const hasMore = items.length > limit;
     const page = hasMore ? items.slice(0, limit) : items;
+
+    // One query for the whole page's products, not one per row.
+    const versionIds = page
+      .map((scan) => scan.product_version_id)
+      .filter((id): id is Types.ObjectId => Boolean(id));
+    const versions = versionIds.length
+      ? await this.versions.find({ _id: { $in: versionIds } }).exec()
+      : [];
+    const productById = new Map(
+      versions.map((version) => [String(version._id), productSummary(version)])
+    );
+
     return {
-      items: page.map(serializeScan),
+      items: page.map((scan) =>
+        serializeScan(
+          scan,
+          productById.get(String(scan.product_version_id)) ?? null
+        )
+      ),
       next_cursor: hasMore ? (page[page.length - 1].id as string) : null,
     };
   }
@@ -185,4 +212,16 @@ export class ScansService {
       by_severity: bySeverity,
     };
   }
+}
+
+/** The verdict of whoever it was scanned for, or the overall one. */
+function severityFor(
+  result: ProductFoundResponse,
+  memberId: string | undefined
+): Severity {
+  if (!memberId) {
+    return result.overall.severity;
+  }
+  const member = result.members.find((m) => m.member_id === memberId);
+  return member?.verdict.severity ?? result.overall.severity;
 }

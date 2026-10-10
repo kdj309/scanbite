@@ -92,8 +92,12 @@ export class ExtractionPipeline {
 
     if (plan.kind === "reuse_live" && live) {
       if (confirmsVersion(live, submission.user_id)) {
-        live.confirmed_at = new Date();
-        await live.save();
+        // Conditional, so two matching submissions processed at once can't
+        // both confirm, and the first confirmation time is kept.
+        await this.versions.updateOne(
+          { _id: live._id, confirmed_at: null },
+          { $set: { confirmed_at: new Date() } }
+        );
       }
       await this.scoring.ensureScoringRecord(live);
       await this.finishSubmission(submission, {

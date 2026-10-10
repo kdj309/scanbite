@@ -13,7 +13,7 @@ const DIABETIC_SUGAR_RULE = {
   effective_to: null as Date | null,
   condition: "diabetic" as const,
   operator: ">" as const,
-  effect: "escalate one level",
+  effect: "escalate one level" as const,
   message: "High sugar — caution advised for diabetics",
   label: "Too sweet for diabetes",
 };
