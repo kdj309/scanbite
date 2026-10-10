@@ -13,6 +13,7 @@ import {
   SubmissionDocument,
 } from "../database/schemas/submission.schema";
 import { ProductVersionIngestionService } from "../product-versions/product-version-ingestion.service";
+import { confirmsVersion } from "../product-versions/product-summary";
 import {
   snapshotFromIncoming,
   snapshotFromVersion,
@@ -67,6 +68,7 @@ export class ExtractionPipeline {
         additive_count: extracted.additive_count,
         extraction_confidence: extracted.extraction_confidence,
         source: "user_submission",
+        submitted_by: submission.user_id,
       });
       await this.finishSubmission(submission, {
         status: "needs_review",
@@ -89,6 +91,10 @@ export class ExtractionPipeline {
     });
 
     if (plan.kind === "reuse_live" && live) {
+      if (confirmsVersion(live, submission.user_id)) {
+        live.confirmed_at = new Date();
+        await live.save();
+      }
       await this.scoring.ensureScoringRecord(live);
       await this.finishSubmission(submission, {
         status: "ready",
@@ -109,6 +115,7 @@ export class ExtractionPipeline {
       additive_count: extracted.additive_count,
       extraction_confidence: extracted.extraction_confidence,
       source: "user_submission",
+      submitted_by: submission.user_id,
     });
     submission.product_version_id = pending._id as Types.ObjectId;
     await submission.save();

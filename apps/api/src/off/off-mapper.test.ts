@@ -151,8 +151,15 @@ describe("mapOffProduct", () => {
       nova_group: 4,
       additives_n: 2,
       states_tags: ["en:ingredients-completed", "en:nutrition-facts-completed"],
+      image_front_url: "https://images.openfoodfacts.org/front.jpg",
+      quantity: " 250 g ",
     });
     assert.ok(result);
+    assert.equal(
+      result?.image_url,
+      "https://images.openfoodfacts.org/front.jpg"
+    );
+    assert.equal(result?.quantity, "250 g");
     assert.equal(result?.name, "Parle-G");
     assert.equal(result?.brand, "Parle");
     assert.equal(result?.category, "Biscuits");
@@ -164,6 +171,8 @@ describe("mapOffProduct", () => {
   it("defaults name/brand/category to unknown when OFF doesn't have them", () => {
     const result = mapOffProduct({ ingredients_text: "Sugar" });
     assert.equal(result?.name, "unknown");
+    assert.equal(result?.image_url, null);
+    assert.equal(result?.quantity, null);
     assert.equal(result?.brand, "unknown");
     assert.equal(result?.category, "unknown");
   });

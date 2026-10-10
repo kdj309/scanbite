@@ -8,6 +8,8 @@ export type OffExtraction = {
   nova_group?: number;
   additive_count?: number;
   extraction_confidence: number;
+  image_url: string | null;
+  quantity: string | null;
 };
 
 /** Minimal shape we read off the OFF v2 product API response — only the fields we request. */
@@ -27,5 +29,6 @@ export type OffProductPayload = {
     data_quality_errors_tags?: string[];
     quantity?: string;
     product_quantity_unit?: string;
+    image_front_url?: string;
   };
 };

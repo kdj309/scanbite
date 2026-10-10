@@ -18,10 +18,12 @@ const OFF_FIELDS = [
   "data_quality_errors_tags",
   "quantity",
   "product_quantity_unit",
+  "image_front_url",
 ].join(",");
 
 /** Identifies the app to OFF per their API usage guidelines, not an auth credential. */
-const USER_AGENT = "ScanBite/1.0 (+https://github.com/kdj309/scanbite)";
+export const OFF_USER_AGENT =
+  "ScanBite/1.0 (+https://github.com/kdj309/scanbite)";
 
 const CACHE_PREFIX = "off:product";
 const FOUND_TTL_SECONDS = 24 * 60 * 60;
@@ -83,7 +85,7 @@ export class OffLookupService {
     let payload: OffProductPayload;
     try {
       const response = await fetchWithTimeout(url, {
-        headers: { "User-Agent": USER_AGENT },
+        headers: { "User-Agent": OFF_USER_AGENT },
       });
       if (!response.ok) {
         this.logger.warn(

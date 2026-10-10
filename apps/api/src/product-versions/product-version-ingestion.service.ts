@@ -77,6 +77,9 @@ export class ProductVersionIngestionService {
     additive_count?: number;
     extraction_confidence: number;
     source: ProductVersionSource;
+    image_url?: string | null;
+    quantity?: string | null;
+    submitted_by?: Types.ObjectId;
   }): Promise<ProductVersionDocument> {
     const product = await this.findOrCreateProduct(input.barcode);
     const pending = await this.versions.create({
@@ -92,6 +95,9 @@ export class ProductVersionIngestionService {
       extraction_confidence: input.extraction_confidence,
       source: input.source,
       status: "pending",
+      image_url: input.image_url ?? null,
+      quantity: input.quantity ?? null,
+      submitted_by: input.submitted_by ?? null,
     });
     await this.scoring.ensureScoringRecord(pending);
     return pending;

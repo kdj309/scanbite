@@ -139,6 +139,10 @@ describe("product lookup for a household (integration)", () => {
         ["Papa", true, "red"],
       ]
     );
+    assert.deepEqual(
+      [result.product.source, result.product.verifying],
+      ["catalog", false]
+    );
     const papa = result.members[2].verdict.reasons[0];
     assert.equal(papa.rule_id, "diabetic_sugar_escalation");
     assert.equal(papa.label, "Too sweet for diabetes");

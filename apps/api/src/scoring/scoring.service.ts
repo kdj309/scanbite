@@ -1,4 +1,5 @@
 import { Injectable, ServiceUnavailableException } from "@nestjs/common";
+import type { ProductSummary } from "@foodscanner/shared";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
 import {
@@ -18,6 +19,7 @@ import {
   ScoringRecord,
   ScoringRecordDocument,
 } from "../database/schemas/scoring-record.schema";
+import { productSummary } from "../product-versions/product-summary";
 import {
   MISSING_ACTIVE_RULE_SET,
   requireActiveRuleSet,
@@ -35,6 +37,7 @@ import {
  *  a cache flush. */
 export type ObjectiveVerdict = CachedObjectiveVerdict & {
   rule_labels: Record<string, string>;
+  product: ProductSummary;
 };
 
 @Injectable()
@@ -172,18 +175,16 @@ export class ScoringService {
       versionId,
       ruleSet.version
     );
-    const rule_labels = ruleLabels(ruleSet.rules);
+    const live = {
+      rule_labels: ruleLabels(ruleSet.rules),
+      product: productSummary(version),
+    };
     if (cached) {
-      return { ...cached, rule_labels };
+      return { ...cached, ...live };
     }
 
     const scored = await this.ensureScoringRecord(version, ruleSet);
     const fresh: CachedObjectiveVerdict = {
-      product: {
-        name: version.name,
-        brand: version.brand,
-        product_version_id: versionId,
-      },
       facts: scored.facts,
       severity: scored.evaluation.severity,
       breakdown: scored.evaluation.breakdown,
@@ -193,7 +194,7 @@ export class ScoringService {
       rule_set_version: ruleSet.version,
     };
     await this.cache.set(version.barcode, versionId, ruleSet.version, fresh);
-    return { ...fresh, rule_labels };
+    return { ...fresh, ...live };
   }
 }
 

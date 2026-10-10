@@ -212,6 +212,8 @@ export class ProductsService {
       additive_count: extracted.additive_count,
       extraction_confidence: extracted.extraction_confidence,
       source: "off",
+      image_url: extracted.image_url,
+      quantity: extracted.quantity,
     });
 
     const result = await this.consensus.promoteIfEligible(pending.id as string);

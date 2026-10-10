@@ -23,6 +23,8 @@ export function mapOffProduct(product: OffProduct): OffExtraction | null {
     nova_group: product.nova_group,
     additive_count: product.additives_n,
     extraction_confidence: confidence,
+    image_url: product.image_front_url?.trim() || null,
+    quantity: product.quantity?.trim() || null,
   };
 }
 

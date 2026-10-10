@@ -66,6 +66,22 @@ export class ProductVersion {
   @Prop({ required: true, enum: ["live", "pending", "superseded"] })
   status!: ProductVersionStatus;
 
+  /** Front-of-pack photo from OFF; photo-added products have none (yet). */
+  @Prop({ type: String, default: null })
+  image_url!: string | null;
+
+  /** Pack size as printed, e.g. "1.25 l". */
+  @Prop({ type: String, default: null })
+  quantity!: string | null;
+
+  /** user_submission only: who sent the photos it was read from. */
+  @Prop({ type: Types.ObjectId, ref: "User", default: null })
+  submitted_by!: Types.ObjectId | null;
+
+  /** user_submission only: when a different user's photos matched it. */
+  @Prop({ type: Date, default: null })
+  confirmed_at!: Date | null;
+
   created_at!: Date;
 }
 

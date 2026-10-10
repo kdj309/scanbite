@@ -34,6 +34,16 @@ export const productSummarySchema = z.object({
   name: z.string(),
   brand: z.string(),
   product_version_id: objectIdSchema,
+  // "catalog": Open Food Facts or our curated seed. "ai_photos": read by the
+  // vision model from a user's label photos.
+  source: z.enum(["catalog", "ai_photos"]),
+  // ai_photos only: true until a different person's photos match it
+  // ("Read by AI · verifying").
+  verifying: z.boolean(),
+  // Open Food Facts front photo (CC BY-SA — credit it); null otherwise.
+  image_url: z.string().nullable(),
+  // Pack size as printed, e.g. "1.25 l".
+  quantity: z.string().nullable(),
 });
 export type ProductSummary = z.infer<typeof productSummarySchema>;
 
