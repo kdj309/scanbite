@@ -149,6 +149,23 @@ curl "http://localhost:3000/v1/household-members/<member_id>/summary?period=week
   -H "Authorization: Bearer $TOKEN"
 ```
 
+Register a phone for push notifications (the app does this on every open;
+`DELETE /v1/devices/<url-encoded token>` on logout):
+
+```bash
+curl -X PUT http://localhost:3000/v1/devices \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"expo_push_token":"ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]","platform":"android"}'
+```
+
+When a photo submission finishes, the worker sends "<product> is ready ·
+Avoid for Papa" to the user's phones through the `notification` queue
+(retries with backoff, then dead-letter), and checks Expo's delivery
+receipts 15 minutes later to drop uninstalled phones. `PUSH_PROVIDER=noop`
+(the default) only logs; `expo` sends for real and needs FCM v1 / APNs
+credentials set up in EAS. Expo Go can't receive push (SDK 53+) — test with
+a development build.
+
 ## Known limitations (current, not aspirational)
 
 - **Vision extraction is stubbed.** `VISION_PROVIDER=stub` returns a canned

@@ -1,6 +1,9 @@
 export { User, UserSchema } from "./user.schema";
 export type { UserDocument, UserRole } from "./user.schema";
 
+export { Device, DeviceSchema } from "./device.schema";
+export type { DeviceDocument } from "./device.schema";
+
 export { RefreshToken, RefreshTokenSchema } from "./refresh-token.schema";
 export type { RefreshTokenDocument } from "./refresh-token.schema";
 

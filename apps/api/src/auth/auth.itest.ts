@@ -29,6 +29,7 @@ import {
   RefreshToken,
   RefreshTokenSchema,
 } from "../database/schemas/refresh-token.schema";
+import { Device, DeviceSchema } from "../database/schemas/device.schema";
 import { Scan, ScanSchema } from "../database/schemas/scan.schema";
 import {
   Submission,
@@ -109,6 +110,7 @@ describe("auth (integration)", () => {
   const members = mongoose.model(HouseholdMember.name, HouseholdMemberSchema);
   const refreshTokens = mongoose.model(RefreshToken.name, RefreshTokenSchema);
   const scans = mongoose.model(Scan.name, ScanSchema);
+  const devices = mongoose.model(Device.name, DeviceSchema);
   const submissions = mongoose.model(Submission.name, SubmissionSchema);
 
   const household = new HouseholdService(members as never, users as never);
@@ -127,6 +129,7 @@ describe("auth (integration)", () => {
     users as never,
     members as never,
     scans as never,
+    devices as never,
     submissions as never,
     household,
     storage as never,
@@ -376,6 +379,11 @@ describe("auth (integration)", () => {
         { appleAuthorizationCode: "code-del" }
       );
       const userId = oid(account.user.id);
+      await devices.create({
+        user_id: userId,
+        expo_push_token: "ExponentPushToken[deleted-account-phone]",
+        platform: "ios",
+      });
       await scans.create({
         user_id: userId,
         member_id: oid(account.user.default_member_id),
@@ -396,6 +404,7 @@ describe("auth (integration)", () => {
       assert.equal(await scans.exists({ user_id: userId }), null);
       assert.equal(await submissions.exists({ user_id: userId }), null);
       assert.equal(await refreshTokens.exists({ user_id: userId }), null);
+      assert.equal(await devices.exists({ user_id: userId }), null);
       assert.ok(
         apple.revoked.some(
           (r) =>

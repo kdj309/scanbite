@@ -83,6 +83,10 @@ const baseEnvSchema = z.object({
   OPENROUTER_API_KEY: z.string().min(1).optional(),
   ANTHROPIC_API_KEY: z.string().min(1).optional(),
   GEMINI_OPENROUTER_MODEL: z.string().min(1).default("google/gemini-2.5-flash"),
+  // noop logs instead of sending, for local dev and tests.
+  PUSH_PROVIDER: z.enum(["expo", "noop"]).default("noop"),
+  // Only once "enhanced push security" is turned on in EAS.
+  EXPO_ACCESS_TOKEN: z.string().min(1).optional(),
   WORKER_MODE: z
     .union([z.boolean(), z.enum(["true", "false"])])
     .default("false")

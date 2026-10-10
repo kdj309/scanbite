@@ -9,6 +9,7 @@ import {
   HouseholdMember,
   HouseholdMemberDocument,
 } from "../database/schemas/household-member.schema";
+import { Device, DeviceDocument } from "../database/schemas/device.schema";
 import { Scan, ScanDocument } from "../database/schemas/scan.schema";
 import {
   Submission,
@@ -43,6 +44,7 @@ export class AccountService {
     @InjectModel(HouseholdMember.name)
     private readonly members: Model<HouseholdMemberDocument>,
     @InjectModel(Scan.name) private readonly scans: Model<ScanDocument>,
+    @InjectModel(Device.name) private readonly devices: Model<DeviceDocument>,
     @InjectModel(Submission.name)
     private readonly submissions: Model<SubmissionDocument>,
     private readonly household: HouseholdService,
@@ -93,6 +95,7 @@ export class AccountService {
     await this.submissions.deleteMany({ user_id: user._id }).exec();
     await this.scans.deleteMany({ user_id: user._id }).exec();
     await this.sessions.deleteAll(user._id);
+    await this.devices.deleteMany({ user_id: user._id }).exec();
     await this.members.deleteMany({ owner_user_id: user._id }).exec();
     await this.users.deleteOne({ _id: user._id }).exec();
   }

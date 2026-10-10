@@ -7,6 +7,7 @@ import {
   type DeadLetterPayload,
 } from "./dead-letter";
 import {
+  JOB_CHECK_PUSH_RECEIPTS,
   JOB_DEAD_LETTER,
   JOB_EXTRACT,
   JOB_NOTIFY,
@@ -17,6 +18,7 @@ import {
   QUEUE_NOTIFICATION,
   QUEUE_PROMOTE,
   QUEUE_RESCORE,
+  type CheckPushReceiptsJobData,
   type ExtractJobData,
   type NotifyJobData,
   type PromoteJobData,
@@ -95,6 +97,16 @@ export class JobQueuesService {
     await this.notification.add(JOB_NOTIFY, data, {
       attempts: 3,
       backoff: { type: "exponential", delay: 1000 },
+    });
+  }
+
+  /** Expo recommends checking receipts 15 min after sending; it keeps them
+   *  for 24 h, so retries have plenty of room. */
+  async enqueuePushReceiptCheck(data: CheckPushReceiptsJobData): Promise<void> {
+    await this.notification.add(JOB_CHECK_PUSH_RECEIPTS, data, {
+      delay: 15 * 60 * 1000,
+      attempts: 3,
+      backoff: { type: "exponential", delay: 60_000 },
     });
   }
 

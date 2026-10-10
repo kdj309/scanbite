@@ -3,6 +3,7 @@ export * from "./allergens";
 export * from "./auth";
 export * from "./conditions";
 export * from "./constants";
+export * from "./devices";
 export * from "./household";
 export * from "./primitives";
 export * from "./products";

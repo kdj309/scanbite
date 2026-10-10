@@ -650,6 +650,53 @@
           "response": []
         }
       ]
+    },
+    {
+      "name": "Devices",
+      "description": "Phones that get push notifications (Expo). The app registers on every open and unregisters on logout.",
+      "item": [
+        {
+          "name": "Register device",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expo_push_token\": \"ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]\",\n  \"platform\": \"android\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/devices",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "devices"]
+            },
+            "description": "Idempotent; a token already registered to another account moves to this one (the phone switched accounts). 204."
+          },
+          "response": []
+        },
+        {
+          "name": "Unregister device",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/devices/ExponentPushToken%5Bxxxxxxxxxxxxxxxxxxxxxx%5D",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "v1",
+                "devices",
+                "ExponentPushToken%5Bxxxxxxxxxxxxxxxxxxxxxx%5D"
+              ]
+            },
+            "description": "On logout. URL-encode the token. Only removes your own device. 204."
+          },
+          "response": []
+        }
+      ]
     }
   ]
 }
