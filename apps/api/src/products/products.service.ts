@@ -1,6 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import type {
+  CategoriesResponse,
   CatalogItem,
   CatalogQuery,
   CatalogResponse,
@@ -61,6 +62,21 @@ export class ProductsService {
   /** The live version, importing it from Open Food Facts on first sight. */
   async resolveLive(barcode: string): Promise<ProductVersionDocument | null> {
     return (await this.liveVersion(barcode)) ?? this.seedFromOff(barcode);
+  }
+
+  /** Explore's chips: live products per category, biggest first. Same
+   *  filter as catalog(), so a chip's count matches what tapping it shows. */
+  async categories(): Promise<CategoriesResponse> {
+    const groups = await this.versions
+      .aggregate<{ _id: string; count: number }>([
+        { $match: { status: "live", category: { $ne: "unknown" } } },
+        { $group: { _id: "$category", count: { $sum: 1 } } },
+        { $sort: { count: -1, _id: 1 } },
+      ])
+      .exec();
+    return {
+      categories: groups.map(({ _id, count }) => ({ name: _id, count })),
+    };
   }
 
   /**

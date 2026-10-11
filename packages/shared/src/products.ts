@@ -124,6 +124,17 @@ export const productLookupResponseSchema = z.discriminatedUnion("found", [
 ]);
 export type ProductLookupResponse = z.infer<typeof productLookupResponseSchema>;
 
+// Explore's category chips. `name` is the value to pass back as
+// GET /products?category=…; `count` matches what that returns.
+export const categorySchema = z.object({
+  name: z.string(),
+  count: z.number().int().positive(),
+});
+export const categoriesResponseSchema = z.object({
+  categories: z.array(categorySchema), // biggest first; "unknown" left out
+});
+export type CategoriesResponse = z.infer<typeof categoriesResponseSchema>;
+
 export const catalogQuerySchema = z.object({
   member_id: objectIdSchema.optional(),
   category: z.string().min(1).optional(),

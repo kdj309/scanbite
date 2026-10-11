@@ -399,6 +399,31 @@ describe("household verdicts (integration)", () => {
     });
   });
 
+  describe("categories", () => {
+    it("counts live products per category, biggest first, without unknown", async () => {
+      const big = newCategory();
+      const small = newCategory();
+      for (let i = 0; i < 3; i += 1) {
+        await liveProduct({}, { category: big });
+      }
+      await liveProduct({}, { category: small });
+      await liveProduct({}, { category: "unknown" });
+
+      const { categories } = await products.categories();
+      const mine = categories.filter((c) => c.name === big || c.name === small);
+      assert.deepEqual(mine, [
+        { name: big, count: 3 },
+        { name: small, count: 1 },
+      ]);
+      assert.ok(categories.every((c) => c.name !== "unknown"));
+
+      // A chip's count matches what the catalog shows for it.
+      const { user } = await newHousehold();
+      const page = await products.catalog(user, { category: big });
+      assert.equal(page.items.length, 3);
+    });
+  });
+
   describe("catalog", () => {
     it("filters by category and answers for the chosen member", async () => {
       const { user, ids } = await newHousehold();

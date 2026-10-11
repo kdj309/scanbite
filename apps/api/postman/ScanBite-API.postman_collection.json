@@ -394,6 +394,20 @@
             "description": "Up to 5 same-category, same-form products that are Safe for everyone this product isn't Safe for (strict), best first by the biggest drop in what flagged it. Each has improvement chips (\"70% less sugar\" with meter numbers, \"No palm oil\") and buy links. Empty when there's nothing better yet or the category is unknown; 404 for an unknown barcode."
           },
           "response": []
+        },
+        {
+          "name": "Categories",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/categories",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "categories"]
+            },
+            "description": "Explore's category chips: live products per category, biggest first, \"unknown\" left out. Pass a name back as GET /v1/products?category=…"
+          },
+          "response": []
         }
       ]
     },
