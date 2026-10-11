@@ -1,4 +1,5 @@
 import type { AllergenCode } from "@foodscanner/shared";
+import { aliasList, type AliasList } from "../common/alias-match";
 
 /**
  * DRAFT — needs human review before launch (safety-critical: a missed name
@@ -10,11 +11,8 @@ import type { AllergenCode } from "@foodscanner/shared";
  * the allergen ("coconut milk" isn't dairy, "cocoa butter" isn't butter).
  * Matching is case-insensitive on one ingredient at a time.
  */
-export const ALLERGEN_ALIASES: Record<
-  AllergenCode,
-  { include: RegExp[]; exclude?: RegExp[] }
-> = {
-  peanuts: {
+export const ALLERGEN_ALIASES: Record<AllergenCode, AliasList> = {
+  peanuts: aliasList({
     include: [
       /\bpea ?nuts?\b/,
       /\bground ?nuts?\b/, // the usual Indian name, incl. groundnut oil
@@ -22,8 +20,8 @@ export const ALLERGEN_ALIASES: Record<
       /\bmoong ?phali\b/,
       /\bmung ?fali\b/,
     ],
-  },
-  tree_nuts: {
+  }),
+  tree_nuts: aliasList({
     include: [
       /\balmonds?\b/,
       /\bbadam\b/,
@@ -48,8 +46,8 @@ export const ALLERGEN_ALIASES: Record<
       /\bareca ?nuts?\b/,
       /\bbetel ?nuts?\b/,
     ],
-  },
-  milk: {
+  }),
+  milk: aliasList({
     include: [
       /\bmilk\b/,
       /\bbutter ?milk\b/,
@@ -77,8 +75,8 @@ export const ALLERGEN_ALIASES: Record<
       /\bnon[- ]?dairy\b/,
       /\b(milk|dairy|lactose)[- ]?free\b/,
     ],
-  },
-  gluten: {
+  }),
+  gluten: aliasList({
     include: [
       /\bwheat\b/,
       /\bmaida\b/,
@@ -96,12 +94,12 @@ export const ALLERGEN_ALIASES: Record<
       /\bseitan\b/,
     ],
     exclude: [/\bbuckwheat\b/, /\bgluten[- ]?free\b/],
-  },
-  egg: {
+  }),
+  egg: aliasList({
     include: [/\beggs?\b/, /\balbumen\b/, /\bovalbumin\b/, /\bmayonnaise\b/],
     exclude: [/\begg ?plant\b/, /\begg[- ]?free\b/],
-  },
-  fish: {
+  }),
+  fish: aliasList({
     include: [
       /\bfish\b/,
       /\banchov(y|ies)\b/,
@@ -114,9 +112,10 @@ export const ALLERGEN_ALIASES: Record<
       /\bsurimi\b/,
     ],
     exclude: [/\bshell ?fish\b/],
-  },
-  shellfish: {
+  }),
+  shellfish: aliasList({
     include: [
+      /\bcrustaceans?\b/, // FSSAI's and Codex's own word on "Contains" lines
       /\bprawns?\b/,
       /\bshrimps?\b/,
       /\bcrabs?\b/,
@@ -128,17 +127,17 @@ export const ALLERGEN_ALIASES: Record<
       /\bclams?\b/,
       /\bsquid\b/,
     ],
-  },
-  soy: {
+  }),
+  soy: aliasList({
     include: [/\bsoy(a|abeans?|beans?)?\b/, /\btofu\b/, /\bedamame\b/],
-  },
-  sesame: {
+  }),
+  sesame: aliasList({
     include: [/\bsesame\b/, /\btil\b/, /\bgingelly\b/, /\btahini\b/],
-  },
-  mustard: {
+  }),
+  mustard: aliasList({
     include: [/\bmustard\b/, /\brai\b/, /\bsarson\b/],
-  },
-  sulphites: {
+  }),
+  sulphites: aliasList({
     include: [
       /\bsul(ph|f)ites?\b/,
       /\bmetabisul(ph|f)ites?\b/,
@@ -146,5 +145,5 @@ export const ALLERGEN_ALIASES: Record<
       /\b(ins|e) ?22[0-8]\b/, // INS 220–228
       /\(\s*22[0-8]\s*\)/, // "Preservative (223)"
     ],
-  },
+  }),
 };

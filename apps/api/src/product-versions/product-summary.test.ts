@@ -14,6 +14,7 @@ const aiVersion = {
   quantity: null,
   submitted_by: sender,
   confirmed_at: null as Date | null,
+  declared_veg: null as "veg" | "non_veg" | null,
 };
 
 describe("productSummary", () => {
@@ -68,5 +69,22 @@ describe("confirmsVersion", () => {
       confirmsVersion({ ...aiVersion, submitted_by: null }, someoneElse),
       false
     );
+  });
+});
+
+describe("productSummary veg badge", () => {
+  it("shows the pack's FSSAI symbol", () => {
+    assert.equal(
+      productSummary({ ...aiVersion, declared_veg: "veg" }).veg,
+      "veg"
+    );
+    assert.equal(
+      productSummary({ ...aiVersion, declared_veg: "non_veg" }).veg,
+      "non_veg"
+    );
+  });
+
+  it("is unknown without the symbol — never guessed", () => {
+    assert.equal(productSummary(aiVersion).veg, "unknown");
   });
 });

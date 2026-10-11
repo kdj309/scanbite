@@ -1,4 +1,4 @@
-import type { AllergenCode } from "@foodscanner/shared";
+import type { AllergenCode, DeclaredVeg } from "@foodscanner/shared";
 import type { DeclaredAllergens } from "../allergens/allergen-evidence";
 import { offExtractionConfidence } from "./off-confidence";
 import type { OffExtraction, OffProductPayload } from "./off-extraction";
@@ -28,7 +28,23 @@ export function mapOffProduct(product: OffProduct): OffExtraction | null {
     image_url: offImageUrl(product.image_front_url),
     quantity: offQuantity(product.quantity),
     declared_allergens: declaredAllergens(product),
+    declared_veg: declaredVeg(product),
   };
+}
+
+/**
+ * The pack's FSSAI symbol, as OFF contributors label it. OFF's own
+ * ingredients_analysis "vegetarian" is ignored on purpose: it counts egg as
+ * vegetarian, which FSSAI doesn't.
+ */
+export function declaredVeg(
+  product: Pick<OffProduct, "labels_tags">
+): DeclaredVeg | null {
+  const labels = product.labels_tags ?? [];
+  if (labels.includes("en:non-vegetarian")) {
+    return "non_veg";
+  }
+  return labels.includes("en:vegetarian") ? "veg" : null;
 }
 
 /** OFF's allergen taxonomy -> our codes; tags we don't check are ignored. */

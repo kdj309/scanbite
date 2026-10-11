@@ -21,6 +21,7 @@ const OFF_FIELDS = [
   "image_front_url",
   "allergens_tags",
   "traces_tags",
+  "labels_tags",
 ].join(",");
 
 /** Identifies the app to OFF per their API usage guidelines, not an auth credential. */

@@ -1,3 +1,4 @@
+import type { DeclaredVeg } from "@foodscanner/shared";
 import type { DeclaredAllergens } from "../allergens/allergen-evidence";
 
 /** Subset of ExtractionOutput that OFF can actually supply — no photo_consistency, that's vision-specific. */
@@ -13,6 +14,7 @@ export type OffExtraction = {
   image_url: string | null;
   quantity: string | null;
   declared_allergens: DeclaredAllergens | null;
+  declared_veg: DeclaredVeg | null;
 };
 
 /** Minimal shape we read off the OFF v2 product API response — only the fields we request. */
@@ -35,5 +37,6 @@ export type OffProductPayload = {
     image_front_url?: string;
     allergens_tags?: string[];
     traces_tags?: string[];
+    labels_tags?: string[];
   };
 };

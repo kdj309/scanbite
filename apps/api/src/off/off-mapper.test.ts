@@ -6,6 +6,7 @@ import {
   mapOffProduct,
   nutritionFromProduct,
   declaredAllergens,
+  declaredVeg,
   numberOrUndefined,
   offImageUrl,
   offQuantity,
@@ -238,5 +239,24 @@ describe("declaredAllergens", () => {
 
   it("is null — not 'declares none' — when OFF has no allergen data", () => {
     assert.equal(declaredAllergens({}), null);
+  });
+});
+
+describe("declaredVeg", () => {
+  it("reads the pack's FSSAI symbol from OFF labels", () => {
+    assert.equal(declaredVeg({ labels_tags: ["en:vegetarian"] }), "veg");
+    assert.equal(
+      declaredVeg({ labels_tags: ["en:non-vegetarian"] }),
+      "non_veg"
+    );
+    assert.equal(declaredVeg({ labels_tags: ["en:no-palm-oil"] }), null);
+    assert.equal(declaredVeg({}), null);
+  });
+
+  it("lets non-veg win if both labels were entered", () => {
+    assert.equal(
+      declaredVeg({ labels_tags: ["en:vegetarian", "en:non-vegetarian"] }),
+      "non_veg"
+    );
   });
 });

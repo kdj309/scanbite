@@ -1,7 +1,7 @@
 import "reflect-metadata";
 /**
  * Fills fields added to Open Food Facts imports after products were stored:
- * image_url, quantity and declared_allergens. Paced under OFF's read limit
+ * image_url, quantity, declared_allergens and declared_veg. Paced under OFF's read limit
  * (100 product reads/min), so ~1,900 barcodes take about 20 minutes. Only
  * empty fields are written; safe to stop and re-run.
  *
@@ -19,7 +19,12 @@ import {
 } from "../database/schemas/product-version.schema";
 import type { OffProductPayload } from "../off/off-extraction";
 import { OFF_USER_AGENT } from "../off/off-lookup.service";
-import { declaredAllergens, offImageUrl, offQuantity } from "../off/off-mapper";
+import {
+  declaredAllergens,
+  declaredVeg,
+  offImageUrl,
+  offQuantity,
+} from "../off/off-mapper";
 
 const MONGO_URI =
   process.env.MONGODB_URI ?? "mongodb://127.0.0.1:27018/foodscanner";
@@ -28,23 +33,52 @@ const LIMIT = Number(
   process.argv.find((arg) => arg.startsWith("--limit="))?.split("=")[1] ??
     Infinity
 );
-const REQUEST_GAP_MS = 650; // ~92 reads/min
-const FIELDS = "image_front_url,quantity,allergens_tags,traces_tags";
+// ~75 reads/min: under OFF's 100/min with room for the API's own lookups.
+const REQUEST_GAP_MS = 800;
+const FIELDS =
+  "image_front_url,quantity,allergens_tags,traces_tags,labels_tags";
 
 type OffProduct = NonNullable<OffProductPayload["product"]>;
 
-async function fetchFields(barcode: string): Promise<OffProduct | null> {
+type FetchResult =
+  | { kind: "found"; product: OffProduct }
+  | { kind: "not_on_off" }
+  | { kind: "failed"; reason: string };
+
+const RETRY_PAUSE_MS = 30_000;
+
+/** A failed request is never mistaken for "OFF has no data". */
+async function fetchFields(barcode: string): Promise<FetchResult> {
   const url = `https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(
     barcode
   )}.json?fields=${FIELDS}`;
-  const response = await fetchWithTimeout(url, {
-    headers: { "User-Agent": OFF_USER_AGENT },
-  });
-  if (!response.ok) {
-    return null;
+  try {
+    const response = await fetchWithTimeout(url, {
+      headers: { "User-Agent": OFF_USER_AGENT },
+    });
+    if (response.status === 404) {
+      return { kind: "not_on_off" };
+    }
+    if (!response.ok) {
+      return { kind: "failed", reason: `HTTP ${response.status}` };
+    }
+    const payload = (await response.json()) as OffProductPayload;
+    return payload.status === 1 && payload.product
+      ? { kind: "found", product: payload.product }
+      : { kind: "not_on_off" };
+  } catch (error) {
+    return { kind: "failed", reason: (error as Error).message };
   }
-  const payload = (await response.json()) as OffProductPayload;
-  return payload.status === 1 ? (payload.product ?? null) : null;
+}
+
+/** One retry after a pause (429 = OFF asking us to slow down, or a blip). */
+async function fetchWithRetry(barcode: string): Promise<FetchResult> {
+  const first = await fetchFields(barcode);
+  if (first.kind !== "failed") {
+    return first;
+  }
+  await sleep(RETRY_PAUSE_MS);
+  return fetchFields(barcode);
 }
 
 async function main() {
@@ -70,23 +104,37 @@ async function main() {
     return;
   }
 
-  const filled = { image_url: 0, quantity: 0, declared_allergens: 0 };
+  const filled = {
+    image_url: 0,
+    quantity: 0,
+    declared_allergens: 0,
+    declared_veg: 0,
+  };
+  const outcomes = { found: 0, not_on_off: 0, failed: 0 };
   for (const [index, barcode] of barcodes.entries()) {
-    const product = await fetchFields(barcode).catch(() => null);
-    const values = {
-      image_url: offImageUrl(product?.image_front_url),
-      quantity: offQuantity(product?.quantity),
-      declared_allergens: product ? declaredAllergens(product) : null,
-    };
-    for (const [field, value] of Object.entries(values)) {
-      if (value === null) {
-        continue;
+    const result = await fetchWithRetry(barcode);
+    outcomes[result.kind] += 1;
+    if (result.kind === "failed") {
+      console.warn(`${barcode}: failed (${result.reason}) — left for a re-run`);
+    }
+    if (result.kind === "found") {
+      const { product } = result;
+      const values = {
+        image_url: offImageUrl(product.image_front_url),
+        quantity: offQuantity(product.quantity),
+        declared_allergens: declaredAllergens(product),
+        declared_veg: declaredVeg(product),
+      };
+      for (const [field, value] of Object.entries(values)) {
+        if (value === null) {
+          continue;
+        }
+        const { modifiedCount } = await versions.updateMany(
+          { barcode, ...fromOff, [field]: null },
+          { $set: { [field]: value } }
+        );
+        filled[field as keyof typeof filled] += modifiedCount;
       }
-      const { modifiedCount } = await versions.updateMany(
-        { barcode, ...fromOff, [field]: null },
-        { $set: { [field]: value } }
-      );
-      filled[field as keyof typeof filled] += modifiedCount;
     }
     if ((index + 1) % 50 === 0) {
       console.log(`${index + 1}/${barcodes.length}…`);
@@ -94,7 +142,11 @@ async function main() {
     await sleep(REQUEST_GAP_MS);
   }
 
-  console.log(`Done (${barcodes.length} barcodes). Versions filled:`, filled);
+  console.log(`Done (${barcodes.length} barcodes):`, outcomes);
+  console.log("Versions filled:", filled);
+  if (outcomes.failed) {
+    console.log(`${outcomes.failed} failed — re-run to retry them.`);
+  }
   await mongoose.disconnect();
 }
 

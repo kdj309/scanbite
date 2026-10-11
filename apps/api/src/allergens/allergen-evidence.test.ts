@@ -32,6 +32,7 @@ describe("allergensIn", () => {
     ["Emulsifier (Soy Lecithin)", ["soy"]],
     ["Egg Powder", ["egg"]],
     ["Dried Prawns", ["shellfish"]],
+    ["Crustaceans", ["shellfish"]],
     ["Anchovy Extract", ["fish"]],
     ["Preservative (223)", ["sulphites"]],
     ["Preservative (INS 224)", ["sulphites"]],
@@ -82,6 +83,18 @@ describe("allergenEvidence", () => {
     assert.deepEqual(evidence.findings.gluten?.presence, "contains");
     assert.deepEqual(evidence.findings.tree_nuts?.presence, "may_contain");
     assert.deepEqual(evidence.findings.milk?.presence, "may_contain");
+  });
+
+  it("catches the common 'MAY CONTAINS' spelling too", () => {
+    // Real OFF entry for Indonesian instant noodles sold in India.
+    const evidence = allergenEvidence({
+      ingredients: ["Maida", "MAY CONTAINS CRUSTACEAN", "FISH", "EGG"],
+      declared: null,
+    });
+    assert.equal(evidence.findings.gluten?.presence, "contains");
+    assert.equal(evidence.findings.shellfish?.presence, "may_contain");
+    assert.equal(evidence.findings.fish?.presence, "may_contain");
+    assert.equal(evidence.findings.egg?.presence, "may_contain");
   });
 
   it("adds what the pack declares, and 'contains' beats 'may contain'", () => {

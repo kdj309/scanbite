@@ -103,6 +103,7 @@ describe("household verdicts (integration)", () => {
             image_url: "https://images.openfoodfacts.org/front.jpg",
             quantity: "100 g",
             declared_allergens: { contains: ["gluten"], may_contain: [] },
+            declared_veg: "veg",
           }
         : null,
   };
@@ -457,6 +458,7 @@ describe("household verdicts (integration)", () => {
         [result.product.name, result.product.source, result.product.quantity],
         ["OFF biscuits", "catalog", "100 g"]
       );
+      assert.equal(result.product.veg, "veg");
       const scan = await recorded(user, scan_id);
       assert.deepEqual([scan.found, scan.severity], [true, "red"]);
     });

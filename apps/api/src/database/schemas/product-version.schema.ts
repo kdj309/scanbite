@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { ALLERGEN_CODES } from "@foodscanner/shared";
+import { ALLERGEN_CODES, type DeclaredVeg } from "@foodscanner/shared";
 import { HydratedDocument, Types } from "mongoose";
 import type { DeclaredAllergens } from "../../allergens/allergen-evidence";
 
@@ -83,6 +83,10 @@ export class ProductVersion {
     default: null,
   })
   declared_allergens!: DeclaredAllergens | null;
+
+  /** The pack's FSSAI veg/non-veg symbol; null = not known. */
+  @Prop({ type: String, enum: ["veg", "non_veg"], default: null })
+  declared_veg!: DeclaredVeg | null;
 
   /** Pack size as printed, e.g. "1.25 l". */
   @Prop({ type: String, default: null })

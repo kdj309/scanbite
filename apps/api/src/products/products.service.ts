@@ -184,6 +184,7 @@ export class ProductsService {
       image_url: extracted.image_url,
       quantity: extracted.quantity,
       declared_allergens: extracted.declared_allergens,
+      declared_veg: extracted.declared_veg,
     });
 
     const result = await this.consensus.promoteIfEligible(pending.id as string);

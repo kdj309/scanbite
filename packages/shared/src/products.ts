@@ -44,6 +44,12 @@ export const verdictSchema = z.object({
 });
 export type Verdict = z.infer<typeof verdictSchema>;
 
+// The pack's FSSAI green dot / brown triangle (mandatory on Indian packs).
+// "unknown" when we don't know the symbol — never guessed from ingredients.
+export const vegStatusSchema = z.enum(["veg", "non_veg", "unknown"]);
+export type VegStatus = z.infer<typeof vegStatusSchema>;
+export type DeclaredVeg = Exclude<VegStatus, "unknown">;
+
 export const productSummarySchema = z.object({
   name: z.string(),
   brand: z.string(),
@@ -58,6 +64,7 @@ export const productSummarySchema = z.object({
   image_url: z.string().nullable(),
   // Pack size as printed, e.g. "1.25 l".
   quantity: z.string().nullable(),
+  veg: vegStatusSchema,
 });
 export type ProductSummary = z.infer<typeof productSummarySchema>;
 
