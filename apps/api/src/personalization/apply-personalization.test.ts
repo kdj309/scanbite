@@ -91,6 +91,28 @@ describe("applyPersonalization", () => {
     );
   });
 
+  it("is never Safe for them when their condition couldn't be checked", () => {
+    // No sugar value at all: we can't tell whether it's fine for diabetes.
+    const result = applyPersonalization({
+      base: { severity: "green", breakdown: [], unevaluated: [] },
+      facts: {},
+      memberConditions: ["diabetic"],
+      rules: [
+        {
+          id: "diabetic_sugar_escalation",
+          condition: "diabetic",
+          field: "sugar_per_100g",
+          operator: ">",
+          threshold: 15,
+          effect: "escalate one level",
+          message: "High sugar",
+        },
+      ],
+    });
+    assert.equal(result.severity, "yellow");
+    assert.equal(result.unchecked[0].text, "Couldn't check sugar for diabetes");
+  });
+
   describe("solid vs drink rules", () => {
     const rules = [
       {

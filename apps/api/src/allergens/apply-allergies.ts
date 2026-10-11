@@ -60,7 +60,7 @@ export function applyAllergies(
         uncheckedReason(
           `Couldn't check for ${name} — no ingredient list`,
           `allergen_${code}`,
-          `${ALLERGEN_LABELS[code]} not checked`
+          ALLERGEN_LABELS[code]
         )
       );
     }

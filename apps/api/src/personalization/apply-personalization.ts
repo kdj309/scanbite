@@ -68,14 +68,13 @@ export function applyPersonalization(input: {
 
     if (result === "inapplicable") {
       // This condition DOES apply to the member, and we genuinely could
-      // not check whether it should have escalated. Silence here is the
-      // riskier failure mode than for base scoring — this is specifically
-      // about a health condition the member actually has.
+      // not check whether it should have escalated — so for them it can't
+      // be Safe (Caution at best, like an allergy we couldn't check).
       unchecked.push(
         uncheckedReason(
           `Couldn't check ${factName(rule.field)} for ${conditionName(rule.condition)}`,
           rule.id,
-          rule.label
+          checkTopic(rule.field)
         )
       );
       continue;
@@ -106,6 +105,7 @@ export function applyPersonalization(input: {
     severity: worstSeverity([
       input.base.severity,
       ...flags.map((flag) => flag.severity),
+      ...(unchecked.length ? (["yellow"] as const) : []),
     ]),
     flags,
     unchecked,

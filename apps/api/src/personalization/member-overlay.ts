@@ -49,16 +49,21 @@ export function checkTopic(field: string, label?: string): string {
 }
 
 /** Chip text when a rule has no `label` of its own. */
-export const FALLBACK_LABEL = { flag: "Flagged", unchecked: "Couldn't check" };
+export const FALLBACK_LABEL = { flag: "Flagged" };
 
+/**
+ * A check we couldn't do. Its chip names the topic — "Sugar not checked" —
+ * never the problem it would have flagged ("Too sweet…"), which we couldn't
+ * confirm.
+ */
 export function uncheckedReason(
   text: string,
   ruleId: string,
-  label: string | undefined
+  topic: string
 ): UncheckedReason {
   return {
     kind: "unchecked",
-    label: label?.trim() || FALLBACK_LABEL.unchecked,
+    label: `${topic} not checked`,
     text,
     rule_id: ruleId,
   };

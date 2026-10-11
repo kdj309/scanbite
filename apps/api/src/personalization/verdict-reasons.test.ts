@@ -109,7 +109,7 @@ describe("buildVerdictReasons", () => {
     );
   });
 
-  it("shows general gaps on a green verdict and falls back to generic labels", () => {
+  it("shows general gaps on a green verdict, named by topic", () => {
     const reasons = buildVerdictReasons({
       base: { ...base, severity: "green", breakdown: [] },
       overlay: {
@@ -123,7 +123,7 @@ describe("buildVerdictReasons", () => {
     });
     assert.deepEqual(
       reasons.map((r) => [r.kind, r.label, r.text]),
-      [["unchecked", "Couldn't check", "Couldn't check salt"]]
+      [["unchecked", "Salt not checked", "Couldn't check salt"]]
     );
   });
 });

@@ -5,6 +5,7 @@ import {
 } from "../scoring/evaluate-rules";
 import {
   FALLBACK_LABEL,
+  checkTopic,
   factName,
   uncheckedReason,
   type MemberOverlay,
@@ -46,7 +47,7 @@ export function buildVerdictReasons(input: {
           uncheckedReason(
             `Couldn't check ${factName(gap.field)}`,
             gap.rule_id,
-            ruleLabels[gap.rule_id]
+            checkTopic(gap.field, ruleLabels[gap.rule_id])
           )
         )
       : [];
