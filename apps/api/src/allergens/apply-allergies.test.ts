@@ -43,7 +43,14 @@ describe("applyAllergies", () => {
       ["sesame"],
       evidence({ milk: { presence: "contains", ingredient: "Milk" } })
     );
-    assert.deepEqual(result, { severity: "green", flags: [], unchecked: [] });
+    assert.deepEqual(result, {
+      severity: "green",
+      flags: [],
+      unchecked: [],
+      // Their sesame allergy was checked against the ingredients, and passed.
+      checked: [{ topic: "Sesame", for: "allergy" }],
+      flaggedTopics: [],
+    });
   });
 
   it("is never Safe when there was no ingredient list to check", () => {

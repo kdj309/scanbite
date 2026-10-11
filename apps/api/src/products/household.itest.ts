@@ -284,6 +284,51 @@ describe("household verdicts (integration)", () => {
     });
   });
 
+  describe("what we checked", () => {
+    const labels = (result: ProductFoundResponse) =>
+      result.members[0].verdict.checked.map((check) => check.label);
+
+    it("ticks what was checked and passed, through a real lookup", async () => {
+      const { user } = await newHousehold();
+      const wheat = await mongoose
+        .model(Ingredient.name, IngredientSchema)
+        .create({
+          canonical_name: `wheat flour ${seq}`,
+          category: "uncategorized",
+        });
+      const barcode = await liveProduct({
+        sugar_per_100g: 1,
+        sodium_per_100g: 10,
+      });
+      await versions.updateOne(
+        { barcode },
+        {
+          ingredients: [
+            { raw: "Wheat flour", canonical_id: wheat._id, status: "resolved" },
+          ],
+        }
+      );
+      const result = (await products.lookup(
+        barcode,
+        user
+      )) as ProductFoundResponse;
+      assert.deepEqual(labels(result), ["Sugar", "Salt", "Palm oil"]);
+    });
+
+    it("doesn't tick palm oil when there's no ingredient list at all", async () => {
+      const { user } = await newHousehold();
+      const barcode = await liveProduct({
+        sugar_per_100g: 1,
+        sodium_per_100g: 10,
+      });
+      const result = (await products.lookup(
+        barcode,
+        user
+      )) as ProductFoundResponse;
+      assert.deepEqual(labels(result), ["Sugar", "Salt"]);
+    });
+  });
+
   describe("allergies", () => {
     it("flags an allergen found in the ingredients, for that member only", async () => {
       const { user, ids } = await newHousehold();

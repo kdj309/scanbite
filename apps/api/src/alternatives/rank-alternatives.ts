@@ -8,24 +8,26 @@ import {
   type HouseholdMemberInput,
   type ProductContext,
 } from "../personalization/household-verdict";
-import { factName } from "../personalization/member-overlay";
+import { NUTRITION_FACTS, factName } from "../personalization/member-overlay";
+
+/** Facts with a number we can compare and meter (sugar, salt). */
+function meterUnit(field: string): "g" | "mg" | undefined {
+  return NUTRITION_FACTS[field]?.unit;
+}
 
 type Member = Pick<HouseholdMemberInput, "conditions" | "allergies">;
 
 /** What each scoring/condition rule checks, from the rule definitions. */
 export type RuleFacts = Record<string, { field: string; threshold?: number }>;
 
-/** Facts with a number we can compare and meter, and their unit. */
-const NUMERIC_FACTS: Record<string, "g" | "mg"> = {
-  sugar_per_100g: "g",
-  sugar_per_100ml: "g",
-  sodium_per_100g: "mg",
-  sodium_per_100ml: "mg",
-};
-
 export type RankedAlternative<T> = { item: T; improvements: Improvement[] };
 
-type NumericProblem = { field: string; original: number; limit: number };
+type NumericProblem = {
+  field: string;
+  unit: "g" | "mg";
+  original: number;
+  limit: number;
+};
 
 /** One number that flagged the original, measured on a candidate. */
 type Meter = NumericProblem & { value: number; drop: number };
@@ -97,7 +99,7 @@ function lessImprovement(meter: Meter): Improvement {
     value: meter.value,
     original: meter.original,
     limit: meter.limit,
-    unit: NUMERIC_FACTS[meter.field],
+    unit: meter.unit,
   };
 }
 
@@ -125,16 +127,13 @@ function numericProblems(
 ) {
   const byField = new Map<
     string,
-    { field: string; original: number; limit?: number }
+    Omit<NumericProblem, "limit"> & { limit?: number }
   >();
   for (const ruleId of problems.keys()) {
     const rule = ruleFacts[ruleId];
     const original = rule && facts[rule.field];
-    if (
-      !rule ||
-      !(rule.field in NUMERIC_FACTS) ||
-      typeof original !== "number"
-    ) {
+    const unit = rule && meterUnit(rule.field);
+    if (!rule || !unit || typeof original !== "number") {
       continue;
     }
     const current = byField.get(rule.field);
@@ -143,6 +142,7 @@ function numericProblems(
     );
     byField.set(rule.field, {
       field: rule.field,
+      unit,
       original,
       limit: limits.length ? Math.min(...limits) : undefined,
     });
@@ -163,7 +163,7 @@ function otherImprovements(
   const labels = new Set<string>();
   for (const [ruleId, label] of problems) {
     const field = ruleFacts[ruleId]?.field;
-    if (field && field in NUMERIC_FACTS) {
+    if (field && meterUnit(field)) {
       continue;
     }
     const allergen = allergenCodeSchema.safeParse(

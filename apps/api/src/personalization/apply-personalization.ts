@@ -18,10 +18,12 @@ import {
 } from "../scoring/evaluate-rules";
 import {
   FALLBACK_LABEL,
+  checkTopic,
   conditionName,
   factName,
   uncheckedReason,
   type MemberOverlay,
+  type TopicCheck,
 } from "./member-overlay";
 
 export type PersonalizationRuleInput = {
@@ -45,6 +47,8 @@ export function applyPersonalization(input: {
 }): MemberOverlay {
   const flags: FlagReason[] = [];
   const unchecked: UncheckedReason[] = [];
+  const checked: TopicCheck[] = [];
+  const flaggedTopics: string[] = [];
   const productForm = readFact(input.facts, "product_form");
 
   for (const rule of input.rules) {
@@ -78,8 +82,13 @@ export function applyPersonalization(input: {
     }
 
     if (result !== "matched") {
+      checked.push({
+        topic: checkTopic(rule.field),
+        for: conditionName(rule.condition),
+      });
       continue;
     }
+    flaggedTopics.push(checkTopic(rule.field));
 
     // "escalate one level" is the only effect. The reason carries the level
     // it escalated to, so it can be the main reason for the verdict it
@@ -100,5 +109,7 @@ export function applyPersonalization(input: {
     ]),
     flags,
     unchecked,
+    checked,
+    flaggedTopics,
   };
 }

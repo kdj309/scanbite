@@ -14,6 +14,7 @@ export function productContext(
     base: objective,
     facts: objective.facts,
     ruleLabels: objective.rule_labels,
+    basePassed: objective.passed_rules,
     rules,
     allergens: allergenEvidence({
       ingredients: version.ingredients.map((ingredient) => ingredient.raw),

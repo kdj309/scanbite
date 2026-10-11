@@ -22,7 +22,12 @@ import {
   MISSING_ACTIVE_RULE_SET,
   requireActiveRuleSet,
 } from "./active-rule-set";
-import { evaluateRules, type EvaluationResult } from "./evaluate-rules";
+import {
+  evaluateRules,
+  passedRules,
+  type EvaluationResult,
+  type PassedRule,
+} from "./evaluate-rules";
 import {
   canonicalIdsFromVersion,
   confidenceForVersion,
@@ -35,6 +40,8 @@ import {
  *  a cache flush. */
 export type ObjectiveVerdict = CachedObjectiveVerdict & {
   rule_labels: Record<string, string>;
+  /** General rules that applied and passed ("What we checked"). */
+  passed_rules: PassedRule[];
 };
 
 @Injectable()
@@ -162,9 +169,19 @@ export class ScoringService {
       versionId,
       ruleSet.version
     );
-    const rule_labels = ruleLabels(ruleSet.rules);
+    const live = (verdict: CachedObjectiveVerdict): ObjectiveVerdict => ({
+      ...verdict,
+      rule_labels: ruleLabels(ruleSet.rules),
+      passed_rules: passedRules(ruleSet.rules, verdict, {
+        productForm: verdict.facts.product_form,
+        // No list at all isn't "all recognised": nothing was read.
+        allIngredientsRecognised:
+          version.ingredients.length > 0 &&
+          verdict.unresolved_ingredients.length === 0,
+      }),
+    });
     if (cached) {
-      return { ...cached, rule_labels };
+      return live(cached);
     }
 
     const scored = await this.ensureScoringRecord(version, ruleSet);
@@ -178,7 +195,7 @@ export class ScoringService {
       rule_set_version: ruleSet.version,
     };
     await this.cache.set(version.barcode, versionId, ruleSet.version, fresh);
-    return { ...fresh, rule_labels };
+    return live(fresh);
   }
 
   /** Scoring with no rules would make everything look green — refuse. */

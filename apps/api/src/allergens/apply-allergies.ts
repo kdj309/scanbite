@@ -7,6 +7,7 @@ import {
 import {
   uncheckedReason,
   type MemberOverlay,
+  type TopicCheck,
 } from "../personalization/member-overlay";
 import type { AllergenEvidence } from "./allergen-evidence";
 
@@ -24,10 +25,18 @@ export function applyAllergies(
 ): MemberOverlay {
   const flags: FlagReason[] = [];
   const unchecked: UncheckedReason[] = [];
+  const checked: TopicCheck[] = [];
+  const flaggedTopics: string[] = [];
 
   for (const code of allergies) {
     const name = ALLERGEN_LABELS[code].toLowerCase();
+    const topic = ALLERGEN_LABELS[code];
     const finding = evidence.findings[code];
+    if (finding) {
+      flaggedTopics.push(topic);
+    } else if (evidence.hasIngredientList) {
+      checked.push({ topic, for: "allergy" });
+    }
     if (finding?.presence === "contains") {
       flags.push({
         kind: "flag",
@@ -62,5 +71,7 @@ export function applyAllergies(
     severity: flags.length ? "red" : unchecked.length ? "yellow" : "green",
     flags,
     unchecked,
+    checked,
+    flaggedTopics,
   };
 }

@@ -43,7 +43,10 @@ const verdictFor = (
   members: HouseholdMemberInput[],
   allergens: AllergenEvidence = noAllergens
 ) =>
-  householdVerdict({ base, facts, ruleLabels: {}, rules, allergens }, members);
+  householdVerdict(
+    { base, facts, ruleLabels: {}, basePassed: [], rules, allergens },
+    members
+  );
 
 const member = (
   id: string,

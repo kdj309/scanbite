@@ -15,7 +15,7 @@ const member = (
   member_id: "6ab7d04ffb5027914b128aed",
   name,
   has_health_profile: hasProfile,
-  verdict: { severity, reasons: [] },
+  verdict: { severity, reasons: [], checked: [] },
 });
 
 const ready = (members: MemberVerdict[], name = "Masala chips") =>

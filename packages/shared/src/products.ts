@@ -38,9 +38,21 @@ export const verdictReasonSchema = z.discriminatedUnion("kind", [
 ]);
 export type VerdictReason = z.infer<typeof verdictReasonSchema>;
 
+// "What we checked": topics actually checked and passed — never one that was
+// flagged, and never one we couldn't check (that's an "unchecked" reason).
+// `for` says what else it was checked against — their condition or allergy —
+// and is empty for a general check: { label: "Salt", for: [] },
+// { label: "Sugar", for: ["diabetes"] }, { label: "Peanuts", for: ["allergy"] }.
+export const checkSchema = z.object({
+  label: z.string(),
+  for: z.array(z.string()),
+});
+export type Check = z.infer<typeof checkSchema>;
+
 export const verdictSchema = z.object({
   severity: severitySchema,
   reasons: z.array(verdictReasonSchema),
+  checked: z.array(checkSchema),
 });
 export type Verdict = z.infer<typeof verdictSchema>;
 

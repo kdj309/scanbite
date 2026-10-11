@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import type { AllergenCode, HealthConditionCode } from "@foodscanner/shared";
 import { allergenEvidence } from "../allergens/allergen-evidence";
 import type { ProductContext } from "../personalization/household-verdict";
-import { evaluateRules } from "../scoring/evaluate-rules";
+import { evaluateRules, passedRules } from "../scoring/evaluate-rules";
 import { HLD_EXAMPLE_RULES } from "../scoring/hld-example-rules";
 import { HLD_PERSONALIZATION_SEEDS } from "../workers/seed/hld-seed";
 import { rankAlternatives, type RuleFacts } from "./rank-alternatives";
@@ -25,10 +25,15 @@ const context = (
   ingredients: string[] = ["Something"]
 ): ProductContext => {
   const withForm = { product_form: "solid", ...facts };
+  const base = evaluateRules(withForm, HLD_EXAMPLE_RULES);
   return {
-    base: evaluateRules(withForm, HLD_EXAMPLE_RULES),
+    base,
     facts: withForm,
     ruleLabels,
+    basePassed: passedRules(HLD_EXAMPLE_RULES, base, {
+      productForm: withForm.product_form,
+      allIngredientsRecognised: true,
+    }),
     rules: HLD_PERSONALIZATION_SEEDS,
     allergens: allergenEvidence({ ingredients, declared: null }),
   };

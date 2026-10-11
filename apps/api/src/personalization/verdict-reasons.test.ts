@@ -35,6 +35,8 @@ const noOverlay: MemberOverlay = {
   severity: "red",
   flags: [],
   unchecked: [],
+  checked: [],
+  flaggedTopics: [],
 };
 
 const labels = { palm_oil: "Palm oil", sugar_uk_fop: "Very high sugar" };
@@ -70,6 +72,8 @@ describe("buildVerdictReasons", () => {
           },
         ],
         unchecked: [],
+        checked: [],
+        flaggedTopics: [],
       },
       ruleLabels: labels,
     });
@@ -88,7 +92,13 @@ describe("buildVerdictReasons", () => {
     };
     const reasons = buildVerdictReasons({
       base,
-      overlay: { severity: "red", flags: [], unchecked: [gap] },
+      overlay: {
+        severity: "red",
+        flags: [],
+        unchecked: [gap],
+        checked: [],
+        flaggedTopics: [],
+      },
       ruleLabels: labels,
     });
     assert.deepEqual(reasons.at(-1), gap);
@@ -102,7 +112,13 @@ describe("buildVerdictReasons", () => {
   it("shows general gaps on a green verdict and falls back to generic labels", () => {
     const reasons = buildVerdictReasons({
       base: { ...base, severity: "green", breakdown: [] },
-      overlay: { severity: "green", flags: [], unchecked: [] },
+      overlay: {
+        severity: "green",
+        flags: [],
+        unchecked: [],
+        checked: [],
+        flaggedTopics: [],
+      },
       ruleLabels: {},
     });
     assert.deepEqual(

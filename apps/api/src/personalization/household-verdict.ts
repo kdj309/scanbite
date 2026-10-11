@@ -10,6 +10,7 @@ import { applyAllergies } from "../allergens/apply-allergies";
 import {
   SEVERITY_RANK,
   type EvaluationResult,
+  type PassedRule,
 } from "../scoring/evaluate-rules";
 import {
   applyPersonalization,
@@ -17,6 +18,7 @@ import {
 } from "./apply-personalization";
 import { combineOverlays } from "./member-overlay";
 import { buildVerdictReasons } from "./verdict-reasons";
+import { whatWeChecked } from "./what-we-checked";
 
 export type HouseholdMemberInput = {
   id: string;
@@ -30,6 +32,8 @@ export type ProductContext = {
   base: EvaluationResult;
   facts: Record<string, unknown>;
   ruleLabels: Record<string, string>;
+  /** General rules that applied and passed. */
+  basePassed: PassedRule[];
   rules: PersonalizationRuleInput[];
   allergens: AllergenEvidence;
 };
@@ -54,6 +58,12 @@ export function verdictFor(
       base: product.base,
       overlay,
       ruleLabels: product.ruleLabels,
+    }),
+    checked: whatWeChecked({
+      basePassed: product.basePassed,
+      base: product.base,
+      ruleLabels: product.ruleLabels,
+      overlay,
     }),
   };
 }
