@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import {
   HEALTH_CONDITION_CODES,
   HEALTH_CONDITION_LABELS,
+  HEALTH_CONDITION_SHORT_LABELS,
   createHouseholdMemberRequestSchema,
   healthConditionCodeSchema,
   healthConditionListSchema,
@@ -31,12 +32,24 @@ describe("health condition codes", () => {
     );
   });
 
-  it("exposes a UI label for every code", () => {
+  it("exposes a full name and an everyday name for every code", () => {
     assert.equal(HEALTH_CONDITION_LABELS.cardiovascular, "Heart disease");
     assert.equal(HEALTH_CONDITION_LABELS.obesity, "Obesity");
+    assert.deepEqual(HEALTH_CONDITION_SHORT_LABELS, {
+      diabetic: "Sugar",
+      hypertensive: "BP",
+      obesity: "Weight",
+      cardiovascular: "Heart",
+      dyslipidemia: "Cholesterol",
+      chronic_kidney_disease: "Kidney",
+      fatty_liver: "Fatty liver",
+      gout: "Gout",
+      pcos: "PCOS",
+      hypothyroidism: "Thyroid",
+    });
     for (const code of HEALTH_CONDITION_CODES) {
-      assert.equal(typeof HEALTH_CONDITION_LABELS[code], "string");
       assert.ok(HEALTH_CONDITION_LABELS[code].length > 0);
+      assert.ok(HEALTH_CONDITION_SHORT_LABELS[code].length > 0);
     }
   });
 
