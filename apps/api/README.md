@@ -117,13 +117,14 @@ verdict among members with conditions plus whose it is. An unknown barcode
 returns `{"found": false}` rather than a 404 — that's the documented shape,
 not a bug.
 
-Submit a label photo for a new/changed product (returns 202, processed async
-by the worker):
+Submit label photos for a new/changed product — up to 5 (3 photos, or the 5
+frames the app picks from a short label video), each as a `photos` field
+(returns 202, processed async by the worker):
 
 ```bash
 curl -X POST http://localhost:3000/v1/products/1234567890123/submissions \
   -H "Authorization: Bearer $TOKEN" \
-  -F photo=@/path/to/label.jpg
+  -F photos=@/path/to/ingredients.jpg -F photos=@/path/to/nutrition.jpg
 
 curl http://localhost:3000/v1/submissions/<id> \
   -H "Authorization: Bearer $TOKEN"

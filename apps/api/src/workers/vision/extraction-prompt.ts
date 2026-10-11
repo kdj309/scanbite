@@ -1,10 +1,12 @@
+import { MAX_SUBMISSION_PHOTOS } from "@foodscanner/shared";
+
 /**
  * Shared across every real VisionPort adapter so Gemini and Claude are
  * asked the exact same question — matches docs/research/vision-eval's
  * validated prompt shape, extended for unlabeled multi-photo capture and
  * the photo_consistency field (neither existed when the eval ran).
  */
-export const EXTRACTION_PROMPT = `You are extracting structured nutrition/ingredient data for a single packaged food product from up to 3 photos taken by a phone camera. The photos are NOT labeled by content — together they may show the front of the pack, the ingredients list, and/or the nutrition facts table, in any order, and some may be missing.
+export const EXTRACTION_PROMPT = `You are extracting structured nutrition/ingredient data for a single packaged food product from up to ${MAX_SUBMISSION_PHOTOS} photos taken by a phone camera. The photos are NOT labeled by content — together they may show the front of the pack, the ingredients list, and/or the nutrition facts table, in any order, and some may be missing. They may also be frames from one short video of the pack, so several can show the same label from slightly different angles — that is still one product.
 
 Steps:
 1. Look at every photo and identify what each one actually shows.

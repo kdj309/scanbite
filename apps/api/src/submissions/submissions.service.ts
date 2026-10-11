@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
 } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
@@ -20,6 +21,8 @@ import { JobQueuesService } from "../workers/job-queues.service";
 
 @Injectable()
 export class SubmissionsService {
+  private readonly logger = new Logger(SubmissionsService.name);
+
   constructor(
     @InjectModel(Submission.name)
     private readonly submissions: Model<SubmissionDocument>,
@@ -41,7 +44,7 @@ export class SubmissionsService {
     const photoHashes = files.map((file) =>
       createHash("sha256").update(file.buffer).digest("hex")
     );
-    // Order-independent so the same 3 photos uploaded in a different order still dedup.
+    // Order-independent so the same photos uploaded in a different order still dedup.
     const setHash = createHash("sha256")
       .update([...photoHashes].sort().join(":"))
       .digest("hex");
@@ -63,8 +66,9 @@ export class SubmissionsService {
       )
     );
 
+    let created: SubmissionDocument;
     try {
-      const created = await this.submissions.create({
+      created = await this.submissions.create({
         barcode,
         photo_hash: setHash,
         photo_keys: photoKeys,
@@ -72,8 +76,6 @@ export class SubmissionsService {
         status: "processing",
         product_version_id: null,
       });
-      await this.queues.enqueueExtraction(created.id as string);
-      return { submission_id: created.id as string };
     } catch (error) {
       if (isDuplicateKeyError(error)) {
         const dup = await this.submissions
@@ -85,6 +87,29 @@ export class SubmissionsService {
       }
       throw error;
     }
+
+    try {
+      await this.queues.enqueueExtraction(created.id as string);
+    } catch (error) {
+      // Without its job a submission would stay "processing" forever, and
+      // the duplicate check above would hand it back on every retry. Undo
+      // it so the user's retry starts fresh. (The unique barcode+photo-set
+      // index means these photos belong to this submission alone.)
+      await this.discard(created).catch((cleanupError: Error) =>
+        this.logger.error(
+          `could not undo submission ${created.id as string}: ${cleanupError.message}`
+        )
+      );
+      throw error;
+    }
+    return { submission_id: created.id as string };
+  }
+
+  private async discard(submission: SubmissionDocument): Promise<void> {
+    await this.submissions.deleteOne({ _id: submission._id }).exec();
+    await Promise.all(
+      submission.photo_keys.map((key) => this.storage.deleteLabelPhoto(key))
+    );
   }
 
   async getStatus(

@@ -24,5 +24,8 @@ export function verdictCacheKeyPattern(
 
 export const API_VERSION_PREFIX = "/v1";
 
-/** Max photos accepted per submission (vision-LLM fallback path only). */
-export const MAX_SUBMISSION_PHOTOS = 3;
+/**
+ * Max photos per submission (vision-LLM fallback path only): up to 3 in
+ * photo mode, or the 5 clear frames the app picks from a short label video.
+ */
+export const MAX_SUBMISSION_PHOTOS = 5;

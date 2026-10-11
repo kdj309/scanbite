@@ -25,6 +25,14 @@ import {
   type RescoreJobData,
 } from "./queue-names";
 
+/**
+ * A deterministic job id, so the same work can't be queued twice at once.
+ * BullMQ rejects ":" in custom ids (it's Redis's key separator) — hence "-".
+ */
+export function dedupeJobId(...parts: string[]): string {
+  return parts.join("-");
+}
+
 const EXTRACT_JOB_OPTS = {
   attempts: 5,
   backoff: { type: "exponential" as const, delay: 2000 },
@@ -70,7 +78,7 @@ export class JobQueuesService {
   }
 
   async enqueueExtraction(submissionId: string): Promise<void> {
-    const jobId = `${JOB_EXTRACT}:${submissionId}`;
+    const jobId = dedupeJobId(JOB_EXTRACT, submissionId);
     if (!(await this.clearFinishedJob(this.extraction, jobId))) {
       return;
     }
@@ -82,7 +90,11 @@ export class JobQueuesService {
   }
 
   async enqueuePromote(data: PromoteJobData): Promise<void> {
-    const jobId = `${JOB_PROMOTE}:${data.submissionId}:${data.productVersionId}`;
+    const jobId = dedupeJobId(
+      JOB_PROMOTE,
+      data.submissionId,
+      data.productVersionId
+    );
     if (!(await this.clearFinishedJob(this.promote, jobId))) {
       return;
     }

@@ -387,7 +387,7 @@
       "name": "Submissions",
       "item": [
         {
-          "name": "Submit label photo",
+          "name": "Submit label photos",
           "event": [
             {
               "listen": "test",
@@ -407,10 +407,10 @@
               "mode": "formdata",
               "formdata": [
                 {
-                  "key": "photo",
+                  "key": "photos",
                   "type": "file",
                   "src": [],
-                  "description": "Max 10MB. VISION_PROVIDER=stub means the actual photo content doesn't affect extraction yet."
+                  "description": "Repeat this field for each photo — up to 5 (3 photos or 5 video frames), max 10MB each. VISION_PROVIDER=stub means photo content doesn't affect extraction yet."
                 }
               ]
             },
