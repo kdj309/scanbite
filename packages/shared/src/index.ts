@@ -1,5 +1,6 @@
 export * from "./admin";
 export * from "./allergens";
+export * from "./alternatives";
 export * from "./auth";
 export * from "./conditions";
 export * from "./constants";

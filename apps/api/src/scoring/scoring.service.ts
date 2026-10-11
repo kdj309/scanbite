@@ -150,9 +150,11 @@ export class ScoringService {
    * of each reimplementing it.
    */
   async getCachedObjectiveVerdict(
-    version: ProductVersionDocument
+    version: ProductVersionDocument,
+    /** Pass when scoring many products in one request (load it once). */
+    preloadedRuleSet?: RuleSetDocument
   ): Promise<ObjectiveVerdict> {
-    const ruleSet = await this.activeRuleSet();
+    const ruleSet = preloadedRuleSet ?? (await this.activeRuleSet());
 
     const versionId = version.id as string;
     const cached = await this.cache.get(
@@ -180,7 +182,7 @@ export class ScoringService {
   }
 
   /** Scoring with no rules would make everything look green — refuse. */
-  private async activeRuleSet(): Promise<RuleSetDocument> {
+  async activeRuleSet(): Promise<RuleSetDocument> {
     try {
       return requireActiveRuleSet(await this.findActiveRuleSet());
     } catch {

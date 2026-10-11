@@ -134,6 +134,15 @@ Status goes `processing` → `ready` (or `needs_review` / `failed`) once the
 worker picks it up — the worker process has to actually be running for this
 to move.
 
+Better options for a product the household shouldn't have — same category
+and form, Safe for everyone it isn't Safe for, best first, with chips like
+"70% less sugar" and buy links:
+
+```bash
+curl http://localhost:3000/v1/products/8901063029255/alternatives \
+  -H "Authorization: Bearer $TOKEN"
+```
+
 Scan a product the way the app's scanner does — one call that looks it up,
 records it for the household (add `"member_id"` for one person) and returns
 `{scan_id, result}` with the same verdict body as the lookup above — then

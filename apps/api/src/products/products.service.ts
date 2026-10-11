@@ -120,10 +120,17 @@ export class ProductsService {
     const hasMore = candidates.length > limit;
     const page = hasMore ? candidates.slice(0, limit) : candidates;
 
-    const rules = await this.personalization.activeRules();
+    // Loaded once for the page, not once per product.
+    const [ruleSet, rules] = await Promise.all([
+      this.scoring.activeRuleSet(),
+      this.personalization.activeRules(),
+    ]);
     const items: CatalogItem[] = [];
     for (const version of page) {
-      const cached = await this.scoring.getCachedObjectiveVerdict(version);
+      const cached = await this.scoring.getCachedObjectiveVerdict(
+        version,
+        ruleSet
+      );
       const verdict = verdictFor(
         productContext(version, cached, rules),
         member

@@ -380,6 +380,20 @@
             "description": "Read-only view (Explore, tapping a recent scan) — does not record a scan; the scanner uses POST /v1/scans. Returns a verdict for every household member plus `overall`. 8900000000000 is the dev fixture barcode. Unknown barcodes return {\"found\": false}, not a 404; a barcode that isn't 8–14 digits is a 400."
           },
           "response": []
+        },
+        {
+          "name": "Better options",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/products/{{barcode}}/alternatives",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "products", "{{barcode}}", "alternatives"]
+            },
+            "description": "Up to 5 same-category, same-form products that are Safe for everyone this product isn't Safe for (strict), best first by the biggest drop in what flagged it. Each has improvement chips (\"70% less sugar\" with meter numbers, \"No palm oil\") and buy links. Empty when there's nothing better yet or the category is unknown; 404 for an unknown barcode."
+          },
+          "response": []
         }
       ]
     },

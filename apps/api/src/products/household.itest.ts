@@ -42,6 +42,7 @@ import {
 } from "../database/schemas/scoring-record.schema";
 import { User, UserSchema } from "../database/schemas/user.schema";
 import { HouseholdService } from "../household/household.service";
+import { AlternativesService } from "../alternatives/alternatives.service";
 import { ConsensusService } from "../consensus/consensus.service";
 import { Product, ProductSchema } from "../database/schemas/product.schema";
 import { Scan, ScanSchema } from "../database/schemas/scan.schema";
@@ -134,6 +135,13 @@ describe("household verdicts (integration)", () => {
       versions as never,
       productModel as never
     ),
+    summaries
+  );
+  const betterOptions = new AlternativesService(
+    versions as never,
+    scoring,
+    personalization,
+    household,
     summaries
   );
   const scanModel = mongoose.model(Scan.name, ScanSchema);
@@ -302,6 +310,92 @@ describe("household verdicts (integration)", () => {
       assert.equal(result.members[1].verdict.severity, "green");
       // An allergy alone makes You the one the screen opens on.
       assert.deepEqual(result.overall, { severity: "red", member_id: ids.you });
+    });
+  });
+
+  describe("better options", () => {
+    it("finds same-category products Safe for everyone it isn't Safe for", async () => {
+      const { user, ids } = await newHousehold();
+      const category = newCategory();
+      const sweet = await liveProduct(
+        { sugar_per_100g: 30 },
+        { category, name: "Sweet" }
+      );
+      await liveProduct(
+        { sugar_per_100g: 1 },
+        { category, name: "Barely sweet" }
+      );
+      await liveProduct(
+        { sugar_per_100g: 10 },
+        { category, name: "Still sweet" }
+      );
+      await liveProduct({ sugar_per_100ml: 0 }, { category, name: "A drink" });
+      await liveProduct(
+        { sugar_per_100g: 0 },
+        { category: newCategory(), name: "Elsewhere" }
+      );
+      // Can't show or link to a product we can't name.
+      await liveProduct({ sugar_per_100g: 0 }, { category, name: "Unknown" });
+
+      const result = await betterOptions.forProduct(sweet, user);
+      assert.equal(result.instead_of.name, "Sweet");
+      // Very high sugar: not Safe for Amma (BP) or Papa (diabetes).
+      assert.deepEqual(
+        [...result.for_member_ids].sort(),
+        [ids.amma, ids.papa].sort()
+      );
+      assert.deepEqual(
+        result.alternatives.map((a) => [
+          a.product.name,
+          a.improvements[0].label,
+        ]),
+        [["Barely sweet", "97% less sugar"]]
+      );
+      assert.equal(result.alternatives[0].product.buy_links.length, 2);
+    });
+
+    it("uses the general verdict when nobody has a profile yet", async () => {
+      // A brand-new household: only "You", no conditions or allergies.
+      const userId = new Types.ObjectId();
+      await members.create({
+        owner_user_id: userId,
+        name: "You",
+        relationship: "self",
+        conditions: [],
+      });
+      const user = { userId: userId.toHexString() } as RequestUser;
+      const category = newCategory();
+      const sweet = await liveProduct({ sugar_per_100g: 30 }, { category });
+      await liveProduct({ sugar_per_100g: 1 }, { category, name: "Plain" });
+
+      const result = await betterOptions.forProduct(sweet, user);
+      assert.deepEqual(result.for_member_ids, []);
+      assert.deepEqual(
+        result.alternatives.map((a) => a.product.name),
+        ["Plain"]
+      );
+    });
+
+    it("has nothing to offer when the product is already Safe for them", async () => {
+      const { user } = await newHousehold();
+      const category = newCategory();
+      const plain = await liveProduct({ sugar_per_100g: 1 }, { category });
+      await liveProduct({ sugar_per_100g: 0 }, { category });
+      const result = await betterOptions.forProduct(plain, user);
+      assert.deepEqual([result.for_member_ids, result.alternatives], [[], []]);
+    });
+
+    it("has nothing to offer when the category is unknown", async () => {
+      const { user } = await newHousehold();
+      const sweet = await liveProduct(
+        { sugar_per_100g: 30 },
+        { category: "unknown" }
+      );
+      await liveProduct({ sugar_per_100g: 0 }, { category: "unknown" });
+      assert.deepEqual(
+        (await betterOptions.forProduct(sweet, user)).alternatives,
+        []
+      );
     });
   });
 

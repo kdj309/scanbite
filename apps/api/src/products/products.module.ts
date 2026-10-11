@@ -1,3 +1,4 @@
+import { AlternativesService } from "../alternatives/alternatives.service";
 import { Module } from "@nestjs/common";
 import { ConsensusModule } from "../consensus/consensus.module";
 import { HouseholdModule } from "../household/household.module";
@@ -20,7 +21,7 @@ import { ProductsService } from "./products.service";
     ProductSummaryModule,
   ],
   controllers: [ProductsController],
-  providers: [ProductsService],
+  providers: [ProductsService, AlternativesService],
   exports: [ProductsService],
 })
 export class ProductsModule {}
