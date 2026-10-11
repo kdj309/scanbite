@@ -50,6 +50,17 @@ export const vegStatusSchema = z.enum(["veg", "non_veg", "unknown"]);
 export type VegStatus = z.infer<typeof vegStatusSchema>;
 export type DeclaredVeg = Exclude<VegStatus, "unknown">;
 
+// "Buy on Amazon / BigBasket": search links (the user picks the exact item).
+// `affiliate` = the link may earn us a commission, so the app must show the
+// store's required disclosure next to it. The app shows these only where
+// the design does (Safe verdicts, better options) — never ranking by them.
+export const buyLinkSchema = z.object({
+  store: z.enum(["amazon", "bigbasket"]),
+  url: z.string().url(),
+  affiliate: z.boolean(),
+});
+export type BuyLink = z.infer<typeof buyLinkSchema>;
+
 export const productSummarySchema = z.object({
   name: z.string(),
   brand: z.string(),
@@ -65,6 +76,7 @@ export const productSummarySchema = z.object({
   // Pack size as printed, e.g. "1.25 l".
   quantity: z.string().nullable(),
   veg: vegStatusSchema,
+  buy_links: z.array(buyLinkSchema),
 });
 export type ProductSummary = z.infer<typeof productSummarySchema>;
 

@@ -83,6 +83,10 @@ const baseEnvSchema = z.object({
   OPENROUTER_API_KEY: z.string().min(1).optional(),
   ANTHROPIC_API_KEY: z.string().min(1).optional(),
   GEMINI_OPENROUTER_MODEL: z.string().min(1).default("google/gemini-2.5-flash"),
+  // Amazon Associates India tag for buy links (e.g. "scanbite-21"). Empty =
+  // plain Amazon links, no commission. Never put a made-up value here: it
+  // could be someone else's real tag.
+  AMAZON_ASSOCIATE_TAG: z.string().min(1).optional(),
   // noop logs instead of sending, for local dev and tests.
   PUSH_PROVIDER: z.enum(["expo", "noop"]).default("noop"),
   // Only once "enhanced push security" is turned on in EAS.

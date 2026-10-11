@@ -1,4 +1,8 @@
+import { Injectable } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import type { ProductSummary } from "@foodscanner/shared";
+import type { Env } from "../config/env";
+import { buyLinks, type AffiliateTags } from "./buy-links";
 import type { Types } from "mongoose";
 import type { ProductVersionDocument } from "../database/schemas/product-version.schema";
 
@@ -17,7 +21,10 @@ type VersionFields = Pick<
 
 /** What the app shows about a product. Built per request, never cached:
  *  `verifying` changes when a confirmation lands, without a re-score. */
-export function productSummary(version: VersionFields): ProductSummary {
+export function productSummary(
+  version: VersionFields,
+  tags: AffiliateTags = {}
+): ProductSummary {
   const aiPhotos = version.source === "user_submission";
   return {
     name: version.name,
@@ -28,6 +35,7 @@ export function productSummary(version: VersionFields): ProductSummary {
     image_url: version.image_url ?? null,
     quantity: version.quantity ?? null,
     veg: version.declared_veg ?? "unknown",
+    buy_links: buyLinks(version, tags),
   };
 }
 
@@ -52,4 +60,18 @@ export function confirmsVersion(
     version.submitted_by !== undefined &&
     !version.submitted_by.equals(submitterId)
   );
+}
+
+/** productSummary with server config (affiliate tags) filled in. */
+@Injectable()
+export class ProductSummaryService {
+  private readonly tags: AffiliateTags;
+
+  constructor(config: ConfigService<Env, true>) {
+    this.tags = { amazon: config.get("AMAZON_ASSOCIATE_TAG", { infer: true }) };
+  }
+
+  summarize(version: VersionFields): ProductSummary {
+    return productSummary(version, this.tags);
+  }
 }

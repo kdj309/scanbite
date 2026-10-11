@@ -49,6 +49,7 @@ import { DevicesService } from "../devices/devices.service";
 import { HouseholdService } from "../household/household.service";
 import { HouseholdVerdictService } from "../personalization/household-verdict.service";
 import { PersonalizationService } from "../personalization/personalization.service";
+import { ProductSummaryService } from "../product-versions/product-summary";
 import { ScoringService } from "../scoring/scoring.service";
 import {
   HLD_PERSONALIZATION_SEEDS,
@@ -108,7 +109,8 @@ describe("push notifications (integration)", () => {
       members as never,
       mongoose.model(User.name, UserSchema) as never
     ),
-    new PersonalizationService(personalizationRules as never)
+    new PersonalizationService(personalizationRules as never),
+    new ProductSummaryService(new ConfigService({}) as never)
   );
   const sender = new FakePushSender();
   const receiptChecks: CheckPushReceiptsJobData[] = [];

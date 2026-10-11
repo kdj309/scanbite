@@ -46,6 +46,7 @@ import { ConsensusService } from "../consensus/consensus.service";
 import { Product, ProductSchema } from "../database/schemas/product.schema";
 import { Scan, ScanSchema } from "../database/schemas/scan.schema";
 import type { OffExtraction } from "../off/off-extraction";
+import { ProductSummaryService } from "../product-versions/product-summary";
 import { ProductVersionIngestionService } from "../product-versions/product-version-ingestion.service";
 import { HouseholdVerdictService } from "../personalization/household-verdict.service";
 import { PersonalizationService } from "../personalization/personalization.service";
@@ -78,13 +79,18 @@ describe("household verdicts (integration)", () => {
     mongoose.model(Ingredient.name, IngredientSchema) as never,
     new VerdictCacheService(redis, config as never)
   );
+  // A tag, so the itests also cover the affiliate link reaching the app.
+  const summaries = new ProductSummaryService(
+    new ConfigService({ AMAZON_ASSOCIATE_TAG: "itest-21" }) as never
+  );
   const personalization = new PersonalizationService(
     personalizationRules as never
   );
   const householdVerdicts = new HouseholdVerdictService(
     scoring,
     household,
-    personalization
+    personalization,
+    summaries
   );
   const productModel = mongoose.model(Product.name, ProductSchema);
   // Open Food Facts knows exactly one barcode; ingredient matching is
@@ -127,7 +133,8 @@ describe("household verdicts (integration)", () => {
       mongoose.connection,
       versions as never,
       productModel as never
-    )
+    ),
+    summaries
   );
   const scanModel = mongoose.model(Scan.name, ScanSchema);
   const scans = new ScansService(
@@ -135,7 +142,8 @@ describe("household verdicts (integration)", () => {
     versions as never,
     household,
     householdVerdicts,
-    products
+    products,
+    summaries
   );
 
   let seq = 0;
@@ -457,6 +465,13 @@ describe("household verdicts (integration)", () => {
       assert.deepEqual(
         [result.product.name, result.product.source, result.product.quantity],
         ["OFF biscuits", "catalog", "100 g"]
+      );
+      assert.deepEqual(
+        result.product.buy_links.map((link) => [link.store, link.affiliate]),
+        [
+          ["amazon", true],
+          ["bigbasket", false],
+        ]
       );
       assert.equal(result.product.veg, "veg");
       const scan = await recorded(user, scan_id);

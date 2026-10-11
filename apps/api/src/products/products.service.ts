@@ -23,7 +23,7 @@ import {
 import { HouseholdVerdictService } from "../personalization/household-verdict.service";
 import { PersonalizationService } from "../personalization/personalization.service";
 import { productContext } from "../personalization/product-context";
-import { productSummary } from "../product-versions/product-summary";
+import { ProductSummaryService } from "../product-versions/product-summary";
 import { ProductVersionIngestionService } from "../product-versions/product-version-ingestion.service";
 import { ScoringService } from "../scoring/scoring.service";
 
@@ -40,7 +40,8 @@ export class ProductsService {
     private readonly household: HouseholdService,
     private readonly off: OffLookupService,
     private readonly ingestion: ProductVersionIngestionService,
-    private readonly consensus: ConsensusService
+    private readonly consensus: ConsensusService,
+    private readonly summaries: ProductSummaryService
   ) {}
 
   /** Read-only view (Explore, a recents tap): answers for the whole
@@ -135,7 +136,7 @@ export class ProductsService {
         continue;
       }
       items.push({
-        product: productSummary(version),
+        product: this.summaries.summarize(version),
         verdict,
         confidence: cached.confidence,
       });

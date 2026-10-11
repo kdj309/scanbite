@@ -20,7 +20,7 @@ import { HouseholdService } from "../household/household.service";
 import type { Severity } from "../database/schemas/scoring-record.schema";
 import { HouseholdVerdictService } from "../personalization/household-verdict.service";
 import { ProductsService } from "../products/products.service";
-import { productSummary } from "../product-versions/product-summary";
+import { ProductSummaryService } from "../product-versions/product-summary";
 import { serializeScan } from "./serialize-scan";
 
 @Injectable()
@@ -31,7 +31,8 @@ export class ScansService {
     private readonly versions: Model<ProductVersionDocument>,
     private readonly household: HouseholdService,
     private readonly householdVerdicts: HouseholdVerdictService,
-    private readonly products: ProductsService
+    private readonly products: ProductsService,
+    private readonly summaries: ProductSummaryService
   ) {}
 
   /**
@@ -133,7 +134,10 @@ export class ScansService {
       ? await this.versions.find({ _id: { $in: versionIds } }).exec()
       : [];
     const productById = new Map(
-      versions.map((version) => [String(version._id), productSummary(version)])
+      versions.map((version) => [
+        String(version._id),
+        this.summaries.summarize(version),
+      ])
     );
 
     return {

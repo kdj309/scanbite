@@ -2,7 +2,7 @@ import { Injectable } from "@nestjs/common";
 import type { ProductFoundResponse } from "@foodscanner/shared";
 import type { ProductVersionDocument } from "../database/schemas/product-version.schema";
 import { HouseholdService } from "../household/household.service";
-import { productSummary } from "../product-versions/product-summary";
+import { ProductSummaryService } from "../product-versions/product-summary";
 import { ScoringService } from "../scoring/scoring.service";
 import { householdVerdict } from "./household-verdict";
 import { productContext } from "./product-context";
@@ -20,7 +20,8 @@ export class HouseholdVerdictService {
   constructor(
     private readonly scoring: ScoringService,
     private readonly household: HouseholdService,
-    private readonly personalization: PersonalizationService
+    private readonly personalization: PersonalizationService,
+    private readonly summaries: ProductSummaryService
   ) {}
 
   async forVersion(
@@ -35,7 +36,7 @@ export class HouseholdVerdictService {
     return {
       response: {
         found: true,
-        product: productSummary(version),
+        product: this.summaries.summarize(version),
         ...householdVerdict(productContext(version, objective, rules), members),
         confidence: objective.confidence,
         unresolved_ingredients: objective.unresolved_ingredients,
