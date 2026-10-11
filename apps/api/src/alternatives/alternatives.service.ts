@@ -9,9 +9,13 @@ import {
 } from "../database/schemas/product-version.schema";
 import { HouseholdService } from "../household/household.service";
 import {
+  GENERAL_MEMBER,
   hasHealthProfile,
   verdictFor,
+  type HouseholdMemberInput,
 } from "../personalization/household-verdict";
+
+type Member = Pick<HouseholdMemberInput, "conditions" | "allergies">;
 import { PersonalizationService } from "../personalization/personalization.service";
 import { productContext } from "../personalization/product-context";
 import { ProductSummaryService } from "../product-versions/product-summary";
@@ -58,18 +62,21 @@ export class AlternativesService {
       );
     const originalContext = await context(original);
 
-    // With nobody's profile set up yet, it's the general verdict that counts.
+    const notSafe = (member: Member) =>
+      verdictFor(originalContext, member).severity !== "green";
     const profiled = members.filter(hasHealthProfile);
-    const notSafeFor = (profiled.length ? profiled : [GENERAL]).filter(
-      (member) => verdictFor(originalContext, member).severity !== "green"
-    );
+    const notSafeFor = profiled.filter(notSafe);
+    // With nobody's profile set up yet, it's the general verdict that counts.
+    const lookingFor: Member[] = profiled.length
+      ? notSafeFor
+      : [GENERAL_MEMBER].filter(notSafe);
 
     const response = {
       instead_of: this.summaries.summarize(original),
-      for_member_ids: notSafeFor.flatMap((m) => ("id" in m ? [m.id] : [])),
+      for_member_ids: notSafeFor.map((member) => member.id),
       alternatives: [] as AlternativesResponse["alternatives"],
     };
-    if (notSafeFor.length === 0 || original.category === "unknown") {
+    if (lookingFor.length === 0 || original.category === "unknown") {
       return response;
     }
 
@@ -96,7 +103,7 @@ export class AlternativesService {
           context: await context(version),
         }))
       ),
-      members: notSafeFor,
+      members: lookingFor,
       ruleFacts: ruleFacts(ruleSet.rules, rules),
       limit: MAX_ALTERNATIVES,
     });
@@ -107,9 +114,6 @@ export class AlternativesService {
     return response;
   }
 }
-
-/** Someone with no conditions or allergies: the general verdict. */
-const GENERAL = { conditions: [], allergies: [] };
 
 function ruleFacts(
   ...ruleLists: Array<Array<{ id: string; field: string; threshold?: number }>>

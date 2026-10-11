@@ -68,6 +68,12 @@ export function verdictFor(
   };
 }
 
+/** Someone with no conditions or allergies: their verdict is the general one. */
+export const GENERAL_MEMBER: Pick<
+  HouseholdMemberInput,
+  "conditions" | "allergies"
+> = { conditions: [], allergies: [] };
+
 export function hasHealthProfile(
   member: Pick<HouseholdMemberInput, "conditions" | "allergies">
 ): boolean {

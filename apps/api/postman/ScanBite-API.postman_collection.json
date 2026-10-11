@@ -408,6 +408,52 @@
             "description": "Explore's category chips: live products per category, biggest first, \"unknown\" left out. Pass a name back as GET /v1/products?category=…"
           },
           "response": []
+        },
+        {
+          "name": "Explore catalog",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/products?category=Biscuits and cakes&section=not_for_all&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "products"],
+              "query": [
+                {
+                  "key": "category",
+                  "value": "Biscuits and cakes"
+                },
+                {
+                  "key": "section",
+                  "value": "not_for_all",
+                  "description": "good_for_all (shelf) | not_for_all (list); filtered after scoring, so a page can be short"
+                },
+                {
+                  "key": "q",
+                  "value": "",
+                  "disabled": true,
+                  "description": "search name/brand"
+                },
+                {
+                  "key": "member_ids",
+                  "value": "",
+                  "disabled": true,
+                  "description": "comma-separated 'shopping for' members (health profile only); default all of them"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "cursor",
+                  "value": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Household Explore: per product the overall verdict for the included members (worst + whose), a ring per member, and one main_flag chip; worst first within a page. for_member_ids empty = nobody has a profile yet (general verdict)."
+          },
+          "response": []
         }
       ]
     },

@@ -1,6 +1,7 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import type {
+  CatalogSection,
   CategoriesResponse,
   CatalogItem,
   CatalogQuery,
@@ -19,14 +20,16 @@ import { HouseholdService } from "../household/household.service";
 import { OffLookupService } from "../off/off-lookup.service";
 import {
   hasHealthProfile,
-  verdictFor,
+  type HouseholdMemberInput,
 } from "../personalization/household-verdict";
 import { HouseholdVerdictService } from "../personalization/household-verdict.service";
 import { PersonalizationService } from "../personalization/personalization.service";
 import { productContext } from "../personalization/product-context";
 import { ProductSummaryService } from "../product-versions/product-summary";
 import { ProductVersionIngestionService } from "../product-versions/product-version-ingestion.service";
+import { SEVERITY_RANK } from "../scoring/evaluate-rules";
 import { ScoringService } from "../scoring/scoring.service";
+import { catalogEntry } from "./catalog-entry";
 
 @Injectable()
 export class ProductsService {
@@ -89,11 +92,7 @@ export class ProductsService {
     user: RequestUser,
     query: CatalogQuery
   ): Promise<CatalogResponse> {
-    const member = await this.household.resolveMemberId(
-      user.userId,
-      query.member_id,
-      user.defaultMemberId
-    );
+    const included = await this.includedMembers(user, query.member_ids);
     const limit = query.limit ?? 20;
 
     const filter: FilterQuery<ProductVersionDocument> = { status: "live" };
@@ -141,35 +140,59 @@ export class ProductsService {
       this.scoring.activeRuleSet(),
       this.personalization.activeRules(),
     ]);
-    const items: CatalogItem[] = [];
-    for (const version of page) {
-      const cached = await this.scoring.getCachedObjectiveVerdict(
-        version,
-        ruleSet
-      );
-      const verdict = verdictFor(
-        productContext(version, cached, rules),
-        member
-      );
-      // Severity is a post-filter, not a DB filter (HLD §15) — a page can
-      // return fewer than `limit` items when this is set; the cursor still
-      // advances off the last *fetched* document (page[page.length - 1]
-      // below), not the last one that survives this filter.
-      if (query.severity && verdict.severity !== query.severity) {
-        continue;
-      }
-      items.push({
-        product: this.summaries.summarize(version),
-        verdict,
-        confidence: cached.confidence,
-      });
-    }
+    const scored: CatalogItem[] = await Promise.all(
+      page.map(async (version) => {
+        const cached = await this.scoring.getCachedObjectiveVerdict(
+          version,
+          ruleSet
+        );
+        return {
+          product: this.summaries.summarize(version),
+          ...catalogEntry(productContext(version, cached, rules), included),
+          confidence: cached.confidence,
+        };
+      })
+    );
+    // Sections are a post-filter, not a DB filter (HLD §15): a page can hold
+    // fewer than `limit` items, and the cursor still advances off the last
+    // *fetched* document (page[page.length - 1] below).
+    const items = query.section
+      ? scored.filter((item) => sectionOf(item) === query.section)
+      : scored;
 
     return {
-      member_has_health_profile: hasHealthProfile(member),
-      items,
+      for_member_ids: included.map((member) => member.id),
+      // Worst first within the page (sort is stable: newest first on ties).
+      items: items.sort(
+        (a, b) =>
+          SEVERITY_RANK[b.overall.severity] - SEVERITY_RANK[a.overall.severity]
+      ),
       next_cursor: hasMore ? (page[page.length - 1].id as string) : null,
     };
+  }
+
+  /**
+   * Who a catalog page answers for: the "shopping for" toggles, or everyone
+   * with a health profile. Only profile members can be chosen — anyone else
+   * would just get the general verdict.
+   */
+  private async includedMembers(
+    user: RequestUser,
+    memberIds: string[] | undefined
+  ): Promise<HouseholdMemberInput[]> {
+    const profiled = (
+      await this.household.listForUser(user.userId)
+    ).members.filter(hasHealthProfile);
+    if (!memberIds) {
+      return profiled;
+    }
+    const chosen = profiled.filter((member) => memberIds.includes(member.id));
+    if (chosen.length !== new Set(memberIds).size) {
+      throw new BadRequestException(
+        "member_ids must be your household members with a health profile"
+      );
+    }
+    return chosen;
   }
 
   private liveVersion(barcode: string): Promise<ProductVersionDocument | null> {
@@ -219,4 +242,9 @@ export class ProductsService {
     }
     return this.liveVersion(barcode);
   }
+}
+
+/** Explore's shelf or list: Safe for everyone included, or not. */
+function sectionOf(item: CatalogItem): CatalogSection {
+  return item.overall.severity === "green" ? "good_for_all" : "not_for_all";
 }

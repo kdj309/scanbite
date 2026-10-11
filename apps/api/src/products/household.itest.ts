@@ -470,25 +470,100 @@ describe("household verdicts (integration)", () => {
   });
 
   describe("catalog", () => {
-    it("filters by category and answers for the chosen member", async () => {
+    it("answers for the whole household by category, worst first", async () => {
+      const { user, ids } = await newHousehold();
+      const category = newCategory();
+      // Complete data, so a Safe product genuinely has nothing to flag.
+      await versions.create({
+        product_id: new Types.ObjectId(),
+        barcode: `891${String(seq++).padStart(10, "0")}`,
+        name: "Plain",
+        brand: "Test",
+        category,
+        source: "manual_seed",
+        status: "live",
+        nutrition: { sugar_per_100g: 1, sodium_per_100g: 10 },
+        additive_count: 0,
+        nova_group: 1,
+      });
+      await liveProduct({ sugar_per_100g: 18 }, { category, name: "Sweet" });
+      await liveProduct({ sugar_per_100g: 18 }, { category: newCategory() });
+
+      const page = await products.catalog(user, { category });
+      // Amma (BP) and Papa (diabetes); "You" has no profile, so isn't counted.
+      assert.deepEqual(
+        [...page.for_member_ids].sort(),
+        [ids.amma, ids.papa].sort()
+      );
+      assert.deepEqual(
+        page.items.map((item) => [
+          item.product.name,
+          item.overall.severity,
+          item.main_reason?.label ?? null,
+        ]),
+        [
+          ["Sweet", "red", "Too sweet for diabetes"],
+          ["Plain", "green", null],
+        ]
+      );
+      assert.deepEqual(
+        page.items[0].members.map((m) => [m.member_id, m.severity]),
+        [
+          [ids.amma, "yellow"],
+          [ids.papa, "red"],
+        ]
+      );
+    });
+
+    it("splits into 'good for everyone' and 'not for everyone'", async () => {
+      const { user } = await newHousehold();
+      const category = newCategory();
+      await liveProduct({ sugar_per_100g: 1 }, { category, name: "Plain" });
+      await liveProduct({ sugar_per_100g: 18 }, { category, name: "Sweet" });
+
+      const good = await products.catalog(user, {
+        category,
+        section: "good_for_all",
+      });
+      const notGood = await products.catalog(user, {
+        category,
+        section: "not_for_all",
+      });
+      assert.deepEqual(
+        good.items.map((i) => i.product.name),
+        ["Plain"]
+      );
+      assert.deepEqual(
+        notGood.items.map((i) => i.product.name),
+        ["Sweet"]
+      );
+    });
+
+    it("answers only for the people being shopped for", async () => {
       const { user, ids } = await newHousehold();
       const category = newCategory();
       await liveProduct({ sugar_per_100g: 18 }, { category, name: "Sweet" });
-      await liveProduct({ sugar_per_100g: 1 }, { category, name: "Plain" });
-      await liveProduct({ sugar_per_100g: 18 }, { category: newCategory() });
 
-      const page = await products.catalog(user, {
+      const forAmma = await products.catalog(user, {
         category,
-        member_id: ids.papa,
+        member_ids: [ids.amma],
       });
-      assert.equal(page.member_has_health_profile, true);
-      assert.deepEqual(
-        page.items.map((item) => [item.product.name, item.verdict.severity]),
-        [
-          ["Plain", "green"],
-          ["Sweet", "red"],
-        ]
-      );
+      assert.deepEqual(forAmma.for_member_ids, [ids.amma]);
+      assert.deepEqual(forAmma.items[0].overall, {
+        severity: "yellow",
+        member_id: ids.amma,
+      });
+    });
+
+    it("refuses members without a health profile or from another household", async () => {
+      const { user, ids } = await newHousehold();
+      const other = await newHousehold();
+      for (const memberIds of [[ids.you], [other.ids.papa]]) {
+        await assert.rejects(
+          products.catalog(user, { member_ids: memberIds }),
+          /health profile/
+        );
+      }
     });
 
     it("searches name and brand, ignoring case", async () => {
@@ -513,30 +588,6 @@ describe("household verdicts (integration)", () => {
         byBrand.items.map((i) => i.product.name),
         ["Plain Rusk"]
       );
-    });
-
-    it("filters by severity after scoring, for that member", async () => {
-      const { user, ids } = await newHousehold();
-      const category = newCategory();
-      await liveProduct({ sugar_per_100g: 18 }, { category, name: "Sweet" });
-      await liveProduct({ sugar_per_100g: 1 }, { category, name: "Plain" });
-
-      const red = await products.catalog(user, {
-        category,
-        member_id: ids.papa,
-        severity: "red",
-      });
-      assert.deepEqual(
-        red.items.map((i) => i.product.name),
-        ["Sweet"]
-      );
-      // Same product is only yellow for someone without diabetes.
-      const forAmma = await products.catalog(user, {
-        category,
-        member_id: ids.amma,
-        severity: "red",
-      });
-      assert.deepEqual(forAmma.items, []);
     });
 
     it("pages with a cursor, newest first, without repeats", async () => {
@@ -564,10 +615,24 @@ describe("household verdicts (integration)", () => {
       assert.equal(rest.next_cursor, null);
     });
 
-    it("tells the app when the member has no conditions yet", async () => {
-      const { user } = await newHousehold(); // default member: You
-      const page = await products.catalog(user, { category: newCategory() });
-      assert.equal(page.member_has_health_profile, false);
+    it("uses the general verdict when nobody has a profile yet", async () => {
+      const userId = new Types.ObjectId();
+      await members.create({
+        owner_user_id: userId,
+        name: "You",
+        relationship: "self",
+        conditions: [],
+      });
+      const user = { userId: userId.toHexString() } as RequestUser;
+      const category = newCategory();
+      await liveProduct({ sugar_per_100g: 30 }, { category });
+
+      const page = await products.catalog(user, { category });
+      assert.deepEqual(page.for_member_ids, []);
+      assert.deepEqual(page.items[0].overall, {
+        severity: "red",
+        member_id: null,
+      });
     });
   });
 

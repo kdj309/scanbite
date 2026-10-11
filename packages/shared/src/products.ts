@@ -147,12 +147,23 @@ export const categoriesResponseSchema = z.object({
 });
 export type CategoriesResponse = z.infer<typeof categoriesResponseSchema>;
 
+export const catalogSectionSchema = z.enum(["good_for_all", "not_for_all"]);
+export type CatalogSection = z.infer<typeof catalogSectionSchema>;
+
 export const catalogQuerySchema = z.object({
-  member_id: objectIdSchema.optional(),
   category: z.string().min(1).optional(),
   brand: z.string().min(1).optional(),
-  severity: severitySchema.optional(),
   q: z.string().min(1).optional(),
+  // "Who are you shopping for?" toggles, comma-separated; only members with
+  // a health profile. Default: all of them.
+  member_ids: z
+    .string()
+    .transform((ids) => ids.split(",").filter(Boolean))
+    .pipe(z.array(objectIdSchema).min(1))
+    .optional(),
+  // Explore's "Good for everyone" shelf / "Not for everyone" list. Applied
+  // after scoring, so a page can hold fewer than `limit` items.
+  section: catalogSectionSchema.optional(),
   limit: z.coerce.number().int().positive().max(100).optional(),
   cursor: objectIdSchema.optional(),
 });
@@ -160,14 +171,33 @@ export type CatalogQuery = z.infer<typeof catalogQuerySchema>;
 
 export const catalogItemSchema = z.object({
   product: productSummarySchema,
-  verdict: verdictSchema,
+  // Worst among the included members, and whose it is.
+  overall: z.object({
+    severity: severitySchema,
+    member_id: objectIdSchema.nullable(),
+  }),
+  // One ring per included member.
+  members: z.array(
+    z.object({ member_id: objectIdSchema, severity: severitySchema })
+  ),
+  // The one chip on a row: the worst verdict's main reason — a flag, or a
+  // "Sugar not checked". null only when it's Safe with nothing to say.
+  main_reason: z
+    .object({
+      kind: z.enum(["flag", "unchecked"]),
+      label: z.string(),
+      rule_id: z.string(),
+    })
+    .nullable(),
   confidence: confidenceSchema,
 });
 export type CatalogItem = z.infer<typeof catalogItemSchema>;
 
 export const catalogResponseSchema = z.object({
-  member_has_health_profile: z.boolean(),
-  items: z.array(catalogItemSchema),
+  // Who's included; empty when nobody has a health profile yet (then it's
+  // the general verdict, and the app shows "Analyze for you").
+  for_member_ids: z.array(objectIdSchema),
+  items: z.array(catalogItemSchema), // within a page: worst first
   next_cursor: objectIdSchema.nullable(),
 });
 export type CatalogResponse = z.infer<typeof catalogResponseSchema>;
