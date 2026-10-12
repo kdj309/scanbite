@@ -77,7 +77,9 @@ export class ProductVersionIngestionService {
     nutrition: Record<string, number | string | null>;
     nova_group?: number;
     additive_count?: number;
-    extraction_confidence: number;
+    /** How sure the photo read was. Not set for catalog imports: a first
+     *  version goes live without it. */
+    extraction_confidence?: number;
     source: ProductVersionSource;
     image_url?: string | null;
     quantity?: string | null;

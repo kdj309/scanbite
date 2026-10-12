@@ -159,7 +159,7 @@ describe("mapOffProduct", () => {
     assert.equal(mapOffProduct({ product_name: "Mystery Snack" }), null);
   });
 
-  it("maps a complete product with scaled confidence", () => {
+  it("maps a complete product", () => {
     const result = mapOffProduct({
       product_name: "Parle-G",
       brands: "Parle,Other",
@@ -168,7 +168,6 @@ describe("mapOffProduct", () => {
       nutriments: { sugars_100g: 20, sodium_100g: 0.2 },
       nova_group: 4,
       additives_n: 2,
-      states_tags: ["en:ingredients-completed", "en:nutrition-facts-completed"],
       image_front_url: "https://images.openfoodfacts.org/front.jpg",
       quantity: " 250 g ",
     });
@@ -183,7 +182,6 @@ describe("mapOffProduct", () => {
     assert.equal(result?.category, "Biscuits");
     assert.equal(result?.nova_group, 4);
     assert.equal(result?.additive_count, 2);
-    assert.equal(result?.extraction_confidence, 0.9);
   });
 
   it("defaults name/brand/category to unknown when OFF doesn't have them", () => {

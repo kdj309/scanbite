@@ -11,13 +11,6 @@ export const unresolvedTermSchema = z.object({
 });
 export type UnresolvedTerm = z.infer<typeof unresolvedTermSchema>;
 
-export const listUnresolvedTermsQuerySchema = z.object({
-  sort: z.literal("occurrence_count").optional(),
-});
-export type ListUnresolvedTermsQuery = z.infer<
-  typeof listUnresolvedTermsQuerySchema
->;
-
 export const listUnresolvedTermsResponseSchema = z.object({
   items: z.array(unresolvedTermSchema),
 });

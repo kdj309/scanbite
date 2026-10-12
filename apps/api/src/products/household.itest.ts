@@ -106,7 +106,6 @@ describe("household verdicts (integration)", () => {
             category: "biscuits",
             ingredients: ["wheat flour", "sugar"],
             nutrition: { sugar_per_100g: 30 },
-            extraction_confidence: 0.9,
             image_url: "https://images.openfoodfacts.org/front.jpg",
             quantity: "100 g",
             declared_allergens: { contains: ["gluten"], may_contain: [] },

@@ -9,13 +9,9 @@ import "reflect-metadata";
  * coverage (~0.25% of its global catalog) before any real submission
  * volume exists.
  *
- * This is NOT the same as the "off" source — that's reserved for a live,
- * completeness-tag-scored OFF API fetch (see off-lookup.service.ts). This
- * is a one-time, manually curated snapshot, tagged "manual_seed" to keep
- * provenance honest. Confidence is fixed, not computed via
- * offExtractionConfidence, because that heuristic is calibrated for OFF's
- * live states_tags/data_quality_errors_tags signals, which this ground-
- * truth export doesn't carry.
+ * This is NOT the same as the "off" source — that's reserved for a live
+ * OFF API fetch (see off-lookup.service.ts). This is a one-time, manually
+ * curated snapshot, tagged "manual_seed" to keep provenance honest.
  *
  * Idempotent — safe to re-run; skips any barcode that already has a live
  * version.
@@ -33,11 +29,7 @@ import { ConfigService } from "@nestjs/config";
 import { validateEnv } from "../config/env";
 import { RedisCacheService } from "../common/redis-cache.service";
 import { VerdictCacheService } from "../common/verdict-cache.service";
-import {
-  EmbeddingAliasLayer,
-  ExactAliasLayer,
-  SimilarityAliasLayer,
-} from "../alias/alias-layers";
+import { ExactAliasLayer } from "../alias/alias-layers";
 import { AliasService } from "../alias/alias.service";
 import { isDuplicateKeyError } from "../common/mongo-errors";
 import {
@@ -139,8 +131,6 @@ async function main() {
   );
   const alias = new AliasService(
     new ExactAliasLayer(aliases as any, ingredients as any),
-    new SimilarityAliasLayer(),
-    new EmbeddingAliasLayer(),
     unresolvedTerms as any
   );
 

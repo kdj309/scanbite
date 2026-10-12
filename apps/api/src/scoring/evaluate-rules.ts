@@ -36,13 +36,6 @@ export function ruleAppliesToForm(
   if (!rule.applies_to || rule.applies_to === "any") {
     return true;
   }
-  // No product_form fact supplied (e.g. hand-built facts in tests/callers
-  // that predate this concept) defaults to "solid", the overwhelmingly
-  // common case — factsFromVersion always sets an explicit value in
-  // production, so this default never actually applies there.
-  if (rule.applies_to === "solid" && productForm === undefined) {
-    return true;
-  }
   return rule.applies_to === productForm;
 }
 
@@ -109,7 +102,7 @@ export function readFact(
 export type RuleCheckResult = "matched" | "not_matched" | "inapplicable";
 
 /**
- * Three-state check, replacing the old boolean operatorMatches.
+ * Three-state check.
  * "inapplicable" means the fact needed to evaluate this rule was missing —
  * this must NOT be treated the same as "checked, and it's fine."
  */
@@ -150,9 +143,9 @@ export function checkOperator(
     return "inapplicable";
   }
   if (right === undefined) {
-    // Rule config itself is malformed (no usable threshold/value) — that's
-    // not a missing-fact situation, so don't report it as a data gap.
-    return "not_matched";
+    // Rules only come from our seeds, so this is our bug — fail loudly
+    // rather than quietly passing the product as Safe.
+    throw new Error(`Rule with "${operator}" has no number to compare`);
   }
 
   switch (operator) {
@@ -169,28 +162,6 @@ export function checkOperator(
     default:
       return "not_matched";
   }
-}
-
-/**
- * Backward-compatible boolean wrapper around checkOperator, for existing
- * callers (e.g. personalization's applyPersonalization) that only need a
- * matched/not-matched answer and aren't yet distinguishing missing-fact
- * cases. Treats "inapplicable" as false, same as the old behavior.
- *
- * Note: this means personalization triggers still have the same silent
- * gap evaluateRules used to have — a condition like "sugar_per_100g > 15"
- * won't escalate AND won't flag as unknown when sugar is missing, it'll
- * just quietly not trigger. Worth the same unevaluated-tracking treatment
- * later if personalization needs the same honesty guarantee as base
- * scoring; not fixed here to avoid widening this change further.
- */
-export function operatorMatches(
-  operator: RuleOperator,
-  fact: unknown,
-  threshold: number | undefined,
-  value: unknown
-): boolean {
-  return checkOperator(operator, fact, threshold, value) === "matched";
 }
 
 function defaultReason(rule: RuleInput): string {

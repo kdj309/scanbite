@@ -614,26 +614,6 @@
             "description": "Scans made for this member (\"Scan for ...\"). Household-wide recents are GET /v1/scans."
           },
           "response": []
-        },
-        {
-          "name": "Household summary",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/v1/household-members/{{member_id}}/summary?period=week",
-              "host": ["{{baseUrl}}"],
-              "path": ["v1", "household-members", "{{member_id}}", "summary"],
-              "query": [
-                {
-                  "key": "period",
-                  "value": "week",
-                  "description": "week | month"
-                }
-              ]
-            }
-          },
-          "response": []
         }
       ]
     },

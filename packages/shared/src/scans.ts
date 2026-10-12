@@ -3,7 +3,6 @@ import {
   isoDateTimeSchema,
   objectIdSchema,
   severitySchema,
-  summaryPeriodSchema,
 } from "./primitives";
 import {
   barcodeSchema,
@@ -64,20 +63,3 @@ export const listScansResponseSchema = z.object({
   next_cursor: z.string().nullable(),
 });
 export type ListScansResponse = z.infer<typeof listScansResponseSchema>;
-
-export const memberSummaryQuerySchema = z.object({
-  period: summaryPeriodSchema,
-});
-export type MemberSummaryQuery = z.infer<typeof memberSummaryQuerySchema>;
-
-export const memberSummaryResponseSchema = z.object({
-  period: summaryPeriodSchema,
-  scan_count: z.number().int().nonnegative(),
-  total_sugar_g: z.number().nonnegative(),
-  by_severity: z.object({
-    green: z.number().int().nonnegative(),
-    yellow: z.number().int().nonnegative(),
-    red: z.number().int().nonnegative(),
-  }),
-});
-export type MemberSummaryResponse = z.infer<typeof memberSummaryResponseSchema>;

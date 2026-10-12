@@ -1,8 +1,20 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { checkOperator, type RuleInput } from "../../scoring/evaluate-rules";
 import { HLD_PERSONALIZATION_SEEDS, HLD_RULE_SET_SEED } from "./hld-seed";
 
 describe("HLD seed documents", () => {
+  it("gives every numeric rule a number to compare", () => {
+    const rules: Pick<RuleInput, "id" | "operator" | "threshold" | "value">[] =
+      [...HLD_RULE_SET_SEED.rules, ...HLD_PERSONALIZATION_SEEDS];
+    for (const rule of rules) {
+      assert.doesNotThrow(
+        () => checkOperator(rule.operator, 0, rule.threshold, rule.value),
+        rule.id
+      );
+    }
+  });
+
   it("seeds the HLD §6b illustration rules plus the citable FSSAI claim-gate rules", () => {
     const byId = Object.fromEntries(
       HLD_RULE_SET_SEED.rules.map((rule) => [rule.id, rule])

@@ -25,7 +25,6 @@ import {
   QUEUE_EXTRACTION,
   QUEUE_NOTIFICATION,
   QUEUE_PROMOTE,
-  QUEUE_RESCORE,
 } from "../workers/queue-names";
 import { bullmqConnection } from "../workers/redis-connection";
 import { SubmissionsService } from "./submissions.service";
@@ -49,12 +48,11 @@ describe("photo submissions (integration)", () => {
     QUEUE_EXTRACTION,
     QUEUE_NOTIFICATION,
     QUEUE_PROMOTE,
-    QUEUE_RESCORE,
     QUEUE_DLQ,
   ].map(queue);
   const [extraction] = queues;
   const jobQueues = new JobQueuesService(
-    ...(queues as [Queue, Queue, Queue, Queue, Queue])
+    ...(queues as [Queue, Queue, Queue, Queue])
   );
 
   const submissions = mongoose.model(Submission.name, SubmissionSchema);
@@ -124,7 +122,7 @@ describe("photo submissions (integration)", () => {
       storage as never,
       new JobQueuesService(
         brokenQueue as never,
-        ...(queues.slice(1) as [Queue, Queue, Queue, Queue])
+        ...(queues.slice(1) as [Queue, Queue, Queue])
       )
     );
     const photosBefore = storage.stored.size;

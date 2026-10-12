@@ -15,7 +15,7 @@ export type PromoteResult =
   | {
       promoted: false;
       productVersionId: string;
-      reason: "needs_review" | "already_live" | "superseded";
+      reason: "needs_review" | "superseded";
     };
 
 @Injectable()

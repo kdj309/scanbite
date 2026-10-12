@@ -1,6 +1,5 @@
 import type { AllergenCode, DeclaredVeg } from "@foodscanner/shared";
 import type { DeclaredAllergens } from "../allergens/allergen-evidence";
-import { offExtractionConfidence } from "./off-confidence";
 import type { OffExtraction, OffProductPayload } from "./off-extraction";
 
 type OffProduct = NonNullable<OffProductPayload["product"]>;
@@ -11,11 +10,6 @@ export function mapOffProduct(product: OffProduct): OffExtraction | null {
     return null;
   }
 
-  const confidence = offExtractionConfidence({
-    statesTags: product.states_tags ?? [],
-    dataQualityErrorsTags: product.data_quality_errors_tags ?? [],
-  });
-
   return {
     name: product.product_name?.trim() || "unknown",
     brand: firstOf(product.brands) || "unknown",
@@ -24,7 +18,6 @@ export function mapOffProduct(product: OffProduct): OffExtraction | null {
     nutrition: nutritionFromProduct(product),
     nova_group: product.nova_group,
     additive_count: product.additives_n,
-    extraction_confidence: confidence,
     image_url: offImageUrl(product.image_front_url),
     quantity: offQuantity(product.quantity),
     declared_allergens: declaredAllergens(product),

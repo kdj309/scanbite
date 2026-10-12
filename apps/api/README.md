@@ -146,7 +146,7 @@ curl http://localhost:3000/v1/products/8901063029255/alternatives \
 Scan a product the way the app's scanner does — one call that looks it up,
 records it for the household (add `"member_id"` for one person) and returns
 `{scan_id, result}` with the same verdict body as the lookup above — then
-list the household's recent scans and check a member's summary:
+list the household's recent scans:
 
 ```bash
 curl -X POST http://localhost:3000/v1/scans \
@@ -154,9 +154,6 @@ curl -X POST http://localhost:3000/v1/scans \
   -d '{"barcode":"8900000000000"}'
 
 curl "http://localhost:3000/v1/scans?limit=20" -H "Authorization: Bearer $TOKEN"
-
-curl "http://localhost:3000/v1/household-members/<member_id>/summary?period=week" \
-  -H "Authorization: Bearer $TOKEN"
 ```
 
 Register a phone for push notifications (the app does this on every open;
@@ -248,7 +245,7 @@ src/
   household/       household member CRUD, ownership checks
   products/        GET /products/:barcode — the read path
   submissions/     photo upload -> extraction queue
-  scans/           scan recording, household recents, member summary
+  scans/           scan recording, household recents
   scoring/         rules-as-data evaluator, active rule set resolution
   personalization/ per-member condition overlay on top of base scoring
   alias/           ingredient text -> canonical ingredient resolution

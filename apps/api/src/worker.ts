@@ -5,9 +5,7 @@ async function bootstrap() {
   const { NestFactory } = await import("@nestjs/core");
   const { AppModule } = await import("./app.module");
   await NestFactory.createApplicationContext(AppModule);
-  Logger.log(
-    "Worker process started (extraction, notification, promote, rescore, DLQ)"
-  );
+  Logger.log("Worker process started (extraction, notification, promote, DLQ)");
 }
 
 void bootstrap();

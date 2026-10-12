@@ -10,7 +10,6 @@ export type OffExtraction = {
   nutrition: Record<string, number | string | null>;
   nova_group?: number;
   additive_count?: number;
-  extraction_confidence: number;
   image_url: string | null;
   quantity: string | null;
   declared_allergens: DeclaredAllergens | null;
@@ -30,8 +29,6 @@ export type OffProductPayload = {
     nutriments?: Record<string, number | string | undefined>;
     nova_group?: number;
     additives_n?: number;
-    states_tags?: string[];
-    data_quality_errors_tags?: string[];
     quantity?: string;
     product_quantity_unit?: string;
     image_front_url?: string;

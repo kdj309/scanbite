@@ -26,10 +26,14 @@ describe("confidenceForVersion", () => {
     assert.deepEqual(result.unresolved_ingredients, []);
   });
 
+  it("is low when there is no ingredient list", () => {
+    assert.equal(confidenceFromUnresolved(0, 0), "low");
+    assert.equal(confidenceForVersion({ ingredients: [] }).confidence, "low");
+  });
+
   it("is partial below half unresolved and low at half or more", () => {
     assert.equal(confidenceFromUnresolved(1, 3), "partial");
     assert.equal(confidenceFromUnresolved(1, 2), "low");
-    assert.equal(confidenceFromUnresolved(1, 0), "low");
     const result = confidenceForVersion({
       ingredients: [
         { raw: "Wheat Flour", canonical_id: null, status: "resolved" },

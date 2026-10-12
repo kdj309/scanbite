@@ -14,8 +14,6 @@ const OFF_FIELDS = [
   "nutriments",
   "nova_group",
   "additives_n",
-  "states_tags",
-  "data_quality_errors_tags",
   "quantity",
   "product_quantity_unit",
   "image_front_url",

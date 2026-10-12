@@ -2,9 +2,9 @@ import type { AllergenCode } from "@foodscanner/shared";
 import { aliasList, type AliasList } from "../common/alias-match";
 
 /**
- * DRAFT — needs human review before launch (safety-critical: a missed name
- * is a missed allergen). How each allergen shows up in Indian ingredient
- * lists, in English and common Hindi/regional names.
+ * How each allergen shows up in Indian ingredient lists, in English and
+ * common Hindi/regional names. Reviewed 2026-10-12. Safety-critical: a
+ * missed name is a missed allergen, so add names from real labels.
  *
  * `include`: any match means the allergen is present.
  * `exclude`: phrases removed BEFORE matching, for look-alikes that aren't

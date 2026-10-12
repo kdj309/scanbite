@@ -226,7 +226,6 @@ export class ProductsService {
       nutrition: extracted.nutrition,
       nova_group: extracted.nova_group,
       additive_count: extracted.additive_count,
-      extraction_confidence: extracted.extraction_confidence,
       source: "off",
       image_url: extracted.image_url,
       quantity: extracted.quantity,

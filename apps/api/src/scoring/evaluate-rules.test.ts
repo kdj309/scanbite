@@ -16,6 +16,7 @@ describe("evaluateRules (HLD §6b)", () => {
   it("uses worst-flag-wins so high sugar is red even with NOVA 4", () => {
     const result = evaluateRules(
       {
+        product_form: "solid",
         sugar_per_100g: 24,
         ingredient_category: ["palm_oil"],
         additive_count: 4,
