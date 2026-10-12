@@ -9,9 +9,10 @@ import {
 } from "@nestjs/common";
 import { FilesInterceptor } from "@nestjs/platform-express";
 import { Throttle } from "@nestjs/throttler";
-import { MAX_SUBMISSION_PHOTOS } from "@foodscanner/shared";
+import { MAX_SUBMISSION_PHOTOS, barcodeSchema } from "@foodscanner/shared";
 import { CurrentUser } from "../auth/current-user.decorator";
 import type { RequestUser } from "../auth/auth.types";
+import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { memoryStorage } from "multer";
 import { SubmissionsService } from "./submissions.service";
 
@@ -35,7 +36,7 @@ export class SubmissionsController {
   )
   create(
     @CurrentUser() user: RequestUser,
-    @Param("barcode") barcode: string,
+    @Param("barcode", new ZodValidationPipe(barcodeSchema)) barcode: string,
     @UploadedFiles() files: Express.Multer.File[]
   ) {
     return this.submissions.create(barcode, user.userId, files);

@@ -54,6 +54,7 @@ describe("validateEnv", () => {
   it("defaults to short access tokens and long refresh tokens", () => {
     const env = validateEnv({ ...REQUIRED_BASE });
     assert.equal(env.JWT_EXPIRES_IN, "15m");
+    assert.equal(env.PUSH_PROVIDER, "noop"); // never send for real by default
     assert.equal(env.REFRESH_TOKEN_TTL_DAYS, 180);
     assert.deepEqual(env.GOOGLE_CLIENT_IDS, []);
   });

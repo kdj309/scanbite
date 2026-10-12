@@ -18,6 +18,8 @@ export type RuleInput = {
   value?: unknown;
   severity: Severity;
   reason?: string;
+  /** Short chip text, e.g. "High sugar". */
+  label?: string;
   /** Scopes this rule to solid or liquid products; omitted/"any" = both. */
   applies_to?: ProductForm;
 };
@@ -27,7 +29,10 @@ export type RuleInput = {
  * solid snack) isn't a data gap — it never applied in the first place, so it
  * must be skipped entirely, not reported as breakdown OR unevaluated.
  */
-function ruleAppliesToForm(rule: RuleInput, productForm: unknown): boolean {
+export function ruleAppliesToForm(
+  rule: { applies_to?: ProductForm },
+  productForm: unknown
+): boolean {
   if (!rule.applies_to || rule.applies_to === "any") {
     return true;
   }
@@ -237,4 +242,40 @@ export function evaluateRules(
     breakdown,
     unevaluated,
   };
+}
+
+export type PassedRule = { rule_id: string; field: string; label?: string };
+
+/**
+ * Rules that applied to this product and passed: not matched, and not
+ * skipped for a missing fact. (Rules for the other product form never
+ * applied, so they didn't pass either.)
+ */
+export function passedRules(
+  rules: RuleInput[],
+  evaluation: Pick<EvaluationResult, "breakdown" | "unevaluated">,
+  product: {
+    productForm: unknown;
+    /** There's an ingredient list and every item was recognised. If not,
+     *  an ingredient rule's "not found" (e.g. no palm oil) can't be
+     *  confirmed, so it hasn't passed. */
+    allIngredientsRecognised: boolean;
+  }
+): PassedRule[] {
+  const notPassed = new Set([
+    ...evaluation.breakdown.map((item) => item.rule_id),
+    ...evaluation.unevaluated.map((item) => item.rule_id),
+  ]);
+  return rules
+    .filter((rule) => ruleAppliesToForm(rule, product.productForm))
+    .filter((rule) => !notPassed.has(rule.id))
+    .filter(
+      (rule) =>
+        product.allIngredientsRecognised || rule.field !== "ingredient_category"
+    )
+    .map((rule) => ({
+      rule_id: rule.id,
+      field: rule.field,
+      label: rule.label,
+    }));
 }

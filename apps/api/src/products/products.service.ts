@@ -1,12 +1,13 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import type {
+  CatalogSection,
+  CategoriesResponse,
   CatalogItem,
   CatalogQuery,
   CatalogResponse,
   ProductLookupResponse,
 } from "@foodscanner/shared";
-import type { CachedObjectiveVerdict } from "../common/verdict-cache.service";
 import { FilterQuery, Model, Types } from "mongoose";
 import type { RequestUser } from "../auth/auth.types";
 import { escapeRegex } from "../common/escape-regex";
@@ -17,13 +18,18 @@ import {
 } from "../database/schemas/product-version.schema";
 import { HouseholdService } from "../household/household.service";
 import { OffLookupService } from "../off/off-lookup.service";
-import type {
-  PersonalizedVerdict,
-  VerdictReason,
-} from "../personalization/apply-personalization";
+import {
+  hasHealthProfile,
+  type HouseholdMemberInput,
+} from "../personalization/household-verdict";
+import { HouseholdVerdictService } from "../personalization/household-verdict.service";
 import { PersonalizationService } from "../personalization/personalization.service";
+import { productContext } from "../personalization/product-context";
+import { ProductSummaryService } from "../product-versions/product-summary";
 import { ProductVersionIngestionService } from "../product-versions/product-version-ingestion.service";
+import { SEVERITY_RANK } from "../scoring/evaluate-rules";
 import { ScoringService } from "../scoring/scoring.service";
+import { catalogEntry } from "./catalog-entry";
 
 @Injectable()
 export class ProductsService {
@@ -34,42 +40,45 @@ export class ProductsService {
     private readonly versions: Model<ProductVersionDocument>,
     private readonly scoring: ScoringService,
     private readonly personalization: PersonalizationService,
+    private readonly householdVerdicts: HouseholdVerdictService,
     private readonly household: HouseholdService,
     private readonly off: OffLookupService,
     private readonly ingestion: ProductVersionIngestionService,
-    private readonly consensus: ConsensusService
+    private readonly consensus: ConsensusService,
+    private readonly summaries: ProductSummaryService
   ) {}
 
+  /** Read-only view (Explore, a recents tap): answers for the whole
+   *  household. Scanning goes through POST /scans, which also records it. */
   async lookup(
     barcode: string,
-    user: RequestUser,
-    memberId?: string
+    user: RequestUser
   ): Promise<ProductLookupResponse> {
-    const member = await this.household.resolveMemberId(
-      user.userId,
-      memberId,
-      user.defaultMemberId
-    );
-
-    const version =
-      (await this.liveVersion(barcode)) ?? (await this.seedFromOff(barcode));
+    const version = await this.resolveLive(barcode);
     if (!version) {
       return { found: false };
     }
+    return (await this.householdVerdicts.forVersion(version, user.userId))
+      .response;
+  }
 
-    const cached = await this.scoring.getCachedObjectiveVerdict(version);
-    const personalized = await this.personalize(cached, member.conditions);
+  /** The live version, importing it from Open Food Facts on first sight. */
+  async resolveLive(barcode: string): Promise<ProductVersionDocument | null> {
+    return (await this.liveVersion(barcode)) ?? this.seedFromOff(barcode);
+  }
 
+  /** Explore's chips: live products per category, biggest first. Same
+   *  filter as catalog(), so a chip's count matches what tapping it shows. */
+  async categories(): Promise<CategoriesResponse> {
+    const groups = await this.versions
+      .aggregate<{ _id: string; count: number }>([
+        { $match: { status: "live", category: { $ne: "unknown" } } },
+        { $group: { _id: "$category", count: { $sum: 1 } } },
+        { $sort: { count: -1, _id: 1 } },
+      ])
+      .exec();
     return {
-      found: true,
-      member_has_conditions: (member.conditions ?? []).length > 0,
-      product: cached.product,
-      verdict: {
-        severity: personalized.severity,
-        reasons: this.buildReasons(cached, personalized),
-      },
-      confidence: cached.confidence,
-      unresolved_ingredients: cached.unresolved_ingredients,
+      categories: groups.map(({ _id, count }) => ({ name: _id, count })),
     };
   }
 
@@ -83,12 +92,7 @@ export class ProductsService {
     user: RequestUser,
     query: CatalogQuery
   ): Promise<CatalogResponse> {
-    const member = await this.household.resolveMemberId(
-      user.userId,
-      query.member_id,
-      user.defaultMemberId
-    );
-    const memberHasConditions = (member.conditions ?? []).length > 0;
+    const included = await this.includedMembers(user, query.member_ids);
     const limit = query.limit ?? 20;
 
     const filter: FilterQuery<ProductVersionDocument> = { status: "live" };
@@ -131,71 +135,64 @@ export class ProductsService {
     const hasMore = candidates.length > limit;
     const page = hasMore ? candidates.slice(0, limit) : candidates;
 
-    const items: CatalogItem[] = [];
-    for (const version of page) {
-      const cached = await this.scoring.getCachedObjectiveVerdict(version);
-      const personalized = await this.personalize(cached, member.conditions);
-      // Severity is a post-filter, not a DB filter (HLD §15) — a page can
-      // return fewer than `limit` items when this is set; the cursor still
-      // advances off the last *fetched* document (page[page.length - 1]
-      // below), not the last one that survives this filter.
-      if (query.severity && personalized.severity !== query.severity) {
-        continue;
-      }
-      items.push({
-        product: cached.product,
-        verdict: {
-          severity: personalized.severity,
-          reasons: this.buildReasons(cached, personalized),
-        },
-        confidence: cached.confidence,
-      });
-    }
+    // Loaded once for the page, not once per product.
+    const [ruleSet, rules] = await Promise.all([
+      this.scoring.activeRuleSet(),
+      this.personalization.activeRules(),
+    ]);
+    const scored: CatalogItem[] = await Promise.all(
+      page.map(async (version) => {
+        const cached = await this.scoring.getCachedObjectiveVerdict(
+          version,
+          ruleSet
+        );
+        return {
+          product: this.summaries.summarize(version),
+          ...catalogEntry(productContext(version, cached, rules), included),
+          confidence: cached.confidence,
+        };
+      })
+    );
+    // Sections are a post-filter, not a DB filter (HLD §15): a page can hold
+    // fewer than `limit` items, and the cursor still advances off the last
+    // *fetched* document (page[page.length - 1] below).
+    const items = query.section
+      ? scored.filter((item) => sectionOf(item) === query.section)
+      : scored;
 
     return {
-      member_has_conditions: memberHasConditions,
-      items,
+      for_member_ids: included.map((member) => member.id),
+      // Worst first within the page (sort is stable: newest first on ties).
+      items: items.sort(
+        (a, b) =>
+          SEVERITY_RANK[b.overall.severity] - SEVERITY_RANK[a.overall.severity]
+      ),
       next_cursor: hasMore ? (page[page.length - 1].id as string) : null,
     };
   }
 
-  private personalize(
-    cached: CachedObjectiveVerdict,
-    memberConditions: string[]
-  ): Promise<PersonalizedVerdict> {
-    return this.personalization.overlay({
-      base: {
-        severity: cached.severity,
-        breakdown: cached.breakdown,
-        unevaluated: cached.unevaluated,
-      },
-      facts: cached.facts,
-      memberConditions: memberConditions ?? [],
-    });
-  }
-
   /**
-   * Merges base-rule reasons with personalization escalations/gaps into
-   * one list (HLD §10), keeping each reason's rule_id so a client can
-   * look up its explainer (HLD §16) instead of a bare display string.
+   * Who a catalog page answers for: the "shopping for" toggles, or everyone
+   * with a health profile. Only profile members can be chosen — anyone else
+   * would just get the general verdict.
    */
-  private buildReasons(
-    cached: CachedObjectiveVerdict,
-    personalized: PersonalizedVerdict
-  ): VerdictReason[] {
-    return [
-      ...personalized.reasons,
-      ...(personalized.severity === "green"
-        ? cached.unevaluated.map((u) => ({
-            text: u.reason,
-            rule_id: u.rule_id,
-          }))
-        : []),
-      ...personalized.unevaluated.map((u) => ({
-        text: u.reason,
-        rule_id: u.rule_id,
-      })), // personalization gaps always surface, per our earlier call
-    ];
+  private async includedMembers(
+    user: RequestUser,
+    memberIds: string[] | undefined
+  ): Promise<HouseholdMemberInput[]> {
+    const profiled = (
+      await this.household.listForUser(user.userId)
+    ).members.filter(hasHealthProfile);
+    if (!memberIds) {
+      return profiled;
+    }
+    const chosen = profiled.filter((member) => memberIds.includes(member.id));
+    if (chosen.length !== new Set(memberIds).size) {
+      throw new BadRequestException(
+        "member_ids must be your household members with a health profile"
+      );
+    }
+    return chosen;
   }
 
   private liveVersion(barcode: string): Promise<ProductVersionDocument | null> {
@@ -231,6 +228,10 @@ export class ProductsService {
       additive_count: extracted.additive_count,
       extraction_confidence: extracted.extraction_confidence,
       source: "off",
+      image_url: extracted.image_url,
+      quantity: extracted.quantity,
+      declared_allergens: extracted.declared_allergens,
+      declared_veg: extracted.declared_veg,
     });
 
     const result = await this.consensus.promoteIfEligible(pending.id as string);
@@ -241,4 +242,9 @@ export class ProductsService {
     }
     return this.liveVersion(barcode);
   }
+}
+
+/** Explore's shelf or list: Safe for everyone included, or not. */
+function sectionOf(item: CatalogItem): CatalogSection {
+  return item.overall.severity === "green" ? "good_for_all" : "not_for_all";
 }

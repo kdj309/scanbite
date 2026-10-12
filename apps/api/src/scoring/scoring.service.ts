@@ -22,13 +22,27 @@ import {
   MISSING_ACTIVE_RULE_SET,
   requireActiveRuleSet,
 } from "./active-rule-set";
-import { evaluateRules, type EvaluationResult } from "./evaluate-rules";
+import {
+  evaluateRules,
+  passedRules,
+  type EvaluationResult,
+  type PassedRule,
+} from "./evaluate-rules";
 import {
   canonicalIdsFromVersion,
   confidenceForVersion,
   factsFromVersion,
   type ExtractionConfidence,
 } from "./facts";
+
+/** The cached verdict plus display labels read from the active rule set at
+ *  serve time — labels are copy, so changing one never needs a re-score or
+ *  a cache flush. */
+export type ObjectiveVerdict = CachedObjectiveVerdict & {
+  rule_labels: Record<string, string>;
+  /** General rules that applied and passed ("What we checked"). */
+  passed_rules: PassedRule[];
+};
 
 @Injectable()
 export class ScoringService {
@@ -92,14 +106,7 @@ export class ScoringService {
   }> {
     const facts = await this.factsForVersion(version);
     const coverage = confidenceForVersion(version);
-    let ruleSet: RuleSetDocument;
-    try {
-      ruleSet = requireActiveRuleSet(
-        preloadedRuleSet ?? (await this.findActiveRuleSet())
-      );
-    } catch {
-      throw new ServiceUnavailableException(MISSING_ACTIVE_RULE_SET);
-    }
+    const ruleSet = preloadedRuleSet ?? (await this.activeRuleSet());
 
     // Same (product_version_id, rule_set_version) returns the stored record;
     // a new rule set version inserts another row and leaves the old one.
@@ -150,14 +157,11 @@ export class ScoringService {
    * of each reimplementing it.
    */
   async getCachedObjectiveVerdict(
-    version: ProductVersionDocument
-  ): Promise<CachedObjectiveVerdict> {
-    let ruleSet: RuleSetDocument;
-    try {
-      ruleSet = requireActiveRuleSet(await this.findActiveRuleSet());
-    } catch {
-      throw new ServiceUnavailableException(MISSING_ACTIVE_RULE_SET);
-    }
+    version: ProductVersionDocument,
+    /** Pass when scoring many products in one request (load it once). */
+    preloadedRuleSet?: RuleSetDocument
+  ): Promise<ObjectiveVerdict> {
+    const ruleSet = preloadedRuleSet ?? (await this.activeRuleSet());
 
     const versionId = version.id as string;
     const cached = await this.cache.get(
@@ -165,17 +169,23 @@ export class ScoringService {
       versionId,
       ruleSet.version
     );
+    const live = (verdict: CachedObjectiveVerdict): ObjectiveVerdict => ({
+      ...verdict,
+      rule_labels: ruleLabels(ruleSet.rules),
+      passed_rules: passedRules(ruleSet.rules, verdict, {
+        productForm: verdict.facts.product_form,
+        // No list at all isn't "all recognised": nothing was read.
+        allIngredientsRecognised:
+          version.ingredients.length > 0 &&
+          verdict.unresolved_ingredients.length === 0,
+      }),
+    });
     if (cached) {
-      return cached;
+      return live(cached);
     }
 
     const scored = await this.ensureScoringRecord(version, ruleSet);
     const fresh: CachedObjectiveVerdict = {
-      product: {
-        name: version.name,
-        brand: version.brand,
-        product_version_id: versionId,
-      },
       facts: scored.facts,
       severity: scored.evaluation.severity,
       breakdown: scored.evaluation.breakdown,
@@ -185,6 +195,21 @@ export class ScoringService {
       rule_set_version: ruleSet.version,
     };
     await this.cache.set(version.barcode, versionId, ruleSet.version, fresh);
-    return fresh;
+    return live(fresh);
   }
+
+  /** Scoring with no rules would make everything look green — refuse. */
+  async activeRuleSet(): Promise<RuleSetDocument> {
+    try {
+      return requireActiveRuleSet(await this.findActiveRuleSet());
+    } catch {
+      throw new ServiceUnavailableException(MISSING_ACTIVE_RULE_SET);
+    }
+  }
+}
+
+function ruleLabels(rules: RuleSet["rules"]): Record<string, string> {
+  return Object.fromEntries(
+    rules.flatMap((rule) => (rule.label ? [[rule.id, rule.label]] : []))
+  );
 }

@@ -1,7 +1,8 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument, Types } from "mongoose";
+import { SEVERITIES, type Severity } from "./rule-set.schema";
 
-export type Severity = "green" | "yellow" | "red";
+export type { Severity };
 
 @Schema({ _id: false })
 export class ScoringBreakdownItem {
@@ -14,7 +15,7 @@ export class ScoringBreakdownItem {
   @Prop({ type: Object, required: true })
   matched_value!: unknown;
 
-  @Prop({ required: true, enum: ["green", "yellow", "red"] })
+  @Prop({ required: true, enum: SEVERITIES })
   severity!: Severity;
 
   @Prop({ required: true })
@@ -35,7 +36,7 @@ export class ScoringRecord {
   @Prop({ required: true })
   rule_set_version!: string;
 
-  @Prop({ required: true, enum: ["green", "yellow", "red"] })
+  @Prop({ required: true, enum: SEVERITIES })
   severity!: Severity;
 
   @Prop({ type: [ScoringBreakdownItemSchema], default: [] })

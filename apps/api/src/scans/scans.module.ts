@@ -1,12 +1,18 @@
 import { Module } from "@nestjs/common";
 import { HouseholdModule } from "../household/household.module";
 import { PersonalizationModule } from "../personalization/personalization.module";
-import { ScoringModule } from "../scoring/scoring.module";
+import { ProductSummaryModule } from "../product-versions/product-summary.module";
+import { ProductsModule } from "../products/products.module";
 import { ScansController } from "./scans.controller";
 import { ScansService } from "./scans.service";
 
 @Module({
-  imports: [HouseholdModule, ScoringModule, PersonalizationModule],
+  imports: [
+    HouseholdModule,
+    PersonalizationModule,
+    ProductsModule,
+    ProductSummaryModule,
+  ],
   controllers: [ScansController],
   providers: [ScansService],
   exports: [ScansService],

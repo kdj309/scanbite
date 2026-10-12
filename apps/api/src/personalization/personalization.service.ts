@@ -5,11 +5,7 @@ import {
   PersonalizationRule,
   PersonalizationRuleDocument,
 } from "../database/schemas/personalization-rule.schema";
-import type { EvaluationResult } from "../scoring/evaluate-rules";
-import {
-  applyPersonalization,
-  type PersonalizedVerdict,
-} from "./apply-personalization";
+import type { PersonalizationRuleInput } from "./apply-personalization";
 
 @Injectable()
 export class PersonalizationService {
@@ -18,26 +14,38 @@ export class PersonalizationService {
     private readonly rules: Model<PersonalizationRuleDocument>
   ) {}
 
-  async overlay(input: {
-    base: EvaluationResult;
-    facts: Record<string, unknown>;
-    memberConditions: string[];
-  }): Promise<PersonalizedVerdict> {
-    const now = new Date();
+  /** Load once per request and reuse across members/products. */
+  async activeRules(
+    now: Date = new Date()
+  ): Promise<PersonalizationRuleInput[]> {
     // Same "currently effective" window as ScoringService.findActiveRuleSet
     // — unlike a rule_set (one document per version), personalization rules
     // are many independent documents, so this is a filter, not a findOne.
-    const rules = await this.rules
+    const effective = await this.rules
       .find({
         effective_from: { $lte: now },
         $or: [{ effective_to: null }, { effective_to: { $gt: now } }],
       })
+      .lean()
       .exec();
-    return applyPersonalization({
-      base: input.base,
-      facts: input.facts,
-      memberConditions: input.memberConditions,
-      rules,
-    });
+    return latestVersionPerRule(effective);
   }
+}
+
+/**
+ * If two versions of one rule are effective at once (an overlapping date
+ * window left by mistake), only the newest counts — a rule must never fire
+ * twice with two thresholds.
+ */
+export function latestVersionPerRule<
+  T extends { id: string; effective_from: Date },
+>(rules: T[]): T[] {
+  const latest = new Map<string, T>();
+  for (const rule of rules) {
+    const current = latest.get(rule.id);
+    if (!current || rule.effective_from > current.effective_from) {
+      latest.set(rule.id, rule);
+    }
+  }
+  return [...latest.values()];
 }

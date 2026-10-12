@@ -1,8 +1,14 @@
 import { z } from "zod";
+import { uniqueListOf } from "./primitives";
 
 /**
  * Canonical health-condition codes stored on household members and
- * personalization_rules.condition. Display copy lives in HEALTH_CONDITION_LABELS.
+ * personalization_rules.condition.
+ *
+ * Two display maps, on purpose:
+ * - HEALTH_CONDITION_SHORT_LABELS: tiles and chips ("Sugar", "BP").
+ * - HEALTH_CONDITION_LABELS: sentences ("Couldn't check sugar for diabetes").
+ *   Short names would collide with nutrition topics ("sugar for sugar").
  */
 export const healthConditionCodeSchema = z.enum([
   "diabetic",
@@ -22,22 +28,12 @@ export type HealthConditionCode = z.infer<typeof healthConditionCodeSchema>;
 export const HEALTH_CONDITION_CODES: readonly HealthConditionCode[] =
   healthConditionCodeSchema.options;
 
-export const healthConditionListSchema = z
-  .array(healthConditionCodeSchema)
-  .superRefine((codes, ctx) => {
-    const seen = new Set<string>();
-    for (const [index, code] of codes.entries()) {
-      if (seen.has(code)) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Duplicate condition",
-          path: [index],
-        });
-      }
-      seen.add(code);
-    }
-  });
+export const healthConditionListSchema = uniqueListOf(
+  healthConditionCodeSchema,
+  "Duplicate condition"
+);
 
+/** Full name, for sentences and subtitles. */
 export const HEALTH_CONDITION_LABELS: Record<HealthConditionCode, string> = {
   diabetic: "Diabetes",
   hypertensive: "Hypertension",
@@ -49,4 +45,21 @@ export const HEALTH_CONDITION_LABELS: Record<HealthConditionCode, string> = {
   gout: "Gout",
   pcos: "PCOS",
   hypothyroidism: "Hypothyroidism",
+};
+
+/** Everyday name, for tiles and chips. */
+export const HEALTH_CONDITION_SHORT_LABELS: Record<
+  HealthConditionCode,
+  string
+> = {
+  diabetic: "Sugar",
+  hypertensive: "BP",
+  obesity: "Weight",
+  cardiovascular: "Heart",
+  dyslipidemia: "Cholesterol",
+  chronic_kidney_disease: "Kidney",
+  fatty_liver: "Fatty liver",
+  gout: "Gout",
+  pcos: "PCOS",
+  hypothyroidism: "Thyroid",
 };

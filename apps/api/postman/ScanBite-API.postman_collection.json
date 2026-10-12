@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "ScanBite API",
-    "description": "Backend for a packaged-food label scanner (India). See apps/api/README.md for setup. \"Create anonymous account\" auto-captures the tokens and default member_id into collection variables \u2014 run those first.",
+    "description": "Backend for a packaged-food label scanner (India). See apps/api/README.md for setup. \"Create anonymous account\" auto-captures the tokens and default member_id into collection variables — run those first.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -67,7 +67,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["health"]
             },
-            "description": "Not under /v1 \u2014 pings Mongo, Redis, and S3."
+            "description": "Not under /v1 — pings Mongo, Redis, and S3."
           },
           "response": []
         }
@@ -344,7 +344,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["v1", "household-members", "{{member_id}}"]
             },
-            "description": "Partial update \u2014 at least one field required. age_band: omit to leave unchanged, null to clear, a value to set."
+            "description": "Partial update — at least one field required. age_band: omit to leave unchanged, null to clear, a value to set."
           },
           "response": []
         },
@@ -373,18 +373,85 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/v1/products/{{barcode}}?member_id={{member_id}}",
+              "raw": "{{baseUrl}}/v1/products/{{barcode}}",
               "host": ["{{baseUrl}}"],
-              "path": ["v1", "products", "{{barcode}}"],
+              "path": ["v1", "products", "{{barcode}}"]
+            },
+            "description": "Read-only view (Explore, tapping a recent scan) — does not record a scan; the scanner uses POST /v1/scans. Returns a verdict for every household member plus `overall`. 8900000000000 is the dev fixture barcode. Unknown barcodes return {\"found\": false}, not a 404; a barcode that isn't 8–14 digits is a 400."
+          },
+          "response": []
+        },
+        {
+          "name": "Better options",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/products/{{barcode}}/alternatives",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "products", "{{barcode}}", "alternatives"]
+            },
+            "description": "Up to 5 same-category, same-form products that are Safe for everyone this product isn't Safe for (strict), best first by the biggest drop in what flagged it. Each has improvement chips (\"70% less sugar\" with meter numbers, \"No palm oil\") and buy links. Empty when there's nothing better yet or the category is unknown; 404 for an unknown barcode."
+          },
+          "response": []
+        },
+        {
+          "name": "Categories",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/categories",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "categories"]
+            },
+            "description": "Explore's category chips: live products per category, biggest first, \"unknown\" left out. Pass a name back as GET /v1/products?category=…"
+          },
+          "response": []
+        },
+        {
+          "name": "Explore catalog",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/products?category=Biscuits and cakes&section=not_for_all&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "products"],
               "query": [
                 {
-                  "key": "member_id",
-                  "value": "{{member_id}}",
-                  "description": "Optional \u2014 defaults to the caller's default household member server-side."
+                  "key": "category",
+                  "value": "Biscuits and cakes"
+                },
+                {
+                  "key": "section",
+                  "value": "not_for_all",
+                  "description": "good_for_all (shelf) | not_for_all (list); filtered after scoring, so a page can be short"
+                },
+                {
+                  "key": "q",
+                  "value": "",
+                  "disabled": true,
+                  "description": "search name/brand"
+                },
+                {
+                  "key": "member_ids",
+                  "value": "",
+                  "disabled": true,
+                  "description": "comma-separated 'shopping for' members (health profile only); default all of them"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "cursor",
+                  "value": "",
+                  "disabled": true
                 }
               ]
             },
-            "description": "8900000000000 is the dev fixture barcode, always present. Unknown barcodes return {\"found\": false}, not a 404."
+            "description": "Household Explore: per product the overall verdict for the included members (worst + whose), a ring per member, and one main_flag chip; worst first within a page. for_member_ids empty = nobody has a profile yet (general verdict)."
           },
           "response": []
         }
@@ -394,7 +461,7 @@
       "name": "Submissions",
       "item": [
         {
-          "name": "Submit label photo",
+          "name": "Submit label photos",
           "event": [
             {
               "listen": "test",
@@ -414,10 +481,10 @@
               "mode": "formdata",
               "formdata": [
                 {
-                  "key": "photo",
+                  "key": "photos",
                   "type": "file",
                   "src": [],
-                  "description": "Max 10MB. VISION_PROVIDER=stub means the actual photo content doesn't affect extraction yet."
+                  "description": "Repeat this field for each photo — up to 5 (3 photos or 5 video frames), max 10MB each. VISION_PROVIDER=stub means photo content doesn't affect extraction yet."
                 }
               ]
             },
@@ -450,7 +517,7 @@
       "name": "Scans",
       "item": [
         {
-          "name": "Log a scan",
+          "name": "Scan a product",
           "request": {
             "method": "POST",
             "header": [
@@ -461,19 +528,57 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"barcode\": \"{{barcode}}\",\n  \"member_id\": \"{{member_id}}\"\n}"
+              "raw": "{\n  \"barcode\": \"{{barcode}}\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/v1/scans",
               "host": ["{{baseUrl}}"],
               "path": ["v1", "scans"]
             },
-            "description": "member_id is optional (defaults to caller's default member). Records the personalized severity/rule_set_version actually shown at scan time \u2014 an audit entry, not a live join."
+            "description": "What the scanner calls: looks the product up (importing from Open Food Facts on first sight), records every household member's verdict at this moment, and returns {scan_id, result} where result is the same body as GET /products/:barcode. Add \"member_id\" for \"Scan for <member>\"; leave it out for everyone."
           },
           "response": []
         },
         {
-          "name": "List scan history",
+          "name": "Recent scans (household)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/scans?limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "scans"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "from",
+                  "value": "",
+                  "disabled": true,
+                  "description": "ISO datetime"
+                },
+                {
+                  "key": "to",
+                  "value": "",
+                  "disabled": true,
+                  "description": "ISO datetime"
+                },
+                {
+                  "key": "cursor",
+                  "value": "",
+                  "disabled": true,
+                  "description": "id of the last item from a previous page, for keyset pagination"
+                }
+              ]
+            },
+            "description": "Home recents: newest first, each with the product and every member's verdict at scan time."
+          },
+          "response": []
+        },
+        {
+          "name": "Scans for a member",
           "request": {
             "method": "GET",
             "header": [],
@@ -505,7 +610,8 @@
                   "description": "id of the last item from a previous page, for keyset pagination"
                 }
               ]
-            }
+            },
+            "description": "Scans made for this member (\"Scan for ...\"). Household-wide recents are GET /v1/scans."
           },
           "response": []
         },
@@ -556,7 +662,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["v1", "admin", "unresolved-terms"]
             },
-            "description": "Requires the admin role \u2014 sign in with Google as ADMIN_EMAIL from .env, or set role: \"admin\" on the user in Mongo. Sets {{unresolved_term_id}} from the first result."
+            "description": "Requires the admin role — sign in with Google as ADMIN_EMAIL from .env, or set role: \"admin\" on the user in Mongo. Sets {{unresolved_term_id}} from the first result."
           },
           "response": []
         },
@@ -585,7 +691,7 @@
                 "resolve"
               ]
             },
-            "description": "Provide exactly one of canonical_ingredient_id or new_ingredient \u2014 see the sibling request for the new_ingredient form."
+            "description": "Provide exactly one of canonical_ingredient_id or new_ingredient — see the sibling request for the new_ingredient form."
           },
           "response": []
         },
@@ -614,6 +720,53 @@
                 "resolve"
               ]
             }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Devices",
+      "description": "Phones that get push notifications (Expo). The app registers on every open and unregisters on logout.",
+      "item": [
+        {
+          "name": "Register device",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expo_push_token\": \"ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]\",\n  \"platform\": \"android\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/devices",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "devices"]
+            },
+            "description": "Idempotent; a token already registered to another account moves to this one (the phone switched accounts). 204."
+          },
+          "response": []
+        },
+        {
+          "name": "Unregister device",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/devices/ExponentPushToken%5Bxxxxxxxxxxxxxxxxxxxxxx%5D",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "v1",
+                "devices",
+                "ExponentPushToken%5Bxxxxxxxxxxxxxxxxxxxxxx%5D"
+              ]
+            },
+            "description": "On logout. URL-encode the token. Only removes your own device. 204."
           },
           "response": []
         }

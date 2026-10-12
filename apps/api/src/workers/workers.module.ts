@@ -2,12 +2,17 @@ import { BullModule } from "@nestjs/bullmq";
 import { Global, Module, type Provider } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { ConsensusModule } from "../consensus/consensus.module";
+import { DevicesModule } from "../devices/devices.module";
+import { PersonalizationModule } from "../personalization/personalization.module";
+import { ExpoPushSender } from "../push/expo-push-sender";
+import { NoopPushSender } from "../push/noop-push-sender";
+import { PushNotifier } from "../push/push-notifier";
+import { PushSender } from "../push/push-sender";
 import type { Env } from "../config/env";
 import { ProductVersionIngestionModule } from "../product-versions/product-version-ingestion.module";
 import { ScoringModule } from "../scoring/scoring.module";
 import { ExtractionPipeline } from "./extraction.pipeline";
 import { JobQueuesService } from "./job-queues.service";
-import { NoopNotifier } from "./noop-notifier";
 import { DlqProcessor } from "./processors/dlq.processor";
 import { ExtractionProcessor } from "./processors/extraction.processor";
 import { NotificationProcessor } from "./processors/notification.processor";
@@ -62,6 +67,8 @@ const processors: Provider[] = workerModeEnabled()
     ScoringModule,
     ConsensusModule,
     ProductVersionIngestionModule,
+    PersonalizationModule,
+    DevicesModule,
   ],
   providers: [
     JobQueuesService,
@@ -83,7 +90,19 @@ const processors: Provider[] = workerModeEnabled()
     },
     SeedService,
     ExtractionPipeline,
-    NoopNotifier,
+    ExpoPushSender,
+    NoopPushSender,
+    {
+      provide: PushSender,
+      useFactory: (
+        config: ConfigService<Env, true>,
+        expo: ExpoPushSender,
+        noop: NoopPushSender
+      ): PushSender =>
+        config.get("PUSH_PROVIDER", { infer: true }) === "expo" ? expo : noop,
+      inject: [ConfigService, ExpoPushSender, NoopPushSender],
+    },
+    PushNotifier,
     ...processors,
   ],
   exports: [JobQueuesService],

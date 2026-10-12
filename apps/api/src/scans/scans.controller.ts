@@ -25,13 +25,22 @@ export class ScansController {
     return this.scans.create(user, body);
   }
 
+  /** Household recents (Home). */
+  @Get("scans")
+  listForHousehold(
+    @CurrentUser() user: RequestUser,
+    @Query(new ZodValidationPipe(listScansQuerySchema)) query: ListScansQuery
+  ) {
+    return this.scans.listForHousehold(user, query);
+  }
+
   @Get("household-members/:id/scans")
-  list(
+  listForMember(
     @CurrentUser() user: RequestUser,
     @Param("id") id: string,
     @Query(new ZodValidationPipe(listScansQuerySchema)) query: ListScansQuery
   ) {
-    return this.scans.list(user, id, query);
+    return this.scans.listForMember(user, id, query);
   }
 
   @Get("household-members/:id/summary")

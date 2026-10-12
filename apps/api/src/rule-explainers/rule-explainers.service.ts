@@ -11,7 +11,6 @@ import {
   RuleExplainerDocument,
 } from "../database/schemas/rule-explainer.schema";
 import { HouseholdService } from "../household/household.service";
-import { conditionMatches } from "../personalization/apply-personalization";
 
 @Injectable()
 export class RuleExplainersService {
@@ -58,7 +57,7 @@ export class RuleExplainersService {
     memberConditions: string[]
   ): string | null {
     const match = doc.condition_variants.find((variant) =>
-      conditionMatches(memberConditions, variant.condition)
+      memberConditions.includes(variant.condition)
     );
     return match?.addendum ?? null;
   }

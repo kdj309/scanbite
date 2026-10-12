@@ -1,6 +1,8 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import {
+  ALLERGEN_CODES,
   HEALTH_CONDITION_CODES,
+  type AllergenCode,
   type HealthConditionCode,
 } from "@foodscanner/shared";
 import { HydratedDocument, Types } from "mongoose";
@@ -33,8 +35,8 @@ export class HouseholdMember {
   })
   conditions!: HealthConditionCode[];
 
-  @Prop({ type: [String], default: [] })
-  allergies!: string[];
+  @Prop({ type: [{ type: String, enum: ALLERGEN_CODES }], default: [] })
+  allergies!: AllergenCode[];
 
   created_at!: Date;
   updated_at!: Date;

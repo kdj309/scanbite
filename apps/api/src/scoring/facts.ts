@@ -16,6 +16,11 @@ function productFormFromNutrition(
   return nutrition.sugar_per_100ml !== undefined ? "liquid" : "solid";
 }
 
+/** The same rule as a product_versions query, kept next to it on purpose. */
+export function productFormFilter(form: "solid" | "liquid") {
+  return { "nutrition.sugar_per_100ml": { $exists: form === "liquid" } };
+}
+
 export function factsFromVersion(
   version: ProductVersion,
   ingredientCategories: string[]

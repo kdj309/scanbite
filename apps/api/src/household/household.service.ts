@@ -28,7 +28,7 @@ export class HouseholdService {
   async listForUser(userId: string) {
     const docs = await this.members
       .find({ owner_user_id: new Types.ObjectId(userId) })
-      .sort({ created_at: 1 })
+      .sort({ created_at: 1, _id: 1 })
       .exec();
     return { members: docs.map(serializeHouseholdMember) };
   }

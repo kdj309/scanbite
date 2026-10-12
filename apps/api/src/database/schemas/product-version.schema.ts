@@ -1,5 +1,7 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import { ALLERGEN_CODES, type DeclaredVeg } from "@foodscanner/shared";
 import { HydratedDocument, Types } from "mongoose";
+import type { DeclaredAllergens } from "../../allergens/allergen-evidence";
 
 export type IngredientStatus = "resolved" | "unresolved";
 /**
@@ -65,6 +67,38 @@ export class ProductVersion {
 
   @Prop({ required: true, enum: ["live", "pending", "superseded"] })
   status!: ProductVersionStatus;
+
+  /** Front-of-pack photo from OFF; photo-added products have none (yet). */
+  @Prop({ type: String, default: null })
+  image_url!: string | null;
+
+  /** What the pack declares ("Contains" / "May contain"); null = unknown.
+   *  Our own ingredient-name scan is added at serve time (allergens/). */
+  @Prop({
+    type: {
+      contains: [{ type: String, enum: ALLERGEN_CODES }],
+      may_contain: [{ type: String, enum: ALLERGEN_CODES }],
+    },
+    _id: false,
+    default: null,
+  })
+  declared_allergens!: DeclaredAllergens | null;
+
+  /** The pack's FSSAI veg/non-veg symbol; null = not known. */
+  @Prop({ type: String, enum: ["veg", "non_veg"], default: null })
+  declared_veg!: DeclaredVeg | null;
+
+  /** Pack size as printed, e.g. "1.25 l". */
+  @Prop({ type: String, default: null })
+  quantity!: string | null;
+
+  /** user_submission only: who sent the photos it was read from. */
+  @Prop({ type: Types.ObjectId, ref: "User", default: null })
+  submitted_by!: Types.ObjectId | null;
+
+  /** user_submission only: when a different user's photos matched it. */
+  @Prop({ type: Date, default: null })
+  confirmed_at!: Date | null;
 
   created_at!: Date;
 }

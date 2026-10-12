@@ -9,11 +9,6 @@ import type {
 import { RedisCacheService } from "./redis-cache.service";
 
 export type CachedObjectiveVerdict = {
-  product: {
-    name: string;
-    brand: string;
-    product_version_id: string;
-  };
   facts: Record<string, unknown>;
   unevaluated: UnevaluatedRule[];
   severity: "green" | "yellow" | "red";

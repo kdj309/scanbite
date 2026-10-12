@@ -1,28 +1,39 @@
 import { OnWorkerEvent, Processor, WorkerHost } from "@nestjs/bullmq";
 import { Logger } from "@nestjs/common";
 import { Job } from "bullmq";
+import { PushNotifier } from "../../push/push-notifier";
 import { JobQueuesService } from "../job-queues.service";
-import { NoopNotifier } from "../noop-notifier";
-import { QUEUE_NOTIFICATION, type NotifyJobData } from "../queue-names";
+import {
+  JOB_CHECK_PUSH_RECEIPTS,
+  QUEUE_NOTIFICATION,
+  type CheckPushReceiptsJobData,
+  type NotifyJobData,
+} from "../queue-names";
 
 @Processor(QUEUE_NOTIFICATION)
 export class NotificationProcessor extends WorkerHost {
   private readonly logger = new Logger(NotificationProcessor.name);
 
   constructor(
-    private readonly notifier: NoopNotifier,
+    private readonly notifier: PushNotifier,
     private readonly queues: JobQueuesService
   ) {
     super();
   }
 
-  async process(job: Job<NotifyJobData>): Promise<void> {
-    this.notifier.notify(job.data);
+  async process(
+    job: Job<NotifyJobData | CheckPushReceiptsJobData>
+  ): Promise<void> {
+    if (job.name === JOB_CHECK_PUSH_RECEIPTS) {
+      await this.notifier.checkReceipts(job.data as CheckPushReceiptsJobData);
+    } else {
+      await this.notifier.notifySubmission(job.data as NotifyJobData);
+    }
   }
 
   @OnWorkerEvent("failed")
   async onFailed(
-    job: Job<NotifyJobData> | undefined,
+    job: Job<NotifyJobData | CheckPushReceiptsJobData> | undefined,
     error: Error
   ): Promise<void> {
     if (!job) {

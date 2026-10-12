@@ -1,10 +1,17 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import { severitySchema, type Severity } from "@foodscanner/shared";
 import { HydratedDocument } from "mongoose";
 
-export type RuleOperator = ">" | ">=" | "<" | "<=" | "==" | "contains";
-export type Severity = "green" | "yellow" | "red";
+// One source for each list the rule schemas validate against.
+export type { Severity };
+export const SEVERITIES = severitySchema.options;
+
+export const RULE_OPERATORS = [">", ">=", "<", "<=", "==", "contains"] as const;
+export type RuleOperator = (typeof RULE_OPERATORS)[number];
+
 /** Which product form a rule applies to. "any" (default) = solids and liquids. */
-export type ProductForm = "solid" | "liquid" | "any";
+export const PRODUCT_FORMS = ["solid", "liquid", "any"] as const;
+export type ProductForm = (typeof PRODUCT_FORMS)[number];
 
 @Schema({ _id: false })
 export class RuleDefinition {
@@ -14,7 +21,7 @@ export class RuleDefinition {
   @Prop({ required: true })
   field!: string;
 
-  @Prop({ required: true, enum: [">", ">=", "<", "<=", "==", "contains"] })
+  @Prop({ required: true, enum: RULE_OPERATORS })
   operator!: RuleOperator;
 
   @Prop({ type: Number })
@@ -23,14 +30,18 @@ export class RuleDefinition {
   @Prop({ type: Object })
   value?: unknown;
 
-  @Prop({ required: true, enum: ["green", "yellow", "red"] })
+  @Prop({ required: true, enum: SEVERITIES })
   severity!: Severity;
 
   @Prop()
   reason?: string;
 
+  /** Short chip text for the app, e.g. "High sugar". */
+  @Prop()
+  label?: string;
+
   /** Scopes this rule to solid or liquid products; omitted/"any" = both. */
-  @Prop({ enum: ["solid", "liquid", "any"] })
+  @Prop({ enum: PRODUCT_FORMS })
   applies_to?: ProductForm;
 }
 

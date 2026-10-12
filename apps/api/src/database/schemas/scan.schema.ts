@@ -1,6 +1,17 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument, Types } from "mongoose";
-import type { Severity } from "./scoring-record.schema";
+import { SEVERITIES, type Severity } from "./rule-set.schema";
+
+@Schema({ _id: false })
+export class ScanMemberVerdict {
+  @Prop({ type: Types.ObjectId, ref: "HouseholdMember", required: true })
+  member_id!: Types.ObjectId;
+
+  @Prop({ type: String, enum: SEVERITIES, required: true })
+  severity!: Severity;
+}
+
+const ScanMemberVerdictSchema = SchemaFactory.createForClass(ScanMemberVerdict);
 
 @Schema({
   collection: "scans",
@@ -10,8 +21,9 @@ export class Scan {
   @Prop({ type: Types.ObjectId, ref: "User", required: true })
   user_id!: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: "HouseholdMember", required: true })
-  member_id!: Types.ObjectId;
+  /** Who it was scanned for; null = everyone. */
+  @Prop({ type: Types.ObjectId, ref: "HouseholdMember", default: null })
+  member_id!: Types.ObjectId | null;
 
   @Prop({ required: true, trim: true })
   barcode!: string;
@@ -25,8 +37,12 @@ export class Scan {
   // The personalized verdict actually shown to this member at scan time —
   // an audit record, not a live query. Must not be back-filled from a
   // later, possibly different, scoring_record/rule_set once rules change.
-  @Prop({ type: String, enum: ["green", "yellow", "red"], default: null })
+  @Prop({ type: String, enum: SEVERITIES, default: null })
   severity!: Severity | null;
+
+  /** Every member's verdict at scan time, for the household recents. */
+  @Prop({ type: [ScanMemberVerdictSchema], default: [] })
+  verdicts!: ScanMemberVerdict[];
 
   @Prop({ type: String, default: null })
   rule_set_version!: string | null;
@@ -38,4 +54,5 @@ export type ScanDocument = HydratedDocument<Scan>;
 export const ScanSchema = SchemaFactory.createForClass(Scan);
 
 ScanSchema.index({ member_id: 1, created_at: -1 });
+ScanSchema.index({ user_id: 1, created_at: -1 });
 ScanSchema.index({ barcode: 1, found: 1 });

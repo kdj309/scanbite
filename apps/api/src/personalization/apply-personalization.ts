@@ -1,13 +1,30 @@
-import type { HealthConditionCode } from "@foodscanner/shared";
-import type { RuleOperator } from "../database/schemas/rule-set.schema";
-import type { Severity } from "../database/schemas/scoring-record.schema";
+import type {
+  FlagReason,
+  HealthConditionCode,
+  UncheckedReason,
+} from "@foodscanner/shared";
+import type {
+  ProductForm,
+  RuleOperator,
+} from "../database/schemas/rule-set.schema";
+import type { PersonalizationEffect } from "../database/schemas/personalization-rule.schema";
 import {
   checkOperator,
   escalateOneLevel,
   readFact,
+  ruleAppliesToForm,
   worstSeverity,
   type EvaluationResult,
 } from "../scoring/evaluate-rules";
+import {
+  FALLBACK_LABEL,
+  checkTopic,
+  conditionName,
+  factName,
+  uncheckedReason,
+  type MemberOverlay,
+  type TopicCheck,
+} from "./member-overlay";
 
 export type PersonalizationRuleInput = {
   id: string;
@@ -16,59 +33,30 @@ export type PersonalizationRuleInput = {
   operator: RuleOperator;
   threshold?: number;
   value?: unknown;
-  effect: string;
+  effect: PersonalizationEffect;
   message: string;
-};
-
-/** A verdict reason paired with the rule that produced it, so a client can
- *  look up that rule's explainer (rule_explainers collection) — rule_id is
- *  null only for a reason with no identifiable source rule. */
-export type VerdictReason = {
-  text: string;
-  rule_id: string | null;
-};
-
-export function conditionMatches(
-  memberConditions: string[],
-  condition: string
-): boolean {
-  const needle = condition.trim().toLowerCase();
-  return memberConditions.some((item) => item.trim().toLowerCase() === needle);
-}
-
-/** A personalization rule that DID apply to this member (condition
- *  matched) but whose trigger fact was missing — we could not determine
- *  whether it should have fired. Distinct from a rule whose condition
- *  simply didn't apply to this member at all. */
-export type PersonalizationUnevaluated = {
-  condition: string;
-  field: string;
-  rule_id: string;
-  reason: string;
-};
-
-export type PersonalizedVerdict = {
-  severity: Severity;
-  reasons: VerdictReason[];
-  unevaluated: PersonalizationUnevaluated[];
+  label?: string;
+  applies_to?: ProductForm;
 };
 
 export function applyPersonalization(input: {
   base: EvaluationResult;
   facts: Record<string, unknown>;
-  memberConditions: string[];
+  memberConditions: HealthConditionCode[];
   rules: PersonalizationRuleInput[];
-}): PersonalizedVerdict {
-  const reasons: VerdictReason[] = input.base.breakdown.map((item) => ({
-    text: item.reason,
-    rule_id: item.rule_id,
-  }));
-  const overlaySeverities: Severity[] = [];
-  const unevaluated: PersonalizationUnevaluated[] = [];
+}): MemberOverlay {
+  const flags: FlagReason[] = [];
+  const unchecked: UncheckedReason[] = [];
+  const checked: TopicCheck[] = [];
+  const flaggedTopics: string[] = [];
+  const productForm = readFact(input.facts, "product_form");
 
   for (const rule of input.rules) {
-    if (!conditionMatches(input.memberConditions, rule.condition)) {
+    if (!input.memberConditions.includes(rule.condition)) {
       continue; // rule doesn't apply to this member at all — not a data gap
+    }
+    if (!ruleAppliesToForm(rule, productForm)) {
+      continue; // e.g. the per-100g sugar rule on a drink — its twin covers it
     }
     const fact = readFact(input.facts, rule.field);
     const result = checkOperator(
@@ -80,33 +68,48 @@ export function applyPersonalization(input: {
 
     if (result === "inapplicable") {
       // This condition DOES apply to the member, and we genuinely could
-      // not check whether it should have escalated. Silence here is the
-      // riskier failure mode than for base scoring — this is specifically
-      // about a health condition the member actually has.
-      unevaluated.push({
-        condition: rule.condition,
-        field: rule.field,
-        rule_id: rule.id,
-        reason: `Could not check ${rule.field} for your ${rule.condition} profile — data unavailable`,
-      });
+      // not check whether it should have escalated — so for them it can't
+      // be Safe (Caution at best, like an allergy we couldn't check).
+      unchecked.push(
+        uncheckedReason(
+          `Couldn't check ${factName(rule.field)} for ${conditionName(rule.condition)}`,
+          rule.id,
+          checkTopic(rule.field)
+        )
+      );
       continue;
     }
 
     if (result !== "matched") {
+      checked.push({
+        topic: checkTopic(rule.field),
+        for: conditionName(rule.condition),
+      });
       continue;
     }
+    flaggedTopics.push(checkTopic(rule.field));
 
-    if (rule.effect.toLowerCase().includes("escalate")) {
-      overlaySeverities.push(escalateOneLevel(input.base.severity));
-    }
-    if (rule.message.trim()) {
-      reasons.push({ text: rule.message, rule_id: rule.id });
-    }
+    // "escalate one level" is the only effect. The reason carries the level
+    // it escalated to, so it can be the main reason for the verdict it
+    // caused — and every escalation gets one.
+    flags.push({
+      kind: "flag",
+      severity: escalateOneLevel(input.base.severity),
+      label: rule.label?.trim() || FALLBACK_LABEL.flag,
+      text: rule.message,
+      rule_id: rule.id,
+    });
   }
 
   return {
-    severity: worstSeverity([input.base.severity, ...overlaySeverities]),
-    reasons,
-    unevaluated,
+    severity: worstSeverity([
+      input.base.severity,
+      ...flags.map((flag) => flag.severity),
+      ...(unchecked.length ? (["yellow"] as const) : []),
+    ]),
+    flags,
+    unchecked,
+    checked,
+    flaggedTopics,
   };
 }

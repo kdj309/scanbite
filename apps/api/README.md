@@ -111,16 +111,20 @@ curl http://localhost:3000/v1/products/8900000000000 \
   -H "Authorization: Bearer $TOKEN"
 ```
 
-An unknown barcode returns `{"found": false}` rather than a 404 — that's the
-documented shape, not a bug.
+The answer covers the whole household in one call: `members` holds each
+member's verdict (reasons ordered, main reason first) and `overall` the worst
+verdict among members with conditions plus whose it is. An unknown barcode
+returns `{"found": false}` rather than a 404 — that's the documented shape,
+not a bug.
 
-Submit a label photo for a new/changed product (returns 202, processed async
-by the worker):
+Submit label photos for a new/changed product — up to 5 (3 photos, or the 5
+frames the app picks from a short label video), each as a `photos` field
+(returns 202, processed async by the worker):
 
 ```bash
 curl -X POST http://localhost:3000/v1/products/1234567890123/submissions \
   -H "Authorization: Bearer $TOKEN" \
-  -F photo=@/path/to/label.jpg
+  -F photos=@/path/to/ingredients.jpg -F photos=@/path/to/nutrition.jpg
 
 curl http://localhost:3000/v1/submissions/<id> \
   -H "Authorization: Bearer $TOKEN"
@@ -130,16 +134,47 @@ Status goes `processing` → `ready` (or `needs_review` / `failed`) once the
 worker picks it up — the worker process has to actually be running for this
 to move.
 
-Log a scan and check the household summary:
+Better options for a product the household shouldn't have — same category
+and form, Safe for everyone it isn't Safe for, best first, with chips like
+"70% less sugar" and buy links:
+
+```bash
+curl http://localhost:3000/v1/products/8901063029255/alternatives \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+Scan a product the way the app's scanner does — one call that looks it up,
+records it for the household (add `"member_id"` for one person) and returns
+`{scan_id, result}` with the same verdict body as the lookup above — then
+list the household's recent scans and check a member's summary:
 
 ```bash
 curl -X POST http://localhost:3000/v1/scans \
   -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -d '{"barcode":"8900000000000"}'
 
+curl "http://localhost:3000/v1/scans?limit=20" -H "Authorization: Bearer $TOKEN"
+
 curl "http://localhost:3000/v1/household-members/<member_id>/summary?period=week" \
   -H "Authorization: Bearer $TOKEN"
 ```
+
+Register a phone for push notifications (the app does this on every open;
+`DELETE /v1/devices/<url-encoded token>` on logout):
+
+```bash
+curl -X PUT http://localhost:3000/v1/devices \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"expo_push_token":"ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]","platform":"android"}'
+```
+
+When a photo submission finishes, the worker sends "<product> is ready ·
+Avoid for Papa" to the user's phones through the `notification` queue
+(retries with backoff, then dead-letter), and checks Expo's delivery
+receipts 15 minutes later to drop uninstalled phones. `PUSH_PROVIDER=noop`
+(the default) only logs; `expo` sends for real and needs FCM v1 / APNs
+credentials set up in EAS. Expo Go can't receive push (SDK 53+) — test with
+a development build.
 
 ## Known limitations (current, not aspirational)
 
@@ -213,7 +248,7 @@ src/
   household/       household member CRUD, ownership checks
   products/        GET /products/:barcode — the read path
   submissions/     photo upload -> extraction queue
-  scans/           scan history + household summary
+  scans/           scan recording, household recents, member summary
   scoring/         rules-as-data evaluator, active rule set resolution
   personalization/ per-member condition overlay on top of base scoring
   alias/           ingredient text -> canonical ingredient resolution
