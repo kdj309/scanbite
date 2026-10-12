@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { AliasLayer, AliasMatch } from "./alias-layer";
+import type { AliasMatch } from "./alias-layer";
 import { AliasService } from "./alias.service";
 
-function layerReturning(match: AliasMatch | null): AliasLayer {
+function layerReturning(match: AliasMatch | null) {
   return { resolve: async () => match };
 }
 
@@ -12,71 +12,23 @@ function fakeExecOf<T>(result: T) {
 }
 
 describe("AliasService.resolveRaw", () => {
-  it("returns layer 1's match without calling layer 2 or 3", async () => {
-    let similarityCalled = false;
-    let embeddingCalled = false;
-    const exact = layerReturning({ ingredientId: "id-1", layer: 1 });
-    const similarity: AliasLayer = {
-      resolve: async () => {
-        similarityCalled = true;
-        return null;
-      },
-    };
-    const embedding: AliasLayer = {
-      resolve: async () => {
-        embeddingCalled = true;
-        return null;
-      },
-    };
+  it("returns the exact match without recording an unresolved term", async () => {
+    const exact = layerReturning({ ingredientId: "id-1" });
     const unresolved = {
       findOneAndUpdate: () => {
         throw new Error(
-          "should not record an unresolved term when a layer matched"
+          "should not record an unresolved term when an alias matched"
         );
       },
     };
 
-    const service = new AliasService(
-      exact as never,
-      similarity as never,
-      embedding as never,
-      unresolved as never
-    );
+    const service = new AliasService(exact as never, unresolved as never);
     const result = await service.resolveRaw("wheat flour");
 
-    assert.deepEqual(result, {
-      status: "resolved",
-      canonical_id: "id-1",
-      layer: 1,
-    });
-    assert.equal(similarityCalled, false);
-    assert.equal(embeddingCalled, false);
+    assert.deepEqual(result, { status: "resolved", canonical_id: "id-1" });
   });
 
-  it("falls through layer 1 and 2 to layer 3", async () => {
-    const exact = layerReturning(null);
-    const similarity = layerReturning(null);
-    const embedding = layerReturning({ ingredientId: "id-3", layer: 3 });
-    const unresolved = {
-      findOneAndUpdate: () => fakeExecOf(null),
-    };
-
-    const service = new AliasService(
-      exact as never,
-      similarity as never,
-      embedding as never,
-      unresolved as never
-    );
-    const result = await service.resolveRaw("mystery ingredient");
-
-    assert.deepEqual(result, {
-      status: "resolved",
-      canonical_id: "id-3",
-      layer: 3,
-    });
-  });
-
-  it("records an unresolved term (trimmed, occurrence incremented) when no layer matches", async () => {
+  it("records an unresolved term (trimmed, occurrence incremented) when nothing matches", async () => {
     let recordedFilter: unknown;
     let recordedUpdate:
       | {
@@ -93,12 +45,7 @@ describe("AliasService.resolveRaw", () => {
     };
     const noMatch = layerReturning(null);
 
-    const service = new AliasService(
-      noMatch as never,
-      noMatch as never,
-      noMatch as never,
-      unresolved as never
-    );
+    const service = new AliasService(noMatch as never, unresolved as never);
     const result = await service.resolveRaw("  Some Weird Term  ");
 
     assert.deepEqual(result, { status: "unresolved", canonical_id: null });
@@ -119,12 +66,7 @@ describe("AliasService.resolveRaw", () => {
     };
     const noMatch = layerReturning(null);
 
-    const service = new AliasService(
-      noMatch as never,
-      noMatch as never,
-      noMatch as never,
-      unresolved as never
-    );
+    const service = new AliasService(noMatch as never, unresolved as never);
     const result = await service.resolveRaw("   ");
 
     assert.deepEqual(result, { status: "unresolved", canonical_id: null });

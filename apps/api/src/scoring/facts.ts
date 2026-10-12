@@ -50,10 +50,14 @@ export function confidenceFromUnresolved(
   unresolvedCount: number,
   totalIngredients: number
 ): ExtractionConfidence {
+  // No list at all isn't "all recognised": nothing was read.
+  if (totalIngredients === 0) {
+    return "low";
+  }
   if (unresolvedCount === 0) {
     return "full";
   }
-  if (totalIngredients === 0 || unresolvedCount / totalIngredients >= 0.5) {
+  if (unresolvedCount / totalIngredients >= 0.5) {
     return "low";
   }
   return "partial";

@@ -1,8 +1,6 @@
-import { Body, Controller, Get, Param, Post, Query } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post } from "@nestjs/common";
 import {
-  listUnresolvedTermsQuerySchema,
   resolveUnresolvedTermRequestSchema,
-  type ListUnresolvedTermsQuery,
   type ResolveUnresolvedTermRequest,
 } from "@foodscanner/shared";
 import { Roles } from "../auth/roles.decorator";
@@ -14,11 +12,9 @@ import { AdminService } from "./admin.service";
 export class AdminController {
   constructor(private readonly admin: AdminService) {}
 
+  /** Pending terms, most frequent first. */
   @Get()
-  list(
-    @Query(new ZodValidationPipe(listUnresolvedTermsQuerySchema))
-    _query: ListUnresolvedTermsQuery
-  ) {
+  list() {
     return this.admin.listUnresolved();
   }
 

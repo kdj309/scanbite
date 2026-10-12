@@ -5,37 +5,24 @@ import {
   UnresolvedTerm,
   UnresolvedTermDocument,
 } from "../database/schemas/unresolved-term.schema";
-import {
-  EmbeddingAliasLayer,
-  ExactAliasLayer,
-  SimilarityAliasLayer,
-} from "./alias-layers";
+import { ExactAliasLayer } from "./alias-layers";
 
 export type ResolvedIngredient =
-  | { status: "resolved"; canonical_id: string; layer: 1 | 2 | 3 }
+  | { status: "resolved"; canonical_id: string }
   | { status: "unresolved"; canonical_id: null };
 
 @Injectable()
 export class AliasService {
   constructor(
     private readonly exact: ExactAliasLayer,
-    private readonly similarity: SimilarityAliasLayer,
-    private readonly embedding: EmbeddingAliasLayer,
     @InjectModel(UnresolvedTerm.name)
     private readonly unresolved: Model<UnresolvedTermDocument>
   ) {}
 
   async resolveRaw(raw: string): Promise<ResolvedIngredient> {
-    const match =
-      (await this.exact.resolve(raw)) ??
-      (await this.similarity.resolve(raw)) ??
-      (await this.embedding.resolve(raw));
+    const match = await this.exact.resolve(raw);
     if (match) {
-      return {
-        status: "resolved",
-        canonical_id: match.ingredientId,
-        layer: match.layer,
-      };
+      return { status: "resolved", canonical_id: match.ingredientId };
     }
     await this.recordUnresolved(raw);
     return { status: "unresolved", canonical_id: null };

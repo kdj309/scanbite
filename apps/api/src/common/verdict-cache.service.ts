@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { verdictCacheKey, verdictCacheKeyPattern } from "@foodscanner/shared";
+import { verdictCacheKey } from "@foodscanner/shared";
 import type { Env } from "../config/env";
 import type {
   ScoringBreakdownItem,
@@ -49,19 +49,6 @@ export class VerdictCacheService {
       verdictCacheKey(barcode, productVersionId, ruleSetVersion),
       value,
       this.ttlSeconds
-    );
-  }
-
-  /**
-   * Drops every cached verdict for this product version, across all
-   * rule_set_version variants. A rule-content change never needs this (the
-   * versioned key already misses on its own) — this is for when the
-   * product version's OWN data changes under the same rule_set_version,
-   * e.g. a rescore job recomputing facts.
-   */
-  invalidateVersion(barcode: string, productVersionId: string): Promise<void> {
-    return this.redisCache.deleteByPattern(
-      verdictCacheKeyPattern(barcode, productVersionId)
     );
   }
 }

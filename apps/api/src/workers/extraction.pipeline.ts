@@ -176,7 +176,7 @@ export async function applyPromoteResult(input: {
 }
 
 // Only a genuinely pending-review version should surface as "needs_review" —
-// "superseded"/"already_live" mean a live version already exists, just from
+// "superseded" means a live version already exists, just from
 // a different submission, so this one's outcome is "ready", not stuck pending.
 function statusForPromoteResult(
   result: PromoteResult

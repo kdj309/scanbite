@@ -109,7 +109,7 @@ export function readFact(
 export type RuleCheckResult = "matched" | "not_matched" | "inapplicable";
 
 /**
- * Three-state check, replacing the old boolean operatorMatches.
+ * Three-state check.
  * "inapplicable" means the fact needed to evaluate this rule was missing —
  * this must NOT be treated the same as "checked, and it's fine."
  */
@@ -169,28 +169,6 @@ export function checkOperator(
     default:
       return "not_matched";
   }
-}
-
-/**
- * Backward-compatible boolean wrapper around checkOperator, for existing
- * callers (e.g. personalization's applyPersonalization) that only need a
- * matched/not-matched answer and aren't yet distinguishing missing-fact
- * cases. Treats "inapplicable" as false, same as the old behavior.
- *
- * Note: this means personalization triggers still have the same silent
- * gap evaluateRules used to have — a condition like "sugar_per_100g > 15"
- * won't escalate AND won't flag as unknown when sugar is missing, it'll
- * just quietly not trigger. Worth the same unevaluated-tracking treatment
- * later if personalization needs the same honesty guarantee as base
- * scoring; not fixed here to avoid widening this change further.
- */
-export function operatorMatches(
-  operator: RuleOperator,
-  fact: unknown,
-  threshold: number | undefined,
-  value: unknown
-): boolean {
-  return checkOperator(operator, fact, threshold, value) === "matched";
 }
 
 function defaultReason(rule: RuleInput): string {

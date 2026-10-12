@@ -17,13 +17,11 @@ import { DlqProcessor } from "./processors/dlq.processor";
 import { ExtractionProcessor } from "./processors/extraction.processor";
 import { NotificationProcessor } from "./processors/notification.processor";
 import { PromoteProcessor } from "./processors/promote.processor";
-import { RescoreProcessor } from "./processors/rescore.processor";
 import {
   QUEUE_DLQ,
   QUEUE_EXTRACTION,
   QUEUE_NOTIFICATION,
   QUEUE_PROMOTE,
-  QUEUE_RESCORE,
 } from "./queue-names";
 import { bullmqConnection } from "./redis-connection";
 import { SeedService } from "./seed/seed.service";
@@ -39,13 +37,7 @@ function workerModeEnabled(): boolean {
 }
 
 const processors: Provider[] = workerModeEnabled()
-  ? [
-      ExtractionProcessor,
-      NotificationProcessor,
-      PromoteProcessor,
-      RescoreProcessor,
-      DlqProcessor,
-    ]
+  ? [ExtractionProcessor, NotificationProcessor, PromoteProcessor, DlqProcessor]
   : [];
 
 @Global()
@@ -61,7 +53,6 @@ const processors: Provider[] = workerModeEnabled()
       { name: QUEUE_EXTRACTION },
       { name: QUEUE_NOTIFICATION },
       { name: QUEUE_PROMOTE },
-      { name: QUEUE_RESCORE },
       { name: QUEUE_DLQ }
     ),
     ScoringModule,

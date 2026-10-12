@@ -12,17 +12,14 @@ import {
   JOB_EXTRACT,
   JOB_NOTIFY,
   JOB_PROMOTE,
-  JOB_RESCORE,
   QUEUE_DLQ,
   QUEUE_EXTRACTION,
   QUEUE_NOTIFICATION,
   QUEUE_PROMOTE,
-  QUEUE_RESCORE,
   type CheckPushReceiptsJobData,
   type ExtractJobData,
   type NotifyJobData,
   type PromoteJobData,
-  type RescoreJobData,
 } from "./queue-names";
 
 /**
@@ -44,7 +41,6 @@ export class JobQueuesService {
     @InjectQueue(QUEUE_EXTRACTION) private readonly extraction: Queue,
     @InjectQueue(QUEUE_NOTIFICATION) private readonly notification: Queue,
     @InjectQueue(QUEUE_PROMOTE) private readonly promote: Queue,
-    @InjectQueue(QUEUE_RESCORE) private readonly rescore: Queue,
     @InjectQueue(QUEUE_DLQ) private readonly dlq: Queue
   ) {}
 
@@ -119,13 +115,6 @@ export class JobQueuesService {
       delay: 15 * 60 * 1000,
       attempts: 3,
       backoff: { type: "exponential", delay: 60_000 },
-    });
-  }
-
-  async enqueueRescore(data: RescoreJobData): Promise<void> {
-    await this.rescore.add(JOB_RESCORE, data, {
-      attempts: 3,
-      backoff: { type: "exponential", delay: 2000 },
     });
   }
 

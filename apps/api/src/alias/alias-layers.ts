@@ -10,11 +10,11 @@ import {
   IngredientAliasDocument,
 } from "../database/schemas/ingredient-alias.schema";
 import { escapeRegex } from "../common/escape-regex";
-import type { AliasLayer, AliasMatch } from "./alias-layer";
+import type { AliasMatch } from "./alias-layer";
 import { normalizeAliasText } from "./alias-layer";
 
 @Injectable()
-export class ExactAliasLayer implements AliasLayer {
+export class ExactAliasLayer {
   constructor(
     @InjectModel(IngredientAlias.name)
     private readonly aliases: Model<IngredientAliasDocument>,
@@ -30,30 +30,16 @@ export class ExactAliasLayer implements AliasLayer {
 
     const alias = await this.aliases.findOne({ alias_text: text }).exec();
     if (alias) {
-      return { ingredientId: String(alias.ingredient_id), layer: 1 };
+      return { ingredientId: String(alias.ingredient_id) };
     }
 
     const canonical = await this.ingredients
       .findOne({ canonical_name: new RegExp(`^${escapeRegex(text)}$`, "i") })
       .exec();
     if (canonical) {
-      return { ingredientId: canonical.id as string, layer: 1 };
+      return { ingredientId: canonical.id as string };
     }
 
-    return null;
-  }
-}
-
-@Injectable()
-export class SimilarityAliasLayer implements AliasLayer {
-  async resolve(_raw: string): Promise<AliasMatch | null> {
-    return null;
-  }
-}
-
-@Injectable()
-export class EmbeddingAliasLayer implements AliasLayer {
-  async resolve(_raw: string): Promise<AliasMatch | null> {
     return null;
   }
 }

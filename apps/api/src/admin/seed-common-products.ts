@@ -33,11 +33,7 @@ import { ConfigService } from "@nestjs/config";
 import { validateEnv } from "../config/env";
 import { RedisCacheService } from "../common/redis-cache.service";
 import { VerdictCacheService } from "../common/verdict-cache.service";
-import {
-  EmbeddingAliasLayer,
-  ExactAliasLayer,
-  SimilarityAliasLayer,
-} from "../alias/alias-layers";
+import { ExactAliasLayer } from "../alias/alias-layers";
 import { AliasService } from "../alias/alias.service";
 import { isDuplicateKeyError } from "../common/mongo-errors";
 import {
@@ -139,8 +135,6 @@ async function main() {
   );
   const alias = new AliasService(
     new ExactAliasLayer(aliases as any, ingredients as any),
-    new SimilarityAliasLayer(),
-    new EmbeddingAliasLayer(),
     unresolvedTerms as any
   );
 

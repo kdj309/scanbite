@@ -22,7 +22,6 @@ describe("JobQueuesService job ids", () => {
       extraction as never,
       fakeQueue() as never,
       promote as never,
-      fakeQueue() as never,
       fakeQueue() as never
     );
 
