@@ -2,10 +2,8 @@ import { Body, Controller, Get, Param, Post, Query } from "@nestjs/common";
 import {
   createScanRequestSchema,
   listScansQuerySchema,
-  memberSummaryQuerySchema,
   type CreateScanRequest,
   type ListScansQuery,
-  type MemberSummaryQuery,
 } from "@foodscanner/shared";
 import { CurrentUser } from "../auth/current-user.decorator";
 import type { RequestUser } from "../auth/auth.types";
@@ -41,15 +39,5 @@ export class ScansController {
     @Query(new ZodValidationPipe(listScansQuerySchema)) query: ListScansQuery
   ) {
     return this.scans.listForMember(user, id, query);
-  }
-
-  @Get("household-members/:id/summary")
-  summary(
-    @CurrentUser() user: RequestUser,
-    @Param("id") id: string,
-    @Query(new ZodValidationPipe(memberSummaryQuerySchema))
-    query: MemberSummaryQuery
-  ) {
-    return this.scans.summary(user, id, query);
   }
 }

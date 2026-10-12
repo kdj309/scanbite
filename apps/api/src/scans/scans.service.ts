@@ -5,8 +5,6 @@ import type {
   CreateScanResponse,
   ListScansQuery,
   ListScansResponse,
-  MemberSummaryQuery,
-  MemberSummaryResponse,
   ProductFoundResponse,
 } from "@foodscanner/shared";
 import { FilterQuery, Model, Types } from "mongoose";
@@ -148,72 +146,6 @@ export class ScansService {
         )
       ),
       next_cursor: hasMore ? (page[page.length - 1].id as string) : null,
-    };
-  }
-
-  async summary(
-    user: RequestUser,
-    memberId: string,
-    query: MemberSummaryQuery
-  ): Promise<MemberSummaryResponse> {
-    await this.household.requireOwnedMember(user.userId, memberId);
-    const now = new Date();
-    const from = new Date(now);
-    if (query.period === "week") {
-      from.setUTCDate(from.getUTCDate() - 7);
-    } else {
-      from.setUTCDate(from.getUTCDate() - 30);
-    }
-
-    const scans = await this.scans
-      .find({
-        member_id: new Types.ObjectId(memberId),
-        created_at: { $gte: from, $lte: now },
-      })
-      .exec();
-
-    // by_severity reads the severity recorded ON the scan at create time —
-    // not a fresh join to whatever scoring_record happens to be latest now.
-    // Rule content can change after the fact (it has, twice, this session);
-    // a member's history must keep showing what they were actually told.
-    const versionIds = scans
-      .map((scan) => scan.product_version_id)
-      .filter((id): id is Types.ObjectId => Boolean(id));
-    const versions =
-      versionIds.length === 0
-        ? []
-        : await this.versions.find({ _id: { $in: versionIds } }).exec();
-    const versionById = new Map(
-      versions.map((version) => [String(version._id), version])
-    );
-
-    let totalSugar = 0;
-    const bySeverity = { green: 0, yellow: 0, red: 0 };
-    for (const scan of scans) {
-      if (scan.severity) {
-        bySeverity[scan.severity] += 1;
-      }
-      if (!scan.product_version_id) {
-        continue;
-      }
-      const version = versionById.get(String(scan.product_version_id));
-      // Solid and liquid readings are mutually exclusive per product (see
-      // scoring/facts.ts) — fall back to the ml basis rather than silently
-      // treating every liquid product as contributing 0g of sugar.
-      const sugar = Number(
-        version?.nutrition?.sugar_per_100g ??
-          version?.nutrition?.sugar_per_100ml
-      );
-      if (Number.isFinite(sugar) && sugar > 0) {
-        totalSugar += sugar;
-      }
-    }
-
-    return {
-      period: query.period,
-      scan_count: scans.length,
-      total_sugar_g: totalSugar,
-      by_severity: bySeverity,
     };
   }
 }

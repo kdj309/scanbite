@@ -28,9 +28,6 @@ export const submissionStatusSchema = z.enum([
 ]);
 export type SubmissionStatus = z.infer<typeof submissionStatusSchema>;
 
-export const summaryPeriodSchema = z.enum(["week", "month"]);
-export type SummaryPeriod = z.infer<typeof summaryPeriodSchema>;
-
 export const isoDateTimeSchema = z.string().datetime({ offset: true });
 export const objectIdSchema = z.string().min(1);
 

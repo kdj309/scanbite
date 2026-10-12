@@ -36,13 +36,6 @@ export function ruleAppliesToForm(
   if (!rule.applies_to || rule.applies_to === "any") {
     return true;
   }
-  // No product_form fact supplied (e.g. hand-built facts in tests/callers
-  // that predate this concept) defaults to "solid", the overwhelmingly
-  // common case — factsFromVersion always sets an explicit value in
-  // production, so this default never actually applies there.
-  if (rule.applies_to === "solid" && productForm === undefined) {
-    return true;
-  }
   return rule.applies_to === productForm;
 }
 
@@ -150,9 +143,9 @@ export function checkOperator(
     return "inapplicable";
   }
   if (right === undefined) {
-    // Rule config itself is malformed (no usable threshold/value) — that's
-    // not a missing-fact situation, so don't report it as a data gap.
-    return "not_matched";
+    // Rules only come from our seeds, so this is our bug — fail loudly
+    // rather than quietly passing the product as Safe.
+    throw new Error(`Rule with "${operator}" has no number to compare`);
   }
 
   switch (operator) {

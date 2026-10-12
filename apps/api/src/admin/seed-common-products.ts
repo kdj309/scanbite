@@ -9,13 +9,9 @@ import "reflect-metadata";
  * coverage (~0.25% of its global catalog) before any real submission
  * volume exists.
  *
- * This is NOT the same as the "off" source — that's reserved for a live,
- * completeness-tag-scored OFF API fetch (see off-lookup.service.ts). This
- * is a one-time, manually curated snapshot, tagged "manual_seed" to keep
- * provenance honest. Confidence is fixed, not computed via
- * offExtractionConfidence, because that heuristic is calibrated for OFF's
- * live states_tags/data_quality_errors_tags signals, which this ground-
- * truth export doesn't carry.
+ * This is NOT the same as the "off" source — that's reserved for a live
+ * OFF API fetch (see off-lookup.service.ts). This is a one-time, manually
+ * curated snapshot, tagged "manual_seed" to keep provenance honest.
  *
  * Idempotent — safe to re-run; skips any barcode that already has a live
  * version.
