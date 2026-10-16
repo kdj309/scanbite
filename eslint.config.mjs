@@ -2,12 +2,13 @@
 import eslint from "@eslint/js";
 import { defineConfig } from "eslint/config";
 import eslintConfigPrettier from "eslint-config-prettier/flat";
+import reactHooks from "eslint-plugin-react-hooks";
 import tseslint from "typescript-eslint";
 
 /**
  * Single root ESLint config for the pnpm workspace.
- * Packages inherit this; do not add per-app eslintrc files unless a package
- * truly needs different rules (e.g. a future React app).
+ * Packages inherit this; do not add per-app eslintrc files. The mobile app
+ * gets the React hooks rules on top (block below).
  */
 export default defineConfig(
   {
@@ -23,10 +24,14 @@ export default defineConfig(
       // that directory since it writes permanent seed data, not test data.
       "apps/api/src/admin/seed-common-products.ts",
       "apps/api/src/admin/seed-rule-explainers.ts",
+      // Expo template examples kept for reference (gitignored) + generated.
+      "apps/mobile/example/**",
+      "apps/mobile/.expo/**",
+      "apps/mobile/expo-env.d.ts",
     ],
   },
   {
-    files: ["**/*.{js,cjs,mjs,ts,cts,mts}"],
+    files: ["**/*.{js,cjs,mjs,ts,cts,mts,tsx}"],
     extends: [eslint.configs.recommended, tseslint.configs.recommended],
     languageOptions: {
       parserOptions: {
@@ -46,6 +51,10 @@ export default defineConfig(
       "@typescript-eslint/no-explicit-any": "warn",
       "@typescript-eslint/no-empty-object-type": "off",
     },
+  },
+  {
+    files: ["apps/mobile/**/*.{ts,tsx}"],
+    extends: [reactHooks.configs.flat["recommended-latest"]],
   },
   eslintConfigPrettier
 );
