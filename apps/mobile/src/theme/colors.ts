@@ -39,6 +39,8 @@ type SeverityColors = {
   onTint: string;
   /** Thin strokes such as avatar rings; caution's solid is too faint for one. */
   outline: string;
+  /** Coloured shadow under the large verdict badge. */
+  glow: string;
 };
 
 /** Keyed by the API's severity: green = Safe, yellow = Caution, red = Avoid. */
@@ -49,6 +51,7 @@ export const severityColors: Record<Severity, SeverityColors> = {
     tint: "#D6F5E3",
     onTint: "#066638",
     outline: "#127A4E",
+    glow: "rgba(10,125,69,0.3)",
   },
   yellow: {
     solid: "#FFA51F",
@@ -56,6 +59,7 @@ export const severityColors: Record<Severity, SeverityColors> = {
     tint: "#FFEDC2",
     onTint: "#7A3A05",
     outline: "#B45309",
+    glow: "rgba(255,165,31,0.4)",
   },
   red: {
     solid: "#9B1111",
@@ -63,5 +67,6 @@ export const severityColors: Record<Severity, SeverityColors> = {
     tint: "#FFE0DB",
     onTint: "#8E1010",
     outline: "#9B1111",
+    glow: "rgba(155,17,17,0.3)",
   },
 };
