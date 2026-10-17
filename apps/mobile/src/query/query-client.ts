@@ -8,7 +8,7 @@ import { AppState, Platform } from "react-native";
 import { ApiError, SessionExpiredError } from "@/api/client";
 
 /** A 4xx or an expired session fails the same way every time. */
-export function shouldRetry(failureCount: number, error: Error): boolean {
+function shouldRetry(failureCount: number, error: Error): boolean {
   if (error instanceof SessionExpiredError) {
     return false;
   }

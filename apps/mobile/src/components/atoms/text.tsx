@@ -1,13 +1,15 @@
 import { Text as RNText, type TextProps as RNTextProps } from "react-native";
-import { colors, textStyles, type TextVariant } from "@/theme";
+import { colors, severityColors, textStyles, type TextVariant } from "@/theme";
 
-export type TextColor = "ink" | "secondary" | "brand" | "onBrand";
+export type TextColor = "ink" | "secondary" | "brand" | "onBrand" | "danger";
 
 const COLOR_VALUES: Record<TextColor, string> = {
   ink: colors.ink,
   secondary: colors.inkSecondary,
   brand: colors.brandText,
   onBrand: colors.onBrand,
+  /** Destructive actions ("Remove"); 8:1 on the background. */
+  danger: severityColors.red.solid,
 };
 
 /** Captions are secondary text in the design; everything else is ink. */

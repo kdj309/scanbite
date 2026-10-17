@@ -1,4 +1,4 @@
-import type { Severity } from "@foodscanner/shared";
+import type { Relationship, Severity } from "@foodscanner/shared";
 
 /** From the design canvas (Colors board, accessibility pass 2026-10-07). */
 export const colors = {
@@ -6,25 +6,23 @@ export const colors = {
   brand: "#3A6EC4",
   /** Brand as text and links on light grounds; also pressed primary and its raised edge. */
   brandText: "#2D5BA8",
-  /** A pressed link. */
-  brandTextPressed: "#1F4688",
   /** Chips, selected rows, soft panels, secondary buttons. */
   brandTint: "#EAF0FA",
   brandTintPressed: "#DCE6F7",
+  /** Border of a tile or pill being pressed, before it's selected. */
+  brandBorderPressed: "#B9CBEA",
 
   /** Highlight only (scan glow, "new" tags), ink text, never near a verdict. */
   mango: "#FFD23F",
   mangoTint: "#FFF4CC",
+  /** The star on "conditions tracked". */
+  star: "#FFB800",
 
   background: "#FFF9F1",
   surface: "#FFFFFF",
   ink: "#1A1523",
   inkSecondary: "#5E5668",
-  /** Not-yet-chosen options (onboarding steps, unpicked age). */
-  inkMuted: "#8C8396",
   hairline: "#EAE3EE",
-  switchOff: "#D9D2DE",
-  scrim: "rgba(26,21,35,0.45)",
   onBrand: "#FFFFFF",
 } as const;
 
@@ -39,8 +37,21 @@ type SeverityColors = {
   onTint: string;
   /** Thin strokes such as avatar rings; caution's solid is too faint for one. */
   outline: string;
-  /** Coloured shadow under the large verdict badge. */
-  glow: string;
+};
+
+/**
+ * One tint per relationship, so people are easy to tell apart in avatars
+ * (onboarding tiles, family summary). Not verdict colours.
+ */
+export const relationshipTints: Record<
+  Relationship,
+  { background: string; text: string }
+> = {
+  self: { background: "#EAF0FA", text: "#2D5BA8" },
+  spouse: { background: "#FFE7F0", text: "#A0285C" },
+  parent: { background: "#FFE0DB", text: "#8E1010" },
+  child: { background: "#D6F5E3", text: "#066638" },
+  other: { background: "#FFEDC2", text: "#7A3A05" },
 };
 
 /** Keyed by the API's severity: green = Safe, yellow = Caution, red = Avoid. */
@@ -51,7 +62,6 @@ export const severityColors: Record<Severity, SeverityColors> = {
     tint: "#D6F5E3",
     onTint: "#066638",
     outline: "#127A4E",
-    glow: "rgba(10,125,69,0.3)",
   },
   yellow: {
     solid: "#FFA51F",
@@ -59,7 +69,6 @@ export const severityColors: Record<Severity, SeverityColors> = {
     tint: "#FFEDC2",
     onTint: "#7A3A05",
     outline: "#B45309",
-    glow: "rgba(255,165,31,0.4)",
   },
   red: {
     solid: "#9B1111",
@@ -67,6 +76,5 @@ export const severityColors: Record<Severity, SeverityColors> = {
     tint: "#FFE0DB",
     onTint: "#8E1010",
     outline: "#9B1111",
-    glow: "rgba(155,17,17,0.3)",
   },
 };

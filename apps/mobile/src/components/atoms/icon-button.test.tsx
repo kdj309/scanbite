@@ -4,9 +4,11 @@ import { IconButton } from "./icon-button";
 describe("IconButton", () => {
   it("is announced by its label and calls onPress", async () => {
     const onPress = jest.fn();
-    await render(<IconButton icon="close" label="Close" onPress={onPress} />);
+    await render(
+      <IconButton icon="chevronLeft" label="Back" onPress={onPress} />
+    );
 
-    await userEvent.press(screen.getByRole("button", { name: "Close" }));
+    await userEvent.press(screen.getByRole("button", { name: "Back" }));
 
     expect(onPress).toHaveBeenCalledTimes(1);
   });
@@ -14,13 +16,13 @@ describe("IconButton", () => {
   it("keeps disabled when the caller adds its own state", async () => {
     await render(
       <IconButton
-        icon="close"
-        label="Close"
+        icon="chevronLeft"
+        label="Back"
         disabled
         accessibilityState={{ selected: true }}
       />
     );
-    const button = screen.getByRole("button", { name: "Close" });
+    const button = screen.getByRole("button", { name: "Back" });
 
     expect(button).toBeSelected();
     expect(button).toBeDisabled();

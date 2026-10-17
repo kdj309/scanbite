@@ -32,13 +32,6 @@ export const textStyles = {
   },
   /** Section headers. */
   h2: { fontFamily: fonts.extrabold, fontSize: 17, lineHeight: 24 },
-  /** The one sentence that matters on a card (main reason). */
-  lead: {
-    fontFamily: fonts.extrabold,
-    fontSize: 18,
-    lineHeight: 25,
-    letterSpacing: -0.18,
-  },
   /** List row and card titles. */
   title: { fontFamily: fonts.bold, fontSize: 15, lineHeight: 20 },
   /** All explainer and body text. */

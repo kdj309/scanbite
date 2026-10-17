@@ -7,11 +7,20 @@ import {
   type StyleProp,
   type ViewStyle,
 } from "react-native";
-import { buttonHeight, colors, radii, shadows, spacing } from "@/theme";
+import {
+  buttonHeight,
+  colors,
+  minTouchTarget,
+  radii,
+  severityColors,
+  shadows,
+  spacing,
+} from "@/theme";
 import { Icon, type IconName } from "./icon";
 import { Text, type TextColor } from "./text";
 
-export type ButtonVariant = "primary" | "secondary" | "outline" | "ghost";
+export type ButtonVariant =
+  "primary" | "secondary" | "mango" | "link" | "danger";
 
 type VariantStyle = {
   base: ViewStyle;
@@ -38,22 +47,38 @@ const VARIANTS: Record<ButtonVariant, VariantStyle> = {
     text: "brand",
     iconColor: colors.brandText,
   },
-  outline: {
-    base: {
-      backgroundColor: colors.surface,
-      borderWidth: 1.5,
-      borderColor: colors.hairline,
+  /** The main action on a blue screen (welcome), where primary would vanish. */
+  mango: {
+    base: { backgroundColor: colors.mango, boxShadow: shadows.mangoEdge },
+    pressed: {
+      boxShadow: shadows.mangoEdgePressed,
+      transform: [{ translateY: 4 }],
     },
-    pressed: { backgroundColor: colors.brandTint },
     text: "ink",
     iconColor: colors.ink,
   },
-  /** Low-emphasis choices such as "Skip for now". */
-  ghost: {
-    base: { backgroundColor: "transparent" },
-    pressed: { backgroundColor: colors.brandTint },
-    text: "secondary",
-    iconColor: colors.inkSecondary,
+  /** Destructive and secondary ("Remove Papa"): visibly a button, quieter than primary. */
+  danger: {
+    base: {
+      backgroundColor: colors.surface,
+      borderWidth: 1.5,
+      borderColor: severityColors.red.solid,
+    },
+    pressed: { backgroundColor: severityColors.red.tint },
+    text: "danger",
+    iconColor: severityColors.red.solid,
+  },
+  /** An inline text action ("No allergies — skip"); still 44 tall. */
+  link: {
+    base: {
+      backgroundColor: "transparent",
+      minHeight: minTouchTarget,
+      paddingHorizontal: 0,
+      alignSelf: "flex-start",
+    },
+    pressed: { opacity: 0.6 },
+    text: "brand",
+    iconColor: colors.brandText,
   },
 };
 
@@ -64,6 +89,8 @@ export type ButtonProps = Omit<PressableProps, "style" | "children"> & {
   icon?: IconName;
   /** Shows a spinner and blocks presses; the title stays for screen readers. */
   loading?: boolean;
+  /** Overrides the variant's text colour, e.g. a link on a blue screen. */
+  textColor?: TextColor;
   style?: StyleProp<ViewStyle>;
 };
 
@@ -72,6 +99,7 @@ export function Button({
   variant = "primary",
   icon,
   loading = false,
+  textColor,
   disabled,
   accessibilityState,
   style,
@@ -102,7 +130,7 @@ export function Button({
       {/* Stays laid out while loading, so the button keeps its size. */}
       <View style={[styles.content, loading && styles.hidden]}>
         {icon && <Icon name={icon} color={look.iconColor} />}
-        <Text variant="button" color={look.text}>
+        <Text variant="button" color={textColor ?? look.text}>
           {title}
         </Text>
       </View>

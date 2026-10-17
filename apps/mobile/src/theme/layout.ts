@@ -35,13 +35,13 @@ export const buttonHeight = 54;
 
 /** CSS-style shadows (React Native's boxShadow, New Architecture). */
 export const shadows = {
-  /** White cards floating on the background. */
-  card: "0 4px 14px rgba(26,21,35,0.06)",
   /** Speech bubbles and banners that sit above content. */
   raised: "0 4px 14px rgba(26,21,35,0.08)",
   /** The primary button's pressable edge. */
   primaryEdge: "0 4px 0 #2D5BA8",
   primaryEdgePressed: "0 1px 0 #2D5BA8",
+  mangoEdge: "0 6px 0 #C99A00",
+  mangoEdgePressed: "0 2px 0 #C99A00",
   /** The centre scan button in the tab bar. */
   scanButton: "0 6px 16px rgba(58,110,196,0.35)",
 } as const;

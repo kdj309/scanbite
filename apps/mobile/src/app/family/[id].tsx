@@ -1,0 +1,211 @@
+import type { HouseholdMember } from "@foodscanner/shared";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { router, useLocalSearchParams } from "expo-router";
+import { useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Button, IconButton, Text, TextField } from "@/components";
+import {
+  deleteMember,
+  householdQueryKey,
+  updateMember,
+  useHousehold,
+} from "@/features/household/api";
+import {
+  editRequest,
+  formFromMember,
+  type MemberForm,
+} from "@/features/household/edit-member";
+import {
+  AgePicker,
+  AllergiesPicker,
+  ConditionsPicker,
+} from "@/features/household/profile-pickers";
+import { colors, screenGutter, spacing } from "@/theme";
+
+/** Edit one person: name, age, conditions, allergies; or remove them. */
+export default function EditMember() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const household = useHousehold();
+  const member = household.data?.members.find((m) => m.id === id);
+
+  if (household.data === undefined) {
+    return <ActivityIndicator style={styles.center} />;
+  }
+  if (!member) {
+    // Removed meanwhile (or a stale link).
+    return (
+      <SafeAreaView style={[styles.center, styles.gap]}>
+        <Text>This person isn’t in your family any more.</Text>
+        <Button
+          title="Back"
+          variant="secondary"
+          onPress={() => router.back()}
+        />
+      </SafeAreaView>
+    );
+  }
+  // Keyed, so switching to another person starts a fresh form.
+  return <EditForm key={member.id} member={member} />;
+}
+
+function EditForm({ member }: { member: HouseholdMember }) {
+  const queryClient = useQueryClient();
+  const [form, setForm] = useState<MemberForm>(() => formFromMember(member));
+  const [scrolled, setScrolled] = useState(false);
+  const self = member.relationship === "self";
+  const name = self ? "you" : member.name;
+  const update = (patch: Partial<MemberForm>) =>
+    setForm((current) => ({ ...current, ...patch }));
+
+  const done = async () => {
+    await queryClient.invalidateQueries({ queryKey: householdQueryKey });
+    router.back();
+  };
+  const save = useMutation({
+    mutationFn: () => updateMember(member.id, editRequest(member, form)),
+    onSuccess: done,
+  });
+  const remove = useMutation({
+    mutationFn: () => deleteMember(member.id),
+    onSuccess: done,
+  });
+  const busy = save.isPending || remove.isPending;
+  const error = save.error ?? remove.error;
+
+  function confirmRemove() {
+    Alert.alert(
+      `Remove ${member.name}?`,
+      "Scans will stop showing a verdict for them.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Remove",
+          style: "destructive",
+          onPress: () => remove.mutate(),
+        },
+      ]
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.safe}>
+      <KeyboardAvoidingView
+        style={styles.safe}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+        {/* A line once scrolled, so content clearly passes under the bar. */}
+        <View style={[styles.bar, scrolled && styles.barScrolled]}>
+          <IconButton
+            icon="chevronLeft"
+            label="Back"
+            onPress={() => router.back()}
+          />
+          <Text variant="h2">{self ? "Your profile" : `Edit ${name}`}</Text>
+        </View>
+        <ScrollView
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          scrollEventThrottle={32}
+          onScroll={(event) =>
+            setScrolled(event.nativeEvent.contentOffset.y > 0)
+          }
+        >
+          {!self && (
+            <TextField
+              label="What do you call them?"
+              value={form.name}
+              onChangeText={(value) => update({ name: value })}
+              autoCapitalize="words"
+              autoComplete="off"
+              maxLength={40}
+            />
+          )}
+          <View style={styles.section}>
+            <Text variant="h2">Age</Text>
+            <AgePicker
+              value={form.ageBand}
+              onChange={(ageBand) => update({ ageBand })}
+            />
+          </View>
+          <View style={styles.section}>
+            <Text variant="h2">Conditions</Text>
+            <ConditionsPicker
+              value={form.conditions}
+              onChange={(conditions) => update({ conditions })}
+            />
+          </View>
+          <View style={styles.section}>
+            <Text variant="h2">Allergies</Text>
+            <AllergiesPicker
+              value={form.allergies}
+              onChange={(allergies) => update({ allergies })}
+            />
+          </View>
+          {error && (
+            <Text variant="caption" accessibilityRole="alert">
+              Couldn’t save. {error.message}
+            </Text>
+          )}
+        </ScrollView>
+        <View style={styles.footer}>
+          <Button
+            title="Save changes"
+            onPress={() => save.mutate()}
+            loading={save.isPending}
+            disabled={busy || (!self && form.name.trim() === "")}
+          />
+          {!self && (
+            <Button
+              variant="danger"
+              icon="trash"
+              title={`Remove ${member.name}`}
+              accessibilityHint="Removes them from your family"
+              onPress={confirmRemove}
+              disabled={busy}
+            />
+          )}
+        </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  safe: { flex: 1 },
+  center: { flex: 1, alignItems: "center", justifyContent: "center" },
+  gap: { gap: spacing.sm, padding: screenGutter },
+  bar: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  content: {
+    paddingHorizontal: screenGutter,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xl,
+    gap: spacing.xl,
+  },
+  section: { gap: spacing.sm },
+  footer: {
+    gap: 10,
+    paddingHorizontal: screenGutter,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.md,
+  },
+  barScrolled: {
+    backgroundColor: colors.background,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.hairline,
+  },
+});

@@ -5,21 +5,24 @@ import {
   type StyleProp,
   type ViewStyle,
 } from "react-native";
-import { colors, minTouchTarget, radii } from "@/theme";
+import { buttonHeight, colors, minTouchTarget, radii } from "@/theme";
 import { Icon, type IconName } from "./icon";
 
 export type IconButtonProps = Omit<PressableProps, "style" | "children"> & {
   icon: IconName;
+  /** plain: 44×44 in top bars. outline: 54×54 next to a full button (step footers). */
+  variant?: "plain" | "outline";
   /** Required: an icon alone says nothing to a screen reader ("Close", "Back"). */
   label: string;
   color?: string;
   style?: StyleProp<ViewStyle>;
 };
 
-/** Back, close and other icon-only actions; always a 44×44 target. */
+/** Back, close and other icon-only actions; at least a 44×44 target. */
 export function IconButton({
   icon,
   label,
+  variant = "plain",
   color = colors.ink,
   disabled,
   accessibilityState,
@@ -39,6 +42,7 @@ export function IconButton({
       }}
       style={({ pressed }) => [
         styles.button,
+        variant === "outline" && styles.outline,
         pressed && styles.pressed,
         disabled === true && styles.disabled,
         style,
@@ -56,6 +60,14 @@ const styles = StyleSheet.create({
     borderRadius: radii.sm,
     alignItems: "center",
     justifyContent: "center",
+  },
+  outline: {
+    width: buttonHeight,
+    height: buttonHeight,
+    borderRadius: radii.lg,
+    borderWidth: 2,
+    borderColor: colors.hairline,
+    backgroundColor: colors.surface,
   },
   pressed: { backgroundColor: colors.hairline },
   disabled: { opacity: 0.5 },

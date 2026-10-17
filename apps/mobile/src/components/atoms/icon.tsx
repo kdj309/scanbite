@@ -1,28 +1,21 @@
 import type { ReactNode } from "react";
-import Svg, { Circle, Path } from "react-native-svg";
+import Svg, { Path } from "react-native-svg";
 import { colors } from "@/theme";
 
 /** Stroke icons from the design canvas, drawn on a 20×20 grid. */
 const ICONS = {
   check: <Path d="M4 10L8 14L16 6" strokeWidth={2.2} />,
-  /** Caution: ! in a circle. */
-  alert: (
-    <>
-      <Circle cx={10} cy={10} r={8} strokeWidth={2} />
-      <Path d="M10 6.5V11" strokeWidth={2} />
-      <Circle cx={10} cy={13.6} r={1} fill="currentColor" stroke="none" />
-    </>
-  ),
-  /** Avoid: × in a circle. */
-  block: (
-    <>
-      <Circle cx={10} cy={10} r={8} strokeWidth={2} />
-      <Path d="M7 7L13 13M13 7L7 13" strokeWidth={2} />
-    </>
-  ),
-  close: <Path d="M5 5L15 15M15 5L5 15" strokeWidth={2.2} />,
-  arrowRight: <Path d="M4 10H15M10 5L15 10L10 15" strokeWidth={2} />,
   chevronLeft: <Path d="M12 4L6 10L12 16" strokeWidth={2.2} />,
+  chevronRight: <Path d="M8 4L14 10L8 16" strokeWidth={2.2} />,
+  trash: <Path d="M4 6h12M8 6V4h4v2M6 6l1 11h6l1-11" strokeWidth={2} />,
+  pencil: <Path d="M13.5 3.5l3 3L7 16H4v-3l9.5-9.5z" strokeWidth={2} />,
+  heart: (
+    <Path
+      d="M10 17s-6.5-3.9-6.5-8.6A3.6 3.6 0 0 1 10 6a3.6 3.6 0 0 1 6.5 2.4C16.5 13.1 10 17 10 17z"
+      fill="currentColor"
+      stroke="none"
+    />
+  ),
 } satisfies Record<string, ReactNode>;
 
 export type IconName = keyof typeof ICONS;

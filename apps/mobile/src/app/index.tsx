@@ -1,92 +1,75 @@
-import { useState } from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
+import { Redirect, router } from "expo-router";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Button, Text } from "@/components";
+import { useHousehold } from "@/features/household/api";
+import { displayName } from "@/features/household/members";
 import {
-  Button,
-  Card,
-  Chip,
-  IconButton,
-  SeverityBadge,
-  Text,
-  type BadgeSeverity,
-} from "@/components";
+  clearSetupSeen,
+  setupSeenQueryKey,
+  useSetupSeen,
+} from "@/features/onboarding/setup-seen";
+import { useQueryClient } from "@tanstack/react-query";
 import { screenGutter, spacing } from "@/theme";
 
-const SEVERITIES: BadgeSeverity[] = ["green", "yellow", "red", "none"];
+/** Placeholder Home until the real one is built. */
+export default function Home() {
+  const setupSeen = useSetupSeen();
+  const queryClient = useQueryClient();
+  const household = useHousehold();
 
-/** Placeholder: component preview until the real screens exist. */
-export default function Index() {
-  const [conditions, setConditions] = useState(["Sugar", "BP"]);
-  const [loading, setLoading] = useState(false);
-
+  if (setupSeen.isPending) {
+    return <ActivityIndicator style={styles.center} />;
+  }
+  if (setupSeen.data === false) {
+    return <Redirect href="/onboarding" />;
+  }
   return (
-    <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={styles.page}>
-        <View style={styles.bar}>
-          <IconButton icon="chevronLeft" label="Back" />
-          <Text variant="h2">Components</Text>
-          <IconButton icon="close" label="Close" />
-        </View>
-
-        <Text variant="h1">Severity badge</Text>
-        {(["lg", "md", "sm"] as const).map((size) => (
-          <View key={size} style={styles.wrap}>
-            {SEVERITIES.map((severity) => (
-              <SeverityBadge key={severity} severity={severity} size={size} />
-            ))}
-          </View>
-        ))}
-        <SeverityBadge severity="red" size="lg" label="Avoid for Papa" />
-
-        <Text variant="h1">Buttons</Text>
-        <Button
-          title="Scan a product"
-          loading={loading}
-          onPress={() => {
-            setLoading(true);
-            setTimeout(() => setLoading(false), 1500);
-          }}
-        />
-        <Button title="See better options" variant="secondary" />
-        <Button title="Buy on Amazon" variant="outline" icon="arrowRight" />
-        <Button title="Skip for now" variant="ghost" />
-        <Button title="Disabled" disabled />
-
-        <Text variant="h1">Chips</Text>
-        <View style={styles.wrap}>
-          {conditions.map((condition) => (
-            <Chip
-              key={condition}
-              label={condition}
-              onRemove={() =>
-                setConditions((all) => all.filter((c) => c !== condition))
+    <SafeAreaView style={styles.page}>
+      <Text variant="h1">Home</Text>
+      <Text color="secondary">The real Home screen comes next.</Text>
+      <View style={styles.list}>
+        {household.data?.members.map((member) => (
+          <View key={member.id} style={styles.member}>
+            <Text style={styles.memberText}>
+              {displayName(member)} · {member.conditions.length} conditions ·{" "}
+              {member.allergies.length} allergies
+            </Text>
+            {/* Until the Family screen exists. */}
+            <Button
+              variant="link"
+              title="Edit"
+              accessibilityLabel={`Edit ${displayName(member)}`}
+              onPress={() =>
+                router.push({
+                  pathname: "/family/[id]",
+                  params: { id: member.id },
+                })
               }
             />
-          ))}
-          <Chip label="For Papa · Sugar" />
-        </View>
-
-        <Text variant="h1">Cards</Text>
-        <Card>
-          <Text variant="title">Outlined card</Text>
-          <Text variant="caption">Household members, catalog rows</Text>
-        </Card>
-        <Card variant="elevated">
-          <Text variant="lead">Too sweet for diabetes</Text>
-          <Text>Main reason card, with a soft shadow.</Text>
-        </Card>
-      </ScrollView>
+          </View>
+        ))}
+      </View>
+      {__DEV__ && (
+        // Setup is first-run only; this replays it while developing.
+        <Button
+          title="Replay setup (dev)"
+          variant="secondary"
+          onPress={() =>
+            void clearSetupSeen().then(() =>
+              queryClient.setQueryData(setupSeenQueryKey, false)
+            )
+          }
+        />
+      )}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1 },
-  page: { padding: screenGutter, gap: spacing.md },
-  bar: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  wrap: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs },
+  center: { flex: 1 },
+  page: { flex: 1, padding: screenGutter, gap: spacing.sm },
+  list: { gap: spacing.xxs, marginVertical: spacing.sm },
+  member: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  memberText: { flex: 1 },
 });
