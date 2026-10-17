@@ -38,6 +38,10 @@ export class HouseholdMember {
   @Prop({ type: [{ type: String, enum: ALLERGEN_CODES }], default: [] })
   allergies!: AllergenCode[];
 
+  /** The app's id for this person; makes a retried create a no-op. */
+  @Prop()
+  client_id?: string;
+
   created_at!: Date;
   updated_at!: Date;
 }
@@ -47,3 +51,9 @@ export const HouseholdMemberSchema =
   SchemaFactory.createForClass(HouseholdMember);
 
 HouseholdMemberSchema.index({ owner_user_id: 1 });
+// One member per app-made id per account. Members created without one
+// (the self member, older apps) aren't constrained.
+HouseholdMemberSchema.index(
+  { owner_user_id: 1, client_id: 1 },
+  { unique: true, partialFilterExpression: { client_id: { $type: "string" } } }
+);

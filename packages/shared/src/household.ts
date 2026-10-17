@@ -20,6 +20,12 @@ export const householdMemberSchema = z.object({
 export type HouseholdMember = z.infer<typeof householdMemberSchema>;
 
 export const createHouseholdMemberRequestSchema = z.object({
+  /**
+   * The app's own id for this person (a UUID it makes once). Sending the
+   * same one again returns the member already created, so retrying a save
+   * whose response was lost can't add the person twice.
+   */
+  client_id: z.string().uuid().optional(),
   name: z.string().min(1),
   relationship: relationshipSchema,
   age_band: z.string().min(1).optional(),

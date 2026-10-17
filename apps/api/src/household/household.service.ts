@@ -14,6 +14,7 @@ import {
   HouseholdMemberDocument,
 } from "../database/schemas/household-member.schema";
 import { User, UserDocument } from "../database/schemas/user.schema";
+import { isDuplicateKeyError } from "../common/mongo-errors";
 import { serializeHouseholdMember } from "./serialize-member";
 
 @Injectable()
@@ -33,16 +34,46 @@ export class HouseholdService {
     return { members: docs.map(serializeHouseholdMember) };
   }
 
+  /**
+   * With a client_id, saving the same person again (a retry after a lost
+   * response, maybe with edits) updates the member already made instead of
+   * adding a duplicate.
+   */
   async createForUser(userId: string, body: CreateHouseholdMemberRequest) {
-    const created = await this.members.create({
-      owner_user_id: new Types.ObjectId(userId),
+    const owner = new Types.ObjectId(userId);
+    const fields = {
       name: body.name,
       relationship: body.relationship,
       age_band: body.age_band,
       conditions: body.conditions ?? [],
       allergies: body.allergies ?? [],
-    });
-    return serializeHouseholdMember(created);
+    };
+    if (body.client_id === undefined) {
+      const created = await this.members.create({
+        owner_user_id: owner,
+        ...fields,
+      });
+      return serializeHouseholdMember(created);
+    }
+    const upsert = () =>
+      this.members
+        .findOneAndUpdate(
+          { owner_user_id: owner, client_id: body.client_id },
+          { $set: fields },
+          { upsert: true, new: true, runValidators: true }
+        )
+        .orFail()
+        .exec();
+    try {
+      return serializeHouseholdMember(await upsert());
+    } catch (error) {
+      // Two retries arrived together and both tried to insert; the loser
+      // now finds the winner's member and updates it.
+      if (!isDuplicateKeyError(error)) {
+        throw error;
+      }
+      return serializeHouseholdMember(await upsert());
+    }
   }
 
   async updateForUser(
