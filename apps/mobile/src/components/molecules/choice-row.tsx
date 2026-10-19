@@ -45,12 +45,11 @@ export function ChoiceRow<T extends string>({
             onPress={() => onChange(option)}
             style={[styles.option, selected && styles.selected]}
           >
-            {/* Five bands share one phone-width row: shrink to fit rather than overflow. */}
+            {/* Sized so "40–59" fits a 360pt-wide phone. Not shrink-to-fit:
+                iOS measures it mid-transition and leaves it tiny. */}
             <Text
               style={[styles.text, selected && styles.selectedText]}
               numberOfLines={1}
-              adjustsFontSizeToFit
-              minimumFontScale={0.6}
             >
               {option}
             </Text>
@@ -71,7 +70,6 @@ const styles = StyleSheet.create({
   option: {
     flex: 1,
     minHeight: 60,
-    paddingHorizontal: 4,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: radii.lg,
@@ -88,9 +86,9 @@ const styles = StyleSheet.create({
   // secondary text colour so they pass contrast.
   text: {
     fontFamily: fonts.extrabold,
-    fontSize: 22,
-    lineHeight: 28,
+    fontSize: 17,
+    lineHeight: 22,
     color: colors.inkSecondary,
   },
-  selectedText: { fontSize: 30, lineHeight: 36, color: colors.brandText },
+  selectedText: { fontSize: 24, lineHeight: 30, color: colors.brandText },
 });
