@@ -152,13 +152,14 @@ function EditForm({ member }: { member: HouseholdMember }) {
               onChange={(allergies) => update({ allergies })}
             />
           </View>
+        </ScrollView>
+        <View style={styles.footer}>
+          {/* By the buttons, not the end of the form: always in view. */}
           {error && (
             <Text variant="caption" accessibilityRole="alert">
               Couldn’t save. {error.message}
             </Text>
           )}
-        </ScrollView>
-        <View style={styles.footer}>
           <Button
             title="Save changes"
             onPress={() => save.mutate()}
