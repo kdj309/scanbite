@@ -17,9 +17,10 @@ describe("editRequest", () => {
     });
   });
 
-  it("never sends a name for 'You'", () => {
-    expect(editRequest({ relationship: "self" }, form)).not.toHaveProperty(
-      "name"
-    );
+  it("sends your own name, or unnames you when it's cleared", () => {
+    expect(editRequest({ relationship: "self" }, form).name).toBe("Papa");
+    expect(
+      editRequest({ relationship: "self" }, { ...form, name: "  " }).name
+    ).toBe("Self");
   });
 });

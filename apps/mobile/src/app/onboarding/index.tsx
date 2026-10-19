@@ -1,8 +1,7 @@
 import { router } from "expo-router";
 import { StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import Svg, { Circle, Defs, Pattern, Rect } from "react-native-svg";
-import { Bitey, Button, Text } from "@/components";
+import { Bitey, Button, DotPattern, Text } from "@/components";
 import { useFinishSetup } from "@/features/onboarding/setup-seen";
 import { colors, shadows, spacing } from "@/theme";
 
@@ -42,20 +41,6 @@ export default function Welcome() {
         </View>
       </SafeAreaView>
     </View>
-  );
-}
-
-/** The design's soft white dots on blue. Decorative. */
-function DotPattern() {
-  return (
-    <Svg style={StyleSheet.absoluteFill} pointerEvents="none">
-      <Defs>
-        <Pattern id="dots" width={18} height={18} patternUnits="userSpaceOnUse">
-          <Circle cx={9} cy={9} r={1.5} fill="rgba(255,255,255,0.18)" />
-        </Pattern>
-      </Defs>
-      <Rect width="100%" height="100%" fill="url(#dots)" />
-    </Svg>
   );
 }
 

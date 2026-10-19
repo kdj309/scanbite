@@ -46,7 +46,9 @@ async function send(
       signal: controller.signal,
     });
   } catch (error) {
-    throw controller.signal.aborted ? new Error("Request timed out") : error;
+    // Offline, server down or too slow: the raw error ("fetch failed:
+    // UnexpectedException…") means nothing to the person, so say what to do.
+    throw new Error("Check your connection and try again.", { cause: error });
   } finally {
     clearTimeout(timer);
   }

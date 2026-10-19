@@ -137,3 +137,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
 });
+
+/** Two "who" tiles per row (setup, add member). */
+export const tileGrid = StyleSheet.create({
+  grid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  // Half the width minus half the gap.
+  tile: { width: "48.5%" },
+});

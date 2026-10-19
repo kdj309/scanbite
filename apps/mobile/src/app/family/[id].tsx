@@ -3,7 +3,6 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
@@ -12,7 +11,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Button, IconButton, Text, TextField } from "@/components";
+import { Button, IconButton, Text } from "@/components";
 import {
   deleteMember,
   householdQueryKey,
@@ -24,10 +23,13 @@ import {
   formFromMember,
   type MemberForm,
 } from "@/features/household/edit-member";
+import { HouseholdLoading } from "@/features/household/household-loading";
+import { nameMissing } from "@/features/household/members";
 import {
   AgePicker,
   AllergiesPicker,
   ConditionsPicker,
+  NameField,
 } from "@/features/household/profile-pickers";
 import { colors, screenGutter, spacing } from "@/theme";
 
@@ -38,7 +40,7 @@ export default function EditMember() {
   const member = household.data?.members.find((m) => m.id === id);
 
   if (household.data === undefined) {
-    return <ActivityIndicator style={styles.center} />;
+    return <HouseholdLoading household={household} />;
   }
   if (!member) {
     // Removed meanwhile (or a stale link).
@@ -62,21 +64,24 @@ function EditForm({ member }: { member: HouseholdMember }) {
   const [form, setForm] = useState<MemberForm>(() => formFromMember(member));
   const [scrolled, setScrolled] = useState(false);
   const self = member.relationship === "self";
-  const name = self ? "you" : member.name;
   const update = (patch: Partial<MemberForm>) =>
     setForm((current) => ({ ...current, ...patch }));
 
-  const done = async () => {
-    await queryClient.invalidateQueries({ queryKey: householdQueryKey });
-    router.back();
-  };
   const save = useMutation({
     mutationFn: () => updateMember(member.id, editRequest(member, form)),
-    onSuccess: done,
+    // Back once the change has loaded, so Family shows it straight away.
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: householdQueryKey });
+      router.back();
+    },
   });
   const remove = useMutation({
     mutationFn: () => deleteMember(member.id),
-    onSuccess: done,
+    // Back first: once reloaded, this screen has no one left to show.
+    onSuccess: () => {
+      router.back();
+      void queryClient.invalidateQueries({ queryKey: householdQueryKey });
+    },
   });
   const busy = save.isPending || remove.isPending;
   const error = save.error ?? remove.error;
@@ -109,7 +114,9 @@ function EditForm({ member }: { member: HouseholdMember }) {
             label="Back"
             onPress={() => router.back()}
           />
-          <Text variant="h2">{self ? "Your profile" : `Edit ${name}`}</Text>
+          <Text variant="h2">
+            {self ? "Your profile" : `Edit ${member.name}`}
+          </Text>
         </View>
         <ScrollView
           contentContainerStyle={styles.content}
@@ -119,16 +126,11 @@ function EditForm({ member }: { member: HouseholdMember }) {
             setScrolled(event.nativeEvent.contentOffset.y > 0)
           }
         >
-          {!self && (
-            <TextField
-              label="What do you call them?"
-              value={form.name}
-              onChangeText={(value) => update({ name: value })}
-              autoCapitalize="words"
-              autoComplete="off"
-              maxLength={40}
-            />
-          )}
+          <NameField
+            relationship={member.relationship}
+            value={form.name}
+            onChange={(name) => update({ name })}
+          />
           <View style={styles.section}>
             <Text variant="h2">Age</Text>
             <AgePicker
@@ -161,7 +163,7 @@ function EditForm({ member }: { member: HouseholdMember }) {
             title="Save changes"
             onPress={() => save.mutate()}
             loading={save.isPending}
-            disabled={busy || (!self && form.name.trim() === "")}
+            disabled={busy || nameMissing(member.relationship, form.name)}
           />
           {!self && (
             <Button

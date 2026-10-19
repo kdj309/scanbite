@@ -4,10 +4,17 @@ import {
   HEALTH_CONDITION_SHORT_LABELS,
   type AllergenCode,
   type HealthConditionCode,
+  type Relationship,
 } from "@foodscanner/shared";
 import { useState } from "react";
 import { StyleSheet, View } from "react-native";
-import { Button, ChoiceRow, SelectPill, SelectTile } from "@/components";
+import {
+  Button,
+  ChoiceRow,
+  SelectPill,
+  SelectTile,
+  TextField,
+} from "@/components";
 import { spacing } from "@/theme";
 import {
   AGE_BANDS,
@@ -23,6 +30,39 @@ type PickerProps<T> = {
   value: readonly T[];
   onChange: (value: T[]) => void;
 };
+
+const NAME_PLACEHOLDERS = {
+  self: "So the app can use it",
+  spouse: "e.g. Priya",
+  parent: "e.g. Papa",
+  child: "e.g. Riya",
+  other: "e.g. Dadi",
+} as const;
+
+/** What to call them; optional only for you. */
+export function NameField({
+  relationship,
+  value,
+  onChange,
+}: {
+  relationship: Relationship;
+  value: string;
+  onChange: (name: string) => void;
+}) {
+  const self = relationship === "self";
+  return (
+    <TextField
+      label={self ? "Your name (optional)" : "What do you call them?"}
+      placeholder={NAME_PLACEHOLDERS[relationship]}
+      value={value}
+      onChangeText={onChange}
+      autoCapitalize="words"
+      autoComplete={self ? "name" : "off"}
+      returnKeyType="done"
+      maxLength={40}
+    />
+  );
+}
 
 /** The age bands in one row; "a ballpark is fine". */
 export function AgePicker({

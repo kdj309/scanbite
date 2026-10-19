@@ -19,10 +19,15 @@ function shouldRetry(failureCount: number, error: Error): boolean {
 }
 
 export const queryClient = new QueryClient({
-  defaultOptions: { queries: { retry: shouldRetry } },
+  // Always send: offline, a request fails (and shows a retry) instead of
+  // waiting silently on a connection status that can be wrong.
+  defaultOptions: {
+    queries: { retry: shouldRetry, networkMode: "always" },
+    mutations: { networkMode: "always" },
+  },
 });
 
-/** Pause queries offline and resume when the phone reconnects. */
+/** Refetch when the phone reconnects. */
 onlineManager.setEventListener((setOnline) => {
   let initialised = false;
   const subscription = Network.addNetworkStateListener((state) => {

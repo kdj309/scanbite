@@ -26,13 +26,14 @@ type StepScreenProps = {
   say: string;
   title: string;
   children: ReactNode;
-  nextLabel: string;
-  onNext: () => void;
+  /** The main button; a step that only offers choices (tiles) has none. */
+  nextLabel?: string;
+  onNext?: () => void;
   nextDisabled?: boolean;
   saving?: boolean;
 };
 
-/** The frame every setup step shares (design S0). */
+/** The frame every step of adding a person shares (design S0, 8a). */
 export function StepScreen({
   step,
   say,
@@ -70,13 +71,15 @@ export function StepScreen({
             variant="outline"
             onPress={() => router.back()}
           />
-          <Button
-            title={nextLabel}
-            onPress={onNext}
-            disabled={nextDisabled}
-            loading={saving}
-            style={styles.next}
-          />
+          {nextLabel !== undefined && onNext !== undefined && (
+            <Button
+              title={nextLabel}
+              onPress={onNext}
+              disabled={nextDisabled}
+              loading={saving}
+              style={styles.next}
+            />
+          )}
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>

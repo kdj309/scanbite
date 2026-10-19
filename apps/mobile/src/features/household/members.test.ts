@@ -1,5 +1,5 @@
 import type { HouseholdMember } from "@foodscanner/shared";
-import { hasDetails } from "./members";
+import { familyProgress, hasDetails, listName } from "./members";
 
 const base: HouseholdMember = {
   id: "6ab7d04ffb5027914b128aed",
@@ -12,8 +12,9 @@ const base: HouseholdMember = {
 };
 
 describe("hasDetails", () => {
-  it("is false for 'You' until an age, condition or allergy is added", () => {
+  it("is false for 'You' until a name, age, condition or allergy is added", () => {
     expect(hasDetails(base)).toBe(false);
+    expect(hasDetails({ ...base, name: "Kartik" })).toBe(true);
     expect(hasDetails({ ...base, age_band: "18–39" })).toBe(true);
     expect(hasDetails({ ...base, allergies: ["milk"] })).toBe(true);
   });
@@ -22,5 +23,35 @@ describe("hasDetails", () => {
     expect(hasDetails({ ...base, relationship: "parent", name: "Papa" })).toBe(
       true
     );
+  });
+});
+
+describe("familyProgress", () => {
+  it("counts people with a condition or allergy, and names the first without", () => {
+    const papa: HouseholdMember = {
+      ...base,
+      id: "6ab7d04ffb5027914b128aee",
+      relationship: "parent",
+      name: "Papa",
+      conditions: ["diabetic"],
+    };
+    // Age alone doesn't count: scans have nothing personal to check.
+    const you: HouseholdMember = { ...base, age_band: "18–39" };
+
+    expect(familyProgress([you, papa])).toEqual({
+      done: 1,
+      total: 2,
+      next: you,
+    });
+  });
+});
+
+describe("listName", () => {
+  it("shows your own name with '(you)', or 'You' while unnamed", () => {
+    expect(listName({ relationship: "self", name: "Kartik" })).toBe(
+      "Kartik (you)"
+    );
+    expect(listName({ relationship: "self", name: "Self" })).toBe("You");
+    expect(listName({ relationship: "parent", name: "Papa" })).toBe("Papa");
   });
 });

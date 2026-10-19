@@ -1,5 +1,5 @@
 import { randomUUID } from "expo-crypto";
-import { displayName, hasDetails } from "@/features/household/members";
+import { hasDetails } from "@/features/household/members";
 import type { AgeBand } from "@/features/household/profile-options";
 import type {
   AllergenCode,
@@ -46,7 +46,7 @@ export const WHO_OPTIONS: ReadonlyArray<{
 /** The person being set up, until their last step saves them. */
 export type DraftPerson = {
   relationship: Relationship;
-  /** Not asked for "Me" (shown as "You"). */
+  /** Optional for "Me". */
   name: string;
   ageBand?: AgeBand;
   conditions: HealthConditionCode[];
@@ -66,23 +66,41 @@ export function newPerson(relationship: Relationship): DraftPerson {
   };
 }
 
+/** Relationships that are one person: never offered twice. */
+const ONE_PERSON: ReadonlySet<Relationship> = new Set(["self", "spouse"]);
+
+/**
+ * What "Add family member" offers: never "Me" (you're always in), and no
+ * other one-person choice that's already taken (a second partner).
+ */
+export function addOptions(
+  members: readonly HouseholdMember[]
+): typeof WHO_OPTIONS {
+  return WHO_OPTIONS.filter(
+    ({ relationship }) =>
+      relationship !== "self" &&
+      !(
+        ONE_PERSON.has(relationship) &&
+        members.some((member) => member.relationship === relationship)
+      )
+  );
+}
+
 /**
  * Who's in the family so far, by relationship: their tiles show "Added"
  * with an edit button. "You" counts once something about you was added.
  */
 export function addedPeople(
   members: readonly HouseholdMember[]
-): Map<Relationship, Pick<HouseholdMember, "id" | "name">[]> {
-  const added = new Map<Relationship, Pick<HouseholdMember, "id" | "name">[]>();
+): Map<Relationship, HouseholdMember[]> {
+  const added = new Map<Relationship, HouseholdMember[]>();
   for (const member of members) {
-    if (!hasDetails(member)) {
-      continue;
+    if (hasDetails(member)) {
+      added.set(member.relationship, [
+        ...(added.get(member.relationship) ?? []),
+        member,
+      ]);
     }
-    const people = added.get(member.relationship) ?? [];
-    added.set(member.relationship, [
-      ...people,
-      { id: member.id, name: displayName(member) },
-    ]);
   }
   return added;
 }
@@ -94,7 +112,7 @@ export function stepCopy(person: DraftPerson) {
   return {
     aboutTitle: self ? "Tell me about you" : "Tell me about them",
     aboutSay: self
-      ? "Roughly how old are you? A ballpark is fine."
+      ? "What should I call you? Your name is optional. Roughly how old are you?"
       : "What do you call them, and roughly how old are they?",
     conditionsTitle: self
       ? "Do you have any of these?"
@@ -122,7 +140,13 @@ export function saveRequest(person: DraftPerson, selfId: string): SaveRequest {
     allergies: person.allergies,
   };
   if (person.relationship === "self") {
-    return { kind: "update", id: selfId, body: profile };
+    // Optional for you: left empty, your member keeps its default name.
+    const name = person.name.trim();
+    return {
+      kind: "update",
+      id: selfId,
+      body: name ? { ...profile, name } : profile,
+    };
   }
   return {
     kind: "create",

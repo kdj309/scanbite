@@ -18,8 +18,8 @@ type Draft = {
 
 const DraftContext = createContext<Draft | null>(null);
 
-/** The one person being set up, shared by their steps until it's saved. */
-export function OnboardingDraftProvider({ children }: { children: ReactNode }) {
+/** The one person being added, shared by their steps until it's saved. */
+export function PersonDraftProvider({ children }: { children: ReactNode }) {
   const [person, setPerson] = useState<DraftPerson | null>(null);
 
   const value = useMemo<Draft>(
@@ -37,10 +37,10 @@ export function OnboardingDraftProvider({ children }: { children: ReactNode }) {
   );
 }
 
-export function useOnboardingDraft(): Draft {
+export function usePersonDraft(): Draft {
   const draft = useContext(DraftContext);
   if (!draft) {
-    throw new Error("useOnboardingDraft needs OnboardingDraftProvider");
+    throw new Error("usePersonDraft needs PersonDraftProvider");
   }
   return draft;
 }

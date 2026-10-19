@@ -1,17 +1,19 @@
 import { router } from "expo-router";
-import { StyleSheet, View } from "react-native";
-import { Avatar } from "@/components";
+import { View } from "react-native";
 import { useHousehold } from "@/features/household/api";
-import { useOnboardingDraft } from "@/features/onboarding/draft";
-import { addedPeople, WHO_OPTIONS } from "@/features/onboarding/model";
-import { PersonTile } from "@/features/onboarding/person-tile";
+import { editLabel, openEdit } from "@/features/household/edit-link";
+import { displayName, ownName } from "@/features/household/members";
+import { usePersonDraft } from "@/features/add-person/draft";
+import { SETUP_FLOW } from "@/features/add-person/flows";
+import { addedPeople, WHO_OPTIONS } from "@/features/add-person/model";
+import { OptionAvatar } from "@/features/add-person/option-avatar";
+import { PersonTile, tileGrid } from "@/features/add-person/person-tile";
 import { useFinishSetup } from "@/features/onboarding/setup-seen";
-import { StepScreen } from "@/features/onboarding/step-screen";
-import { relationshipTints } from "@/theme";
+import { StepScreen } from "@/features/add-person/step-screen";
 
 /** Pick one person to set up; come back here to add the next, or finish. */
 export default function Who() {
-  const { start } = useOnboardingDraft();
+  const { start } = usePersonDraft();
   const household = useHousehold();
   const finishSetup = useFinishSetup();
   const added = addedPeople(household.data?.members ?? []);
@@ -25,37 +27,23 @@ export default function Who() {
       onNext={() => void finishSetup("/onboarding/done")}
       nextDisabled={added.size === 0}
     >
-      <View style={styles.grid}>
+      <View style={tileGrid.grid}>
         {WHO_OPTIONS.map((option) => {
-          const tint = relationshipTints[option.relationship];
-          const avatar = (
-            <Avatar
-              initials={option.initials}
-              icon={option.icon}
-              size={46}
-              background={tint.background}
-              color={tint.text}
-            />
-          );
+          const avatar = <OptionAvatar option={option} />;
           // One tile is one person; more come later from the Family screen.
           const [person] = added.get(option.relationship) ?? [];
           if (person) {
-            const self = option.relationship === "self";
             return (
               <PersonTile
                 key={option.relationship}
                 title={option.title}
-                subtitle={self ? option.subtitle : person.name}
+                subtitle={ownName(person) ?? option.subtitle}
                 leading={avatar}
                 edit={{
-                  label: self ? "Edit your profile" : `Edit ${person.name}`,
-                  onPress: () =>
-                    router.push({
-                      pathname: "/family/[id]",
-                      params: { id: person.id },
-                    }),
+                  label: editLabel(person),
+                  onPress: () => openEdit(person),
                 }}
-                style={styles.tile}
+                style={tileGrid.tile}
               />
             );
           }
@@ -67,9 +55,9 @@ export default function Who() {
               leading={avatar}
               onPress={() => {
                 start(option.relationship);
-                router.push("/onboarding/about");
+                router.push(SETUP_FLOW.about);
               }}
-              style={styles.tile}
+              style={tileGrid.tile}
             />
           );
         })}
@@ -80,7 +68,7 @@ export default function Who() {
 
 /** Bitey names who's in so far (design 0a), or explains the step. */
 function whoSay(added: ReturnType<typeof addedPeople>): string {
-  const names = [...added.values()].flat().map((person) => person.name);
+  const names = [...added.values()].flat().map(displayName);
   if (names.length === 0) {
     return "Pick someone you buy food for. You can add more after.";
   }
@@ -91,9 +79,3 @@ function whoSay(added: ReturnType<typeof addedPeople>): string {
   const verb = names.length === 1 && names[0] !== "You" ? "is" : "are";
   return `${list} ${verb} added. Anyone else?`;
 }
-
-const styles = StyleSheet.create({
-  grid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  // Two per row: half the width minus half the gap.
-  tile: { width: "48.5%" },
-});

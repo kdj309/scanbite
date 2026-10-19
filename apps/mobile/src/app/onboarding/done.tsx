@@ -6,24 +6,11 @@ import { router } from "expo-router";
 import { ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Svg, { Path } from "react-native-svg";
-import {
-  Avatar,
-  Bitey,
-  Button,
-  Card,
-  Chip,
-  Confetti,
-  Text,
-} from "@/components";
+import { Bitey, Button, Card, Chip, Confetti, Text } from "@/components";
 import { useHousehold } from "@/features/household/api";
-import { displayName, hasDetails } from "@/features/household/members";
-import {
-  colors,
-  radii,
-  relationshipTints,
-  screenGutter,
-  spacing,
-} from "@/theme";
+import { MemberAvatar } from "@/features/household/member-avatar";
+import { hasDetails, listName } from "@/features/household/members";
+import { colors, radii, screenGutter, spacing } from "@/theme";
 
 /** The family that was just set up. */
 export default function Done() {
@@ -88,15 +75,10 @@ function MemberRow({
   member: HouseholdMember;
   last: boolean;
 }) {
-  const tint = relationshipTints[member.relationship];
-  const name = displayName(member);
+  const name = listName(member);
   return (
     <View style={[styles.row, !last && styles.divider]}>
-      <Avatar
-        initials={name.charAt(0).toUpperCase()}
-        background={tint.background}
-        color={tint.text}
-      />
+      <MemberAvatar member={member} />
       <View style={styles.rowText}>
         <Text variant="title">
           {member.age_band ? `${name} · ${member.age_band}` : name}

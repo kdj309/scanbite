@@ -1,6 +1,7 @@
 import type { HouseholdMember } from "@foodscanner/shared";
 import {
   addedPeople,
+  addOptions,
   newPerson,
   saveRequest,
   stepCopy,
@@ -30,13 +31,17 @@ function member(
 
 describe("addedPeople", () => {
   it("lists who's in the family by relationship", () => {
-    const added = addedPeople([
-      member({ id: SELF_ID, relationship: "self", age_band: "18–39" }),
-      member({ id: PAPA_ID, relationship: "parent", name: "Papa" }),
-    ]);
+    const you = member({
+      id: SELF_ID,
+      relationship: "self",
+      age_band: "18–39",
+    });
+    const papa = member({ id: PAPA_ID, relationship: "parent", name: "Papa" });
 
-    expect(added.get("self")).toEqual([{ id: SELF_ID, name: "You" }]);
-    expect(added.get("parent")).toEqual([{ id: PAPA_ID, name: "Papa" }]);
+    const added = addedPeople([you, papa]);
+
+    expect(added.get("self")).toEqual([you]);
+    expect(added.get("parent")).toEqual([papa]);
     expect(added.has("spouse")).toBe(false);
   });
 
@@ -47,8 +52,30 @@ describe("addedPeople", () => {
   });
 });
 
+describe("addOptions", () => {
+  const relationships = (members: HouseholdMember[]) =>
+    addOptions(members).map((option) => option.relationship);
+
+  it("never offers 'Me', and offers Partner only while there's none", () => {
+    expect(relationships([])).toEqual(["spouse", "parent", "child", "other"]);
+    expect(
+      relationships([
+        member({ id: PAPA_ID, relationship: "spouse", name: "Priya" }),
+      ])
+    ).toEqual(["parent", "child", "other"]);
+  });
+
+  it("keeps offering Parent, Child and Someone else (there can be several)", () => {
+    expect(
+      relationships([
+        member({ id: PAPA_ID, relationship: "parent", name: "Papa" }),
+      ])
+    ).toContain("parent");
+  });
+});
+
 describe("saveRequest", () => {
-  it("updates the existing self member for 'Me', without a name", () => {
+  it("updates the existing self member for 'Me', with your name only if you gave one", () => {
     const me: DraftPerson = {
       ...newPerson("self"),
       ageBand: "40–59",
@@ -64,6 +91,9 @@ describe("saveRequest", () => {
         allergies: [],
       },
     });
+    expect(saveRequest({ ...me, name: " Kartik " }, SELF_ID).body).toEqual(
+      expect.objectContaining({ name: "Kartik" })
+    );
   });
 
   it("creates anyone else, with their trimmed name, relationship and client id", () => {

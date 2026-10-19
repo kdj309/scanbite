@@ -28,3 +28,4 @@ export {
   type BiteyProps,
 } from "./illustrations/bitey";
 export { Confetti } from "./illustrations/confetti";
+export { DotPattern } from "./illustrations/dot-pattern";
