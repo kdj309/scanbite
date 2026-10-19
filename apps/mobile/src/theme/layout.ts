@@ -42,6 +42,10 @@ export const shadows = {
   primaryEdgePressed: "0 1px 0 #2D5BA8",
   mangoEdge: "0 6px 0 #C99A00",
   mangoEdgePressed: "0 2px 0 #C99A00",
+  /** Home's scan card, lifted off the blue header. */
+  card: "0 10px 24px rgba(26,21,35,0.18)",
+  /** Small floating art, e.g. the barcode card in Home's empty state. */
+  float: "0 6px 16px rgba(26,21,35,0.15)",
   /** The centre scan button in the tab bar. */
   scanButton: "0 6px 16px rgba(58,110,196,0.35)",
 } as const;

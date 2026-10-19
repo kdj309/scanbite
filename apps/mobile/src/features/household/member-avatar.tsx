@@ -14,10 +14,17 @@ export function MemberAvatar({
   const tint = relationshipTints[member.relationship];
   return (
     <Avatar
-      initials={ownName(member)?.charAt(0).toUpperCase() ?? "You"}
+      initials={memberInitials(member)}
       size={size}
       background={tint.background}
       color={tint.text}
     />
   );
+}
+
+/** Their first initial, or "You" while you're unnamed. */
+export function memberInitials(
+  member: Pick<HouseholdMember, "relationship" | "name">
+): string {
+  return ownName(member)?.charAt(0).toUpperCase() ?? "You";
 }

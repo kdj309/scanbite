@@ -1,12 +1,14 @@
 import {
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import type {
-  CreateHouseholdMemberRequest,
-  UpdateHouseholdMemberRequest,
+import {
+  MAX_HOUSEHOLD_MEMBERS,
+  type CreateHouseholdMemberRequest,
+  type UpdateHouseholdMemberRequest,
 } from "@foodscanner/shared";
 import { Model, Types } from "mongoose";
 import {
@@ -48,6 +50,16 @@ export class HouseholdService {
       conditions: body.conditions ?? [],
       allergies: body.allergies ?? [],
     };
+    // A retry of someone already saved is an update, so it's fine when full.
+    const retry =
+      body.client_id !== undefined &&
+      (await this.members.exists({
+        owner_user_id: owner,
+        client_id: body.client_id,
+      })) !== null;
+    if (!retry) {
+      await this.requireRoom(owner);
+    }
     if (body.client_id === undefined) {
       const created = await this.members.create({
         owner_user_id: owner,
@@ -73,6 +85,15 @@ export class HouseholdService {
         throw error;
       }
       return serializeHouseholdMember(await upsert());
+    }
+  }
+
+  private async requireRoom(owner: Types.ObjectId) {
+    const count = await this.members.countDocuments({ owner_user_id: owner });
+    if (count >= MAX_HOUSEHOLD_MEMBERS) {
+      throw new ConflictException(
+        `A family can have up to ${MAX_HOUSEHOLD_MEMBERS} people. Remove someone to add another.`
+      );
     }
   }
 

@@ -8,6 +8,7 @@ import "reflect-metadata";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { after, before, describe, it } from "node:test";
+import { MAX_HOUSEHOLD_MEMBERS } from "@foodscanner/shared";
 import mongoose, { Types } from "mongoose";
 import { connectTestDb, dropTestDb } from "../common/integration-db";
 import {
@@ -87,5 +88,34 @@ describe("household members (integration)", () => {
     await household.createForUser(userId, papa);
 
     assert.equal((await household.listForUser(userId)).members.length, 2);
+  });
+
+  it("refuses a seventh person, but still takes a retry of someone saved", async () => {
+    const userId = owner();
+    const lastClientId = randomUUID();
+    for (let i = 1; i < MAX_HOUSEHOLD_MEMBERS; i++) {
+      await household.createForUser(userId, {
+        ...papa,
+        client_id: randomUUID(),
+      });
+    }
+    await household.createForUser(userId, {
+      ...papa,
+      client_id: lastClientId,
+    });
+
+    await assert.rejects(
+      household.createForUser(userId, { ...papa, client_id: randomUUID() }),
+      { status: 409 }
+    );
+    const retry = await household.createForUser(userId, {
+      ...papa,
+      client_id: lastClientId,
+    });
+    assert.ok(retry.id);
+    assert.equal(
+      (await household.listForUser(userId)).members.length,
+      MAX_HOUSEHOLD_MEMBERS
+    );
   });
 });

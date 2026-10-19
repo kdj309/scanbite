@@ -14,7 +14,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Button, IconButton, Text } from "@/components";
 import {
   deleteMember,
-  householdQueryKey,
+  showRemovedMember,
+  showSavedMember,
   updateMember,
   useHousehold,
 } from "@/features/household/api";
@@ -69,18 +70,17 @@ function EditForm({ member }: { member: HouseholdMember }) {
 
   const save = useMutation({
     mutationFn: () => updateMember(member.id, editRequest(member, form)),
-    // Back once the change has loaded, so Family shows it straight away.
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: householdQueryKey });
+    onSuccess: (saved) => {
+      showSavedMember(queryClient, saved);
       router.back();
     },
   });
   const remove = useMutation({
     mutationFn: () => deleteMember(member.id),
-    // Back first: once reloaded, this screen has no one left to show.
+    // Back first: without them, this screen has no one left to show.
     onSuccess: () => {
       router.back();
-      void queryClient.invalidateQueries({ queryKey: householdQueryKey });
+      showRemovedMember(queryClient, member.id);
     },
   });
   const busy = save.isPending || remove.isPending;

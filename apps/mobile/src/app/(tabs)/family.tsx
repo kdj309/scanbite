@@ -1,5 +1,6 @@
 import {
   HEALTH_CONDITION_SHORT_LABELS,
+  MAX_HOUSEHOLD_MEMBERS,
   type HouseholdMember,
 } from "@foodscanner/shared";
 import { router } from "expo-router";
@@ -51,12 +52,16 @@ export default function Family() {
         {members.map((member) => (
           <MemberCard key={member.id} member={member} />
         ))}
-        <Button
-          title="Add family member"
-          variant="secondary"
-          icon="plus"
-          onPress={() => router.push("/family/add")}
-        />
+        {members.length < MAX_HOUSEHOLD_MEMBERS ? (
+          <Button
+            title="Add family member"
+            variant="secondary"
+            icon="plus"
+            onPress={() => router.push("/family/add")}
+          />
+        ) : (
+          <FamilyFull />
+        )}
         <Text variant="caption" style={styles.centered}>
           Conditions stay on your account. We never share them.
         </Text>
@@ -104,6 +109,18 @@ function MemberCard({ member }: { member: HouseholdMember }) {
         onPress={() => openEdit(member)}
       />
     </Card>
+  );
+}
+
+/** Takes the place of "Add family member" at the limit (design 8b). */
+function FamilyFull() {
+  return (
+    <View accessible style={styles.full}>
+      <Text variant="title" color="secondary">
+        Family is full · {MAX_HOUSEHOLD_MEMBERS} people max
+      </Text>
+      <Text variant="caption">Remove someone to add another.</Text>
+    </View>
   );
 }
 
@@ -214,5 +231,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   addPressed: { backgroundColor: colors.brandTint },
+  full: {
+    alignItems: "center",
+    gap: 2,
+    padding: spacing.sm,
+    borderRadius: radii.lg,
+    borderWidth: 1.5,
+    borderStyle: "dashed",
+    borderColor: colors.hairline,
+  },
   centered: { textAlign: "center" },
 });

@@ -55,7 +55,7 @@ export function hasDetails(member: HouseholdMember): boolean {
  * Whether scans can check anything personal for them: a condition or an
  * allergy (the API's "health profile"). Age alone doesn't change verdicts.
  */
-function hasHealthProfile(
+export function hasHealthProfile(
   member: Pick<HouseholdMember, "conditions" | "allergies">
 ): boolean {
   return member.conditions.length > 0 || member.allergies.length > 0;
@@ -78,4 +78,22 @@ export function familyProgress(members: readonly HouseholdMember[]): {
 /** A name is required for everyone except you. */
 export function nameMissing(relationship: Relationship, name: string): boolean {
   return relationship !== "self" && name.trim() === "";
+}
+
+/** The family with this person added, or replaced if they're already in it. */
+export function withMember(
+  members: readonly HouseholdMember[],
+  member: HouseholdMember
+): HouseholdMember[] {
+  return members.some((m) => m.id === member.id)
+    ? members.map((m) => (m.id === member.id ? member : m))
+    : [...members, member];
+}
+
+/** The family without this person. */
+export function withoutMember(
+  members: readonly HouseholdMember[],
+  id: string
+): HouseholdMember[] {
+  return members.filter((m) => m.id !== id);
 }

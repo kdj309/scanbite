@@ -1,12 +1,14 @@
 import {
   householdMemberSchema,
+  type ListHouseholdMembersResponse,
   listHouseholdMembersResponseSchema,
   type CreateHouseholdMemberRequest,
   type HouseholdMember,
   type UpdateHouseholdMemberRequest,
 } from "@foodscanner/shared";
-import { useQuery } from "@tanstack/react-query";
+import { type QueryClient, useQuery } from "@tanstack/react-query";
 import { api } from "@/api/client";
+import { withMember, withoutMember } from "./members";
 
 export const householdQueryKey = ["household"] as const;
 
@@ -45,3 +47,31 @@ export function deleteMember(id: string): Promise<void> {
 
 /** A 204 has no body to parse. */
 const NO_CONTENT = { parse: (): void => undefined };
+
+/**
+ * After a save, show the person the API returned straight away, then
+ * reload in the background: a reload that fails (bad signal) mustn't
+ * leave the old list on screen.
+ */
+export function showSavedMember(
+  queryClient: QueryClient,
+  member: HouseholdMember
+) {
+  updateHousehold(queryClient, (members) => withMember(members, member));
+}
+
+/** After a removal: drop them now, then reload in the background. */
+export function showRemovedMember(queryClient: QueryClient, id: string) {
+  updateHousehold(queryClient, (members) => withoutMember(members, id));
+}
+
+function updateHousehold(
+  queryClient: QueryClient,
+  change: (members: HouseholdMember[]) => HouseholdMember[]
+) {
+  queryClient.setQueryData<ListHouseholdMembersResponse>(
+    householdQueryKey,
+    (household) => household && { members: change(household.members) }
+  );
+  void queryClient.invalidateQueries({ queryKey: householdQueryKey });
+}

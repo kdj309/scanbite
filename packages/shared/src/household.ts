@@ -19,6 +19,9 @@ export const householdMemberSchema = z.object({
 });
 export type HouseholdMember = z.infer<typeof householdMemberSchema>;
 
+/** Most people one family can have, you included. */
+export const MAX_HOUSEHOLD_MEMBERS = 6;
+
 export const createHouseholdMemberRequestSchema = z.object({
   /**
    * The app's own id for this person (a UUID it makes once). Sending the

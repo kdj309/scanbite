@@ -4,7 +4,7 @@ import { StyleSheet, View } from "react-native";
 import { Button, Text } from "@/components";
 import {
   createMember,
-  householdQueryKey,
+  showSavedMember,
   updateMember,
   useHousehold,
 } from "@/features/household/api";
@@ -117,8 +117,8 @@ export function AllergiesStep({ flow }: StepProps) {
         ? createMember(request.body)
         : updateMember(request.id, request.body);
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: householdQueryKey });
+    onSuccess: (saved) => {
+      showSavedMember(queryClient, saved);
       router.dismissTo(flow.saved);
     },
   });

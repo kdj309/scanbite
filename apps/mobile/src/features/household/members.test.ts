@@ -1,5 +1,11 @@
 import type { HouseholdMember } from "@foodscanner/shared";
-import { familyProgress, hasDetails, listName } from "./members";
+import {
+  familyProgress,
+  hasDetails,
+  listName,
+  withMember,
+  withoutMember,
+} from "./members";
 
 const base: HouseholdMember = {
   id: "6ab7d04ffb5027914b128aed",
@@ -53,5 +59,25 @@ describe("listName", () => {
     );
     expect(listName({ relationship: "self", name: "Self" })).toBe("You");
     expect(listName({ relationship: "parent", name: "Papa" })).toBe("Papa");
+  });
+});
+
+describe("withMember and withoutMember", () => {
+  const papa: HouseholdMember = {
+    ...base,
+    id: "6ab7d04ffb5027914b128aee",
+    name: "Papa",
+    relationship: "parent",
+  };
+
+  it("adds someone new, replaces someone saved again, and removes", () => {
+    const added = withMember([base], papa);
+    expect(added.map((m) => m.name)).toEqual(["Self", "Papa"]);
+
+    const edited = withMember(added, { ...papa, conditions: ["diabetic"] });
+    expect(edited).toHaveLength(2);
+    expect(edited[1].conditions).toEqual(["diabetic"]);
+
+    expect(withoutMember(edited, papa.id)).toEqual([base]);
   });
 });
