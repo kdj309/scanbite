@@ -7,7 +7,7 @@ import type {
   ListScansResponse,
   ProductFoundResponse,
 } from "@foodscanner/shared";
-import { FilterQuery, Model, Types } from "mongoose";
+import { FilterQuery, Model, PipelineStage, Types } from "mongoose";
 import type { RequestUser } from "../auth/auth.types";
 import {
   ProductVersion,
@@ -89,38 +89,54 @@ export class ScansService {
     return this.page({ member_id: new Types.ObjectId(memberId) }, query);
   }
 
+  /**
+   * Recent scans: each product once, at its latest scan, and only products
+   * we found (a miss has no result to open). The full log stays stored.
+   */
   private async page(
     filter: FilterQuery<ScanDocument>,
     query: ListScansQuery
   ): Promise<ListScansResponse> {
     const limit = query.limit ?? 20;
+    const match: FilterQuery<ScanDocument> = { ...filter, found: true };
     if (query.from || query.to) {
-      filter.created_at = {};
+      match.created_at = {};
       if (query.from) {
-        filter.created_at.$gte = new Date(query.from);
+        match.created_at.$gte = new Date(query.from);
       }
       if (query.to) {
-        filter.created_at.$lte = new Date(query.to);
+        match.created_at.$lte = new Date(query.to);
       }
     }
+    const pipeline: PipelineStage[] = [
+      { $match: match },
+      { $sort: { created_at: -1, _id: -1 } },
+      { $group: { _id: "$barcode", latest: { $first: "$$ROOT" } } },
+      { $replaceRoot: { newRoot: "$latest" } },
+    ];
+    // After grouping, so an older scan of a product already listed can't
+    // bring it back on the next page.
     if (query.cursor && Types.ObjectId.isValid(query.cursor)) {
       const cursor = await this.scans.findById(query.cursor).exec();
       if (cursor) {
-        filter.$or = [
-          { created_at: { $lt: cursor.created_at } },
-          {
-            created_at: cursor.created_at,
-            _id: { $lt: cursor._id },
+        pipeline.push({
+          $match: {
+            $or: [
+              { created_at: { $lt: cursor.created_at } },
+              { created_at: cursor.created_at, _id: { $lt: cursor._id } },
+            ],
           },
-        ];
+        });
       }
     }
+    pipeline.push(
+      { $sort: { created_at: -1, _id: -1 } },
+      { $limit: limit + 1 }
+    );
 
-    const items = await this.scans
-      .find(filter)
-      .sort({ created_at: -1, _id: -1 })
-      .limit(limit + 1)
-      .exec();
+    const items = (await this.scans.aggregate<Scan>(pipeline).exec()).map(
+      (raw) => this.scans.hydrate(raw)
+    );
     const hasMore = items.length > limit;
     const page = hasMore ? items.slice(0, limit) : items;
 

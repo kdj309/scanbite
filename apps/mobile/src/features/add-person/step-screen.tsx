@@ -2,7 +2,6 @@ import { router } from "expo-router";
 import type { ReactNode } from "react";
 import {
   KeyboardAvoidingView,
-  Platform,
   ScrollView,
   StyleSheet,
   View,
@@ -46,10 +45,7 @@ export function StepScreen({
 }: StepScreenProps) {
   return (
     <SafeAreaView style={styles.safe}>
-      <KeyboardAvoidingView
-        style={styles.safe}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
+      <KeyboardAvoidingView style={styles.safe} behavior="padding">
         <View style={styles.top}>
           <StepProgress current={step} total={SETUP_STEPS} />
           <View style={styles.bitey}>

@@ -5,7 +5,6 @@ import { useState } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
-  Platform,
   ScrollView,
   StyleSheet,
   View,
@@ -103,10 +102,7 @@ function EditForm({ member }: { member: HouseholdMember }) {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <KeyboardAvoidingView
-        style={styles.safe}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
+      <KeyboardAvoidingView style={styles.safe} behavior="padding">
         {/* A line once scrolled, so content clearly passes under the bar. */}
         <View style={[styles.bar, scrolled && styles.barScrolled]}>
           <IconButton

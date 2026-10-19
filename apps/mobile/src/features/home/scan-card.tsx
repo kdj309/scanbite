@@ -1,8 +1,7 @@
 import { router } from "expo-router";
-import { useEffect, useState } from "react";
-import { Animated, Easing, Pressable, StyleSheet, View } from "react-native";
+import { Animated, Pressable, StyleSheet, View } from "react-native";
 import { Icon, Text } from "@/components";
-import { useReducedMotion } from "@/hooks/use-reduced-motion";
+import { useLoop } from "@/hooks/use-loop";
 import {
   buttonHeight,
   colors,
@@ -16,16 +15,24 @@ import {
 export function ScanCard({
   title,
   subtitle,
+  memberId,
 }: {
   title: string;
   subtitle: string;
+  /** Scan for one person; undefined scans for everyone. */
+  memberId?: string;
 }) {
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`${title}. ${subtitle}`}
       accessibilityHint="Opens the scanner"
-      onPress={() => router.push("/scan")}
+      onPress={() =>
+        router.push({
+          pathname: "/scan",
+          params: memberId ? { for: memberId } : {},
+        })
+      }
       style={styles.card}
     >
       {({ pressed }) => (
@@ -50,26 +57,7 @@ export function ScanCard({
 
 /** The mango barcode tile with a scan line sweeping over it. */
 function ScanIcon() {
-  const reduced = useReducedMotion();
-  const [progress] = useState(() => new Animated.Value(0));
-
-  useEffect(() => {
-    if (reduced) {
-      progress.setValue(0);
-      return;
-    }
-    const loop = Animated.loop(
-      Animated.timing(progress, {
-        toValue: 1,
-        duration: 1600,
-        easing: Easing.inOut(Easing.ease),
-        useNativeDriver: true,
-      })
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [progress, reduced]);
-
+  const progress = useLoop(1600);
   const translateY = progress.interpolate({
     inputRange: [0, 0.5, 1],
     outputRange: [0, 42, 0],

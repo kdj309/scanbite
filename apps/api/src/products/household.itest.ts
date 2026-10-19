@@ -712,11 +712,13 @@ describe("household verdicts (integration)", () => {
         barcode: "8900000000099",
       });
       assert.deepEqual(result, { found: false });
-      const scan = await recorded(user, scan_id);
+      // Kept in the log, though Recent scans leaves misses out.
+      const scan = (await scanModel.findById(scan_id).lean().exec())!;
       assert.deepEqual(
-        [scan.found, scan.product, scan.severity, scan.verdicts],
+        [scan.found, scan.product_version_id, scan.severity, scan.verdicts],
         [false, null, null, []]
       );
+      assert.equal(await recorded(user, scan_id), undefined);
     });
 
     it("lists household recents newest first, and pages", async () => {

@@ -1,6 +1,7 @@
 import type { HouseholdMember } from "@foodscanner/shared";
 import { useQueryClient } from "@tanstack/react-query";
 import { Redirect, router } from "expo-router";
+import { useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -12,6 +13,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Bitey, Button, DotPattern, Text } from "@/components";
 import { ScanCard } from "@/features/home/scan-card";
 import { scanCardCopy } from "@/features/home/scan-copy";
+import { ScanFor } from "@/features/home/scan-for";
 import { useHousehold } from "@/features/household/api";
 import { openEdit } from "@/features/household/edit-link";
 import { HouseholdLoading } from "@/features/household/household-loading";
@@ -35,6 +37,7 @@ export default function Home() {
   const setupSeen = useSetupSeen();
   const household = useHousehold();
   const insets = useSafeAreaInsets();
+  const [scanForId, setScanForId] = useState<string | undefined>();
 
   if (setupSeen.isPending) {
     return <ActivityIndicator style={styles.fill} />;
@@ -50,6 +53,8 @@ export default function Home() {
   const name = self && ownName(self);
   // Scans are personal only for people with conditions or allergies.
   const checked = members.filter(hasHealthProfile);
+  // Undefined (everyone) also when the chosen person has since gone.
+  const scanFor = checked.find((member) => member.id === scanForId);
 
   return (
     <View style={styles.fill}>
@@ -68,7 +73,17 @@ export default function Home() {
             <Bitey size={48} />
           </View>
         </View>
-        <ScanCard {...scanCardCopy(checked)} />
+        <ScanCard
+          {...scanCardCopy(scanFor ? [scanFor] : checked)}
+          memberId={scanFor?.id}
+        />
+        {checked.length >= 2 && (
+          <ScanFor
+            checked={checked}
+            selectedId={scanFor?.id}
+            onSelect={setScanForId}
+          />
+        )}
       </View>
       <ScrollView contentContainerStyle={styles.content}>
         <RecentScans members={members} checked={checked} />
