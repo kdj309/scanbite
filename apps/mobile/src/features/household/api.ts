@@ -8,6 +8,7 @@ import {
 } from "@foodscanner/shared";
 import { type QueryClient, useQuery } from "@tanstack/react-query";
 import { api } from "@/api/client";
+import { productsQueryKey } from "@/features/verdict/api";
 import { withMember, withoutMember } from "./members";
 
 const householdQueryKey = ["household"] as const;
@@ -74,4 +75,6 @@ function updateHousehold(
     (household) => household && { members: change(household.members) }
   );
   void queryClient.invalidateQueries({ queryKey: householdQueryKey });
+  // Conditions changed, so verdicts did too (an open verdict refetches).
+  void queryClient.invalidateQueries({ queryKey: productsQueryKey });
 }

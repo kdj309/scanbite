@@ -5,8 +5,11 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/api/client";
 
+/** Every product's verdicts: they change when the family does. */
+export const productsQueryKey = ["product"] as const;
+
 export function productQueryKey(barcode: string) {
-  return ["product", barcode] as const;
+  return [...productsQueryKey, barcode] as const;
 }
 
 /** Today's verdicts for everyone (the scanner fills this in first). */
