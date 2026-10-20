@@ -10,6 +10,7 @@ import {
   scanSummary,
   timeAgo,
 } from "./recent";
+import { memberInitials } from "@/features/household/member-avatar";
 import { VerdictRing } from "./verdict-ring";
 
 /** One Home "Recent scans" row: product, who it's bad for, and when. */
@@ -75,7 +76,7 @@ export function RecentScanRow({
               { zIndex: rings.shown.length - i },
             ]}
           >
-            <VerdictRing member={member} severity={s} />
+            <VerdictRing initials={memberInitials(member)} severity={s} />
           </View>
         ))}
         {rings.more > 0 && (

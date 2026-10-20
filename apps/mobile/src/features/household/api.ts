@@ -10,7 +10,7 @@ import { type QueryClient, useQuery } from "@tanstack/react-query";
 import { api } from "@/api/client";
 import { withMember, withoutMember } from "./members";
 
-export const householdQueryKey = ["household"] as const;
+const householdQueryKey = ["household"] as const;
 
 /** Everyone in the household, in the order they were added. */
 export function useHousehold() {

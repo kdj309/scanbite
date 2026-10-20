@@ -1,11 +1,6 @@
 import type { HouseholdMember, Scan, Severity } from "@foodscanner/shared";
+import { SEVERITY_WORDS } from "@/components";
 import { hasHealthProfile } from "@/features/household/members";
-
-const SEVERITY_WORDS: Record<Severity, string> = {
-  green: "Safe",
-  yellow: "Caution",
-  red: "Avoid",
-};
 
 const RANK: Record<Severity, number> = { green: 0, yellow: 1, red: 2 };
 
@@ -69,6 +64,11 @@ export function scanSummary(
   if (checked.length === 0) {
     return `${SEVERITY_WORDS[scan.severity]} in general`;
   }
+  return verdictSummary(checked);
+}
+
+/** "Avoid for Papa · Caution for Amma", or "Safe for everyone". */
+export function verdictSummary(checked: readonly CheckedVerdict[]): string {
   const parts = (["red", "yellow"] as const).flatMap((severity) => {
     const names = checked
       .filter((verdict) => verdict.severity === severity)

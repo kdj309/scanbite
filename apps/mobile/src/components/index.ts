@@ -13,6 +13,16 @@ export { ChoiceRow, type ChoiceRowProps } from "./molecules/choice-row";
 export { SelectPill, type SelectPillProps } from "./molecules/select-pill";
 export { SelectTile, type SelectTileProps } from "./molecules/select-tile";
 export {
+  SeverityBadge,
+  type SeverityBadgeProps,
+} from "./molecules/severity-badge";
+export {
+  SEVERITY_WORDS,
+  toneColors,
+  VERDICT_MARKS,
+  type VerdictTone,
+} from "./verdict-tone";
+export {
   SpeechBubble,
   type SpeechBubbleProps,
 } from "./molecules/speech-bubble";

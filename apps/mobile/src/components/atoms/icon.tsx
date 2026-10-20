@@ -7,6 +7,7 @@ const ICONS = {
   check: <Path d="M4 10L8 14L16 6" strokeWidth={2.2} />,
   chevronLeft: <Path d="M12 4L6 10L12 16" strokeWidth={2.2} />,
   chevronRight: <Path d="M8 4L14 10L8 16" strokeWidth={2.2} />,
+  chevronDown: <Path d="M4 8L10 14L16 8" strokeWidth={2.2} />,
   plus: <Path d="M10 4V16M4 10H16" strokeWidth={2.2} />,
   trash: <Path d="M4 6h12M8 6V4h4v2M6 6l1 11h6l1-11" strokeWidth={2} />,
   pencil: <Path d="M13.5 3.5l3 3L7 16H4v-3l9.5-9.5z" strokeWidth={2} />,

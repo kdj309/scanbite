@@ -24,6 +24,10 @@ export const colors = {
   inkSecondary: "#5E5668",
   hairline: "#EAE3EE",
   onBrand: "#FFFFFF",
+
+  /** The FSSAI pack marks: green dot (veg), brown triangle (non-veg). */
+  veg: "#127A4E",
+  nonVeg: "#7A3A05",
 } as const;
 
 type SeverityColors = {

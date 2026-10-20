@@ -1,7 +1,5 @@
-import {
-  HEALTH_CONDITION_SHORT_LABELS,
-  type HouseholdMember,
-} from "@foodscanner/shared";
+import type { HouseholdMember } from "@foodscanner/shared";
+import { healthChecks } from "@/features/household/members";
 import { joinNames, sentenceName } from "@/features/scans/recent";
 
 /**
@@ -19,7 +17,7 @@ export function scanCardCopy(checked: readonly HouseholdMember[]): {
     const [member] = checked;
     return {
       title: `Scan for ${sentenceName(member)}`,
-      subtitle: `Checks ${possessive(member)} ${joinNames(checks(member))}`,
+      subtitle: `Checks ${possessive(member)} ${joinNames(healthChecks(member))}`,
     };
   }
   return {
@@ -33,14 +31,4 @@ export function scanCardCopy(checked: readonly HouseholdMember[]): {
 
 function possessive(member: HouseholdMember): string {
   return member.relationship === "self" ? "your" : `${member.name}'s`;
-}
-
-/** "BP", "Sugar", "allergies". */
-function checks(member: HouseholdMember): string[] {
-  const conditions = member.conditions.map(
-    (code) => HEALTH_CONDITION_SHORT_LABELS[code]
-  );
-  return member.allergies.length > 0
-    ? [...conditions, "allergies"]
-    : conditions;
 }

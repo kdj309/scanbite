@@ -1,67 +1,94 @@
-import type { HouseholdMember, Severity } from "@foodscanner/shared";
 import { StyleSheet, View } from "react-native";
-import { Icon, type IconName, Text } from "@/components";
-import { memberInitials } from "@/features/household/member-avatar";
-import { colors, fonts, severityColors } from "@/theme";
-
-const MARKS: Record<Severity, IconName> = {
-  green: "check",
-  yellow: "exclaim",
-  red: "close",
-};
+import {
+  Icon,
+  type IconName,
+  Text,
+  toneColors,
+  VERDICT_MARKS,
+  type VerdictTone,
+} from "@/components";
+import { colors, fonts } from "@/theme";
 
 /**
- * Someone's initial ringed in their verdict's colour, with its mark in the
- * corner, so it reads without colour too. Screen readers get the row's
- * summary instead.
+ * Someone's initial (or an icon) ringed in their verdict's colour, with its
+ * mark in the corner, so it reads without colour too. Decorative: the
+ * row or button around it says it in words.
  */
 export function VerdictRing({
-  member,
+  initials,
+  icon,
   severity,
+  size = 30,
 }: {
-  member: Pick<HouseholdMember, "relationship" | "name">;
-  severity: Severity;
+  initials?: string;
+  icon?: IconName;
+  severity: VerdictTone;
+  size?: number;
 }) {
-  const tone = severityColors[severity];
+  const tone = toneColors(severity);
+  const mark = Math.round(size * 0.55);
   return (
     <View
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
-      style={[styles.ring, { borderColor: tone.outline }]}
+      style={[
+        styles.ring,
+        {
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          borderWidth: size >= 40 ? 3 : 2.5,
+          borderColor: tone.outline,
+        },
+        severity === "none" && styles.dashed,
+      ]}
     >
-      <Text
-        style={[styles.initials, { color: tone.onTint }]}
-        maxFontSizeMultiplier={1}
+      {icon ? (
+        <Icon name={icon} size={Math.round(size * 0.45)} color={tone.onTint} />
+      ) : (
+        <Text
+          style={[
+            styles.initials,
+            { color: tone.onTint, fontSize: Math.round(size * 0.37) },
+          ]}
+          maxFontSizeMultiplier={1}
+        >
+          {initials}
+        </Text>
+      )}
+      <View
+        style={[
+          styles.mark,
+          {
+            width: mark,
+            height: mark,
+            borderRadius: mark / 2,
+            backgroundColor: tone.solid,
+          },
+        ]}
       >
-        {memberInitials(member)}
-      </Text>
-      <View style={[styles.mark, { backgroundColor: tone.solid }]}>
-        <Icon name={MARKS[severity]} size={11} color={tone.onSolid} />
+        <Icon
+          name={VERDICT_MARKS[severity]}
+          size={Math.round(mark * 0.58)}
+          color={tone.onSolid}
+        />
       </View>
     </View>
   );
 }
 
-const SIZE = 30;
-
 const styles = StyleSheet.create({
   ring: {
-    width: SIZE,
-    height: SIZE,
-    borderRadius: SIZE / 2,
-    borderWidth: 2.5,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.surface,
   },
-  initials: { fontFamily: fonts.extrabold, fontSize: 11, lineHeight: 14 },
+  dashed: { borderStyle: "dashed" },
+  initials: { fontFamily: fonts.extrabold },
   mark: {
     position: "absolute",
     right: -6,
     bottom: -6,
-    width: 19,
-    height: 19,
-    borderRadius: 10,
     borderWidth: 1.5,
     borderColor: colors.background,
     alignItems: "center",

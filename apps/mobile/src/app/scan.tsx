@@ -22,6 +22,7 @@ import { useHousehold } from "@/features/household/api";
 import { BARCODE_TYPES, parseBarcode } from "@/features/scanner/barcode";
 import { createScan, refreshRecentScans } from "@/features/scans/api";
 import { sentenceName } from "@/features/scans/recent";
+import { productQueryKey } from "@/features/verdict/api";
 import { useLoop } from "@/hooks/use-loop";
 import { colors, radii, screenGutter, spacing } from "@/theme";
 
@@ -72,7 +73,12 @@ function Scanner({
     onSuccess: ({ result }, barcode) => {
       refreshRecentScans(queryClient);
       if (result.found) {
-        router.replace({ pathname: "/product/[barcode]", params: { barcode } });
+        // The verdict screen shows this straight away (fresh for a minute).
+        queryClient.setQueryData(productQueryKey(barcode), result);
+        router.replace({
+          pathname: "/product/[barcode]",
+          params: memberId ? { barcode, for: memberId } : { barcode },
+        });
       }
     },
   });

@@ -1,4 +1,8 @@
-import type { HouseholdMember, Relationship } from "@foodscanner/shared";
+import {
+  HEALTH_CONDITION_SHORT_LABELS,
+  type HouseholdMember,
+  type Relationship,
+} from "@foodscanner/shared";
 
 /** Every account starts with this member: the person using the app. */
 export function selfMember(
@@ -96,4 +100,16 @@ export function withoutMember(
   id: string
 ): HouseholdMember[] {
   return members.filter((m) => m.id !== id);
+}
+
+/** What scans check for them: "BP", "Sugar", "allergies". */
+export function healthChecks(
+  member: Pick<HouseholdMember, "conditions" | "allergies">
+): string[] {
+  const conditions = member.conditions.map(
+    (code) => HEALTH_CONDITION_SHORT_LABELS[code]
+  );
+  return member.allergies.length > 0
+    ? [...conditions, "allergies"]
+    : conditions;
 }
