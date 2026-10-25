@@ -27,6 +27,33 @@ describe("parseExtractionResponse", () => {
     assert.equal(result.brand, "TestBrand");
   });
 
+  it("reads nova_group: null (which the prompt allows) as not known", () => {
+    const unknownNova = VALID_JSON.replace(
+      '"nova_group":4',
+      '"nova_group":null'
+    );
+    assert.equal(parseExtractionResponse(unknownNova).nova_group, undefined);
+  });
+
+  it('reads a label\'s "NIL" as 0, so the rules can use it', () => {
+    const nil = VALID_JSON.replace(
+      '"nutrition":{"sugar_per_100g":10}',
+      '"nutrition":{"sugar_per_100g":"NIL","added_sugar_per_100g":"Nil"}'
+    );
+    assert.deepEqual(parseExtractionResponse(nil).nutrition, {
+      sugar_per_100g: 0,
+      added_sugar_per_100g: 0,
+    });
+  });
+
+  it("throws on a nutrition key the rules don't read", () => {
+    const madeUp = VALID_JSON.replace(
+      '"nutrition":{"sugar_per_100g":10}',
+      '"nutrition":{"total_sugars_per_100g":10,"sodium_mg_per_100g":5203}'
+    );
+    assert.throws(() => parseExtractionResponse(madeUp));
+  });
+
   it("throws when the JSON doesn't match the schema", () => {
     assert.throws(() =>
       parseExtractionResponse(JSON.stringify({ name: "Missing fields" }))

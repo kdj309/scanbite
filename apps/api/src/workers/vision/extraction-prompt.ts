@@ -27,4 +27,11 @@ Return ONLY valid JSON matching this exact shape (no markdown fences, no comment
   "photo_consistency": "consistent" | "inconsistent"
 }
 
-Use nutrition keys like sugar_per_100g, sodium_per_100g, energy_kcal_per_100g (or the _per_100ml variants if this is a liquid product) based on what the labels actually show. If the product name/brand isn't visible in these photos, use "unknown".`;
+Nutrition keys: use ONLY these names, each ending in _per_100g (or _per_100ml if the label gives values per 100 ml), with the per-100 value, not per serving. Leave out any nutrient not in this list.
+- energy_kcal (kcal)
+- protein, carbohydrate, total_fat, saturated_fat, trans_fat (g)
+- sugar (g) — the label's total sugars
+- added_sugar (g)
+- cholesterol (mg)
+- sodium (mg)
+For example: "sugar_per_100g": 12.5, "sodium_per_100g": 480. If the product name/brand isn't visible in these photos, use "unknown".`;
