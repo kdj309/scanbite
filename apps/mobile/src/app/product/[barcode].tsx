@@ -188,12 +188,14 @@ function Hero({
       </View>
       <View style={styles.product}>
         <View style={styles.thumb}>
-          {product.image_url && (
+          {product.image_url ? (
             <Image
               source={{ uri: product.image_url }}
               style={styles.image}
               accessibilityIgnoresInvertColors
             />
+          ) : (
+            <Icon name="package" size={30} color={colors.inkSecondary} />
           )}
         </View>
         <View style={styles.fill}>
@@ -403,6 +405,8 @@ const styles = StyleSheet.create({
   thumb: {
     width: 64,
     height: 64,
+    alignItems: "center",
+    justifyContent: "center",
     borderRadius: radii.sm,
     overflow: "hidden",
     backgroundColor: colors.surface,

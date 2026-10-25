@@ -1,7 +1,7 @@
 import type { HouseholdMember, Scan } from "@foodscanner/shared";
 import { router } from "expo-router";
 import { Image, Pressable, StyleSheet, View } from "react-native";
-import { Text } from "@/components";
+import { Icon, Text } from "@/components";
 import { colors, radii, severityColors, spacing } from "@/theme";
 import {
   checkedVerdicts,
@@ -52,7 +52,13 @@ export function RecentScanRow({
             style={styles.image}
             accessibilityIgnoresInvertColors
           />
-        ) : null}
+        ) : (
+          <Icon
+            name="package"
+            size={24}
+            color={tone?.onTint ?? colors.inkSecondary}
+          />
+        )}
       </View>
       <View style={styles.text}>
         <Text variant="title" numberOfLines={1}>
@@ -76,7 +82,10 @@ export function RecentScanRow({
               { zIndex: rings.shown.length - i },
             ]}
           >
-            <VerdictRing initials={memberInitials(member)} severity={s} />
+            <VerdictRing
+              initials={memberInitials(member).charAt(0)}
+              severity={s}
+            />
           </View>
         ))}
         {rings.more > 0 && (
@@ -102,6 +111,8 @@ const styles = StyleSheet.create({
   thumb: {
     width: 48,
     height: 48,
+    alignItems: "center",
+    justifyContent: "center",
     borderRadius: radii.sm,
     overflow: "hidden",
   },

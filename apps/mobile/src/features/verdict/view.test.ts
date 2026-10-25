@@ -154,7 +154,7 @@ describe("verdictView", () => {
   it("sums up everyone, with each other flag once and who it's for", () => {
     const view = verdictView(flagged, family, ALL);
     expect(view).toMatchObject({
-      badge: "Avoid for Papa · Caution for Amma",
+      badge: "Avoid for Papa",
       checkedFor: "Checked for Amma & Papa",
       reasonLabel: "Biggest concern",
       title: "Too sweet for diabetes",
@@ -167,6 +167,22 @@ describe("verdictView", () => {
       },
       { title: "Palm oil", detail: "Caution for Amma & Papa", tone: "yellow" },
     ]);
+  });
+
+  it("counts who the worst verdict is for, and says everyone only for the whole family", () => {
+    const allAvoid = result({ severity: "red", member_id: AMMA }, [
+      verdict(you, "yellow", [nova], false),
+      verdict(amma, "red", [sugar]),
+      verdict(papa, "red", [sugar]),
+    ]);
+    expect(verdictView(allAvoid, family, ALL).badge).toBe("Avoid for 2 people");
+    const twoOfTwo = result({ severity: "red", member_id: AMMA }, [
+      verdict(amma, "red", [sugar]),
+      verdict(papa, "red", [sugar]),
+    ]);
+    expect(verdictView(twoOfTwo, [amma, papa], ALL).badge).toBe(
+      "Avoid for everyone"
+    );
   });
 
   it("asks for your conditions when nothing personal was checked", () => {
@@ -195,6 +211,44 @@ describe("verdictView", () => {
       title: "What we checked",
       items: [{ title: "Salt", detail: "Within limits", tone: "ok" }],
     });
+  });
+
+  it("lists a label once when two rules share it", () => {
+    const unchecked = (rule: string): VerdictReason => ({
+      kind: "unchecked",
+      label: "Sugar not checked",
+      text: "Couldn’t check sugar",
+      rule_id: rule,
+    });
+    const safe = result({ severity: "green", member_id: AMMA }, [
+      verdict(amma, "green", [unchecked("sugar_a"), unchecked("sugar_b")]),
+    ]);
+    expect(
+      verdictView(safe, family, AMMA).more.items.map((item) => item.title)
+    ).toEqual(["Salt", "Sugar not checked"]);
+  });
+
+  it("says what couldn't be checked when a Caution has no flag", () => {
+    const gap = (label: string): VerdictReason => ({
+      kind: "unchecked",
+      label: `${label} not checked`,
+      text: `Couldn’t check ${label.toLowerCase()}`,
+      rule_id: label,
+    });
+    const unchecked = result({ severity: "yellow", member_id: AMMA }, [
+      verdict(amma, "yellow", [gap("Sugar"), gap("Salt")]),
+      verdict(papa, "yellow", [gap("Sugar")]),
+    ]);
+    const view = verdictView(unchecked, family, AMMA);
+    expect(view).toMatchObject({
+      title: "Couldn’t check everything",
+      line: "Sugar and salt weren’t on the label, so I couldn’t check them.",
+    });
+    // Nothing was flagged, so there's no "Why does this matter?".
+    expect(view.whyRuleId).toBeUndefined();
+    expect(verdictView(unchecked, family, ALL).line).toBe(
+      "Sugar and salt weren’t on the label, so I couldn’t check them. Nothing else was flagged."
+    );
   });
 
   it("gives the general verdict while nobody has conditions", () => {

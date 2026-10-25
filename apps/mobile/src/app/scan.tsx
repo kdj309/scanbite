@@ -19,9 +19,14 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Bitey, Button, IconButton, Text, TextField } from "@/components";
 import { useHousehold } from "@/features/household/api";
-import { BARCODE_TYPES, parseBarcode } from "@/features/scanner/barcode";
+import {
+  BARCODE_TYPES,
+  createReadConfirmer,
+  parseBarcode,
+} from "@/features/scanner/barcode";
 import { createScan, refreshRecentScans } from "@/features/scans/api";
 import { sentenceName } from "@/features/scans/recent";
+import { LabelFlow } from "@/features/label/label-flow";
 import { productQueryKey } from "@/features/verdict/api";
 import { useLoop } from "@/hooks/use-loop";
 import { colors, radii, screenGutter, spacing } from "@/theme";
@@ -64,22 +69,33 @@ function Scanner({
   const household = useHousehold();
   const [torch, setTorch] = useState(false);
   const [typing, setTyping] = useState(false);
+  // New products being added from their labels, and the one in front.
+  const [labels, setLabels] = useState<string[]>([]);
+  const [front, setFront] = useState<string>();
   // The camera reports the same barcode many times a second; take one.
   const taken = useRef(false);
+  const [confirmRead] = useState(createReadConfirmer);
 
   const lookup = useMutation({
     mutationFn: (barcode: string) =>
       createScan({ barcode, member_id: memberId }),
     onSuccess: ({ result }, barcode) => {
       refreshRecentScans(queryClient);
-      if (result.found) {
-        // The verdict screen shows this straight away (fresh for a minute).
-        queryClient.setQueryData(productQueryKey(barcode), result);
-        router.replace({
-          pathname: "/product/[barcode]",
-          params: memberId ? { barcode, for: memberId } : { barcode },
-        });
+      if (!result.found) {
+        // New to us: straight on to its label, if the camera's allowed.
+        if (permission.granted) {
+          setLabels((all) => (all.includes(barcode) ? all : [...all, barcode]));
+          setFront(barcode);
+          lookup.reset();
+        }
+        return;
       }
+      // The verdict screen shows this straight away (fresh for a minute).
+      queryClient.setQueryData(productQueryKey(barcode), result);
+      router.replace({
+        pathname: "/product/[barcode]",
+        params: memberId ? { barcode, for: memberId } : { barcode },
+      });
     },
   });
 
@@ -93,8 +109,14 @@ function Scanner({
     lookup.reset();
   }
 
+  function closeLabel(barcode: string) {
+    setLabels((all) => all.filter((b) => b !== barcode));
+    setFront(undefined);
+    scanAnother();
+  }
+
   const member = household.data?.members.find((m) => m.id === memberId);
-  const scanning = lookup.isIdle && !typing;
+  const scanning = lookup.isIdle && !typing && front === undefined;
 
   // Typing a barcode works without the camera too.
   const sheets = (
@@ -136,7 +158,7 @@ function Scanner({
           scanning
             ? ({ data }) => {
                 const barcode = parseBarcode(data);
-                if (barcode && !taken.current) {
+                if (barcode && confirmRead(barcode) && !taken.current) {
                   look(barcode);
                 }
               }
@@ -192,6 +214,23 @@ function Scanner({
         </View>
       </SafeAreaView>
       {sheets}
+      {labels.map((barcode) => (
+        <LabelFlow
+          key={barcode}
+          barcode={barcode}
+          inFront={front === barcode}
+          onBack={() => {
+            setFront(undefined);
+            scanAnother();
+          }}
+          onFront={() => setFront(barcode)}
+          onDone={() => closeLabel(barcode)}
+          onReady={() => {
+            closeLabel(barcode);
+            look(barcode);
+          }}
+        />
+      ))}
     </View>
   );
 }
@@ -300,8 +339,8 @@ function LookupSheet({
               <View style={styles.fill}>
                 <Text variant="h2">New product!</Text>
                 <Text variant="caption">
-                  We don’t know this one yet. Adding it from the label is coming
-                  next.
+                  We don’t know this one yet. Allow the camera to add it from
+                  its label.
                 </Text>
               </View>
             </View>

@@ -19,6 +19,13 @@ const ICONS = {
     </>
   ),
   close: <Path d="M5 5L15 15M15 5L5 15" strokeWidth={2.6} />,
+  /** A product with no photo (read from its label). */
+  package: (
+    <Path
+      d="M3 6.5L10 3.5L17 6.5V14L10 17L3 14ZM3 6.5L10 9.5L17 6.5M10 9.5V17"
+      strokeWidth={1.6}
+    />
+  ),
   torch: <Path d="M11 2L4 11h5l-1 7 7-9h-5l1-7z" strokeWidth={1.9} />,
   // Tab bar icons, drawn on the canvas's 24×24 grid.
   home: (

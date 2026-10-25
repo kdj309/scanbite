@@ -70,13 +70,15 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     alignSelf: "flex-start",
+    // Never wider than the screen: long words wrap inside the pill.
+    maxWidth: "100%",
     gap: 7,
     paddingVertical: 7,
     paddingHorizontal: 14,
     borderRadius: radii.pill,
   },
   // Below the product name in weight (design S2).
-  words: { fontSize: 15, lineHeight: 20 },
+  words: { fontSize: 15, lineHeight: 20, flexShrink: 1 },
   // Never filled: an outline can't be mistaken for a verdict.
   none: {
     backgroundColor: colors.surface,

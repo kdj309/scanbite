@@ -7,11 +7,7 @@ import type {
 } from "@foodscanner/shared";
 import { SEVERITY_WORDS, type VerdictTone } from "@/components";
 import { healthChecks } from "@/features/household/members";
-import {
-  joinNames,
-  sentenceName,
-  verdictSummary,
-} from "@/features/scans/recent";
+import { joinNames, sentenceName } from "@/features/scans/recent";
 
 /** Everyone together, or one person's id. */
 export const ALL = "all";
@@ -102,7 +98,7 @@ export function verdictView(
   if (checked.length === 0) {
     return generalView(result, everyone);
   }
-  return allView(result, checked);
+  return allView(result, checked, everyone.length);
 }
 
 const isFlag = (reason: VerdictReason) => reason.kind === "flag";
@@ -133,7 +129,16 @@ function personView({ member, verdict }: Person): VerdictView {
       title: main.label,
       line: main.text,
       whyRuleId: main.rule_id,
-      more: { title: "Also flagged", items: rest.map(asItem) },
+      more: { title: "Also flagged", items: rest.map(asItem).filter(once) },
+      flagged: true,
+    };
+  }
+  if (severity !== "green") {
+    // A Caution with no flag: only things we couldn't check (design 2b).
+    return {
+      ...base,
+      ...gapsCard(reasons),
+      more: whatWeChecked(verdict),
       flagged: true,
     };
   }
@@ -144,6 +149,49 @@ function personView({ member, verdict }: Person): VerdictView {
     line: `Nothing here conflicts with ${possessive(member)} ${joinNames(checks)}.`,
     more: whatWeChecked(verdict),
     flagged: false,
+  };
+}
+
+/**
+ * The All badge: only the worst verdict and who it's for (design 2/2a).
+ * "See it for" below shows everyone's own verdict.
+ */
+function familyBadge(
+  severity: Severity,
+  checked: readonly Person[],
+  familySize: number
+): string {
+  const who = checked.filter(
+    ({ verdict }) => verdict.verdict.severity === severity
+  );
+  const word = SEVERITY_WORDS[severity];
+  if (who.length === 1) {
+    return `${word} for ${sentenceName(who[0].member)}`;
+  }
+  return who.length === familySize
+    ? `${word} for everyone`
+    : `${word} for ${who.length} people`;
+}
+
+/**
+ * "Couldn't check everything": names what wasn't on the label, never
+ * "Nothing flagged" next to a Caution (design 2b).
+ */
+function gapsCard(reasons: readonly VerdictReason[], suffix = "") {
+  const topics = reasons
+    .filter((reason) => reason.kind === "unchecked")
+    .map((reason) => reason.label.replace(/ not checked$/i, "").toLowerCase())
+    .filter((topic, i, all) => all.indexOf(topic) === i);
+  const one = topics.length === 1;
+  return {
+    reasonLabel: "Result",
+    title: "Couldn’t check everything",
+    line:
+      topics.length === 0
+        ? "Some of this label couldn’t be checked."
+        : capitalize(
+            `${joinNames(topics)} ${one ? "wasn’t" : "weren’t"} on the label, so I couldn’t check ${one ? "it" : "them"}.${suffix}`
+          ),
   };
 }
 
@@ -160,7 +208,7 @@ function notCheckedView({ member, verdict }: Person): VerdictView {
       : `Add ${member.name}’s conditions and I’ll check this for them too.`,
     more: {
       title: "General check",
-      items: verdict.verdict.reasons.map(asItem),
+      items: verdict.verdict.reasons.map(asItem).filter(once),
     },
     addConditionsFor: member,
     flagged: verdict.verdict.severity !== "green",
@@ -177,6 +225,20 @@ function generalView(
   const reasons = everyone[0]?.verdict.verdict.reasons ?? [];
   const [main, ...rest] = reasons;
   const self = everyone.find(({ member }) => member.relationship === "self");
+  if (severity !== "green" && !(main && isFlag(main))) {
+    return {
+      severity,
+      badge: `${SEVERITY_WORDS[severity]} in general`,
+      checkedFor: "Not checked for your family yet",
+      ...gapsCard(reasons),
+      more: {
+        title: "What we checked",
+        items: reasons.map(asItem).filter(once),
+      },
+      addConditionsFor: self?.member,
+      flagged: true,
+    };
+  }
   return {
     severity,
     badge: `${SEVERITY_WORDS[severity]} in general`,
@@ -185,7 +247,7 @@ function generalView(
     title: main && isFlag(main) ? main.label : "Nothing flagged",
     line: main && isFlag(main) ? main.text : "Nothing of general concern.",
     whyRuleId: main && isFlag(main) ? main.rule_id : undefined,
-    more: { title: "Also flagged", items: rest.map(asItem) },
+    more: { title: "Also flagged", items: rest.map(asItem).filter(once) },
     addConditionsFor: self?.member,
     flagged: severity !== "green",
   };
@@ -193,18 +255,14 @@ function generalView(
 
 function allView(
   result: ProductFoundResponse,
-  checked: readonly Person[]
+  checked: readonly Person[],
+  familySize: number
 ): VerdictView {
   const severity = result.overall.severity;
   const names = checked.map(({ member }) => sentenceName(member));
   const base = {
     severity,
-    badge: verdictSummary(
-      checked.map(({ member, verdict }) => ({
-        member,
-        severity: verdict.verdict.severity,
-      }))
-    ),
+    badge: familyBadge(severity, checked, familySize),
     checkedFor:
       checked.length > 2
         ? `Checked for ${checked.length} people`
@@ -214,18 +272,30 @@ function allView(
     checked.find(({ member }) => member.id === result.overall.member_id) ??
     checked[0];
   const main = worst.verdict.verdict.reasons.find(isFlag);
+  const everyonesChecks = {
+    title: "What we checked",
+    items: checked
+      .flatMap(({ verdict }) => whatWeChecked(verdict).items)
+      .filter(once),
+  };
+  if (severity !== "green" && !main) {
+    return {
+      ...base,
+      ...gapsCard(
+        checked.flatMap(({ verdict }) => verdict.verdict.reasons),
+        " Nothing else was flagged."
+      ),
+      more: everyonesChecks,
+      flagged: true,
+    };
+  }
   if (severity === "green" || !main) {
     return {
       ...base,
       reasonLabel: "Result",
       title: "Nothing flagged",
       line: "Good to buy for the family.",
-      more: {
-        title: "What we checked",
-        items: unique(
-          checked.flatMap(({ verdict }) => whatWeChecked(verdict).items)
-        ),
-      },
+      more: everyonesChecks,
       flagged: false,
     };
   }
@@ -287,20 +357,23 @@ function whatWeChecked(verdict: MemberVerdict): VerdictView["more"] {
         tone: "ok" as const,
       })),
       ...verdict.verdict.reasons.map(asItem),
-    ],
+    ].filter(once),
   };
 }
 
-function unique(items: MoreItem[]): MoreItem[] {
-  return items.filter(
-    (item, i) => items.findIndex((other) => other.title === item.title) === i
-  );
+/** Different rules can share a label ("Sugar not checked"): list it once. */
+function once(item: MoreItem, i: number, items: readonly MoreItem[]): boolean {
+  return items.findIndex((other) => other.title === item.title) === i;
 }
 
 /** "Sugar, BP +4": two, then a count, so the chip stays one line. */
 function shortList(items: readonly string[]): string {
   const shown = items.slice(0, 2).join(", ");
   return items.length > 2 ? `${shown} +${items.length - 2}` : shown;
+}
+
+function capitalize(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
 function possessive(member: HouseholdMember): string {

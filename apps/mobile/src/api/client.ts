@@ -35,17 +35,25 @@ async function send(
 ): Promise<Response> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  // Files go as multipart: fetch sets that content type (and its boundary).
+  const json = init.body !== undefined && !(init.body instanceof FormData);
   try {
     return await fetch(`${API_BASE_URL}${path}`, {
       method: init.method ?? "GET",
       headers: {
-        ...(init.body !== undefined && { "Content-Type": "application/json" }),
+        ...(json && { "Content-Type": "application/json" }),
         ...(accessToken && { Authorization: `Bearer ${accessToken}` }),
       },
-      body: init.body !== undefined ? JSON.stringify(init.body) : undefined,
+      body: json
+        ? JSON.stringify(init.body)
+        : (init.body as FormData | undefined),
       signal: controller.signal,
     });
   } catch (error) {
+    if (__DEV__) {
+      // Kept for us: a bug here would otherwise look like a bad connection.
+      console.warn(`${init.method ?? "GET"} ${path} failed`, error);
+    }
     // Offline, server down or too slow: the raw error ("fetch failed:
     // UnexpectedException…") means nothing to the person, so say what to do.
     throw new Error("Check your connection and try again.", { cause: error });
