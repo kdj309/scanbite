@@ -27,16 +27,22 @@ const EXPIRY_MARGIN_MS = 30_000;
 
 /** React Native's fetch never gives up on its own (think: a shop basement). */
 const REQUEST_TIMEOUT_MS = 15_000;
+/** Label photos are a few MB: give a weak in-store signal time to send them. */
+const UPLOAD_TIMEOUT_MS = 90_000;
 
 async function send(
   path: string,
   init: { method?: string; body?: unknown },
   accessToken?: string
 ): Promise<Response> {
+  const files = init.body instanceof FormData;
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const timer = setTimeout(
+    () => controller.abort(),
+    files ? UPLOAD_TIMEOUT_MS : REQUEST_TIMEOUT_MS
+  );
   // Files go as multipart: fetch sets that content type (and its boundary).
-  const json = init.body !== undefined && !(init.body instanceof FormData);
+  const json = init.body !== undefined && !files;
   try {
     return await fetch(`${API_BASE_URL}${path}`, {
       method: init.method ?? "GET",

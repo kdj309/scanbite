@@ -35,6 +35,7 @@ export function LabelCapture({
   const [mode, setMode] = useState<Mode>("video");
   const [ready, setReady] = useState(false);
   const [preparing, setPreparing] = useState(false);
+  const [recording, setRecording] = useState(false);
   const [error, setError] = useState<string>();
 
   async function finish(make: () => Promise<string[]>) {
@@ -81,7 +82,8 @@ export function LabelCapture({
             </Text>
           </Pressable>
         </View>
-        {!preparing && (
+        {/* No switching mid-video: the camera can't change mode while recording. */}
+        {!preparing && !recording && (
           <View
             style={styles.modes}
             accessibilityRole="radiogroup"
@@ -133,9 +135,15 @@ export function LabelCapture({
             <VideoCapture
               camera={camera}
               ready={ready}
+              recording={recording}
+              onRecordingChange={(on) => {
+                setRecording(on);
+                setError(undefined);
+              }}
               onRecorded={(uri, seconds) =>
                 void finish(() => videoFrames(uri, seconds))
               }
+              onFailed={() => setError("Couldn’t record. Please try again.")}
             />
           ) : (
             <PhotoCapture
@@ -153,13 +161,18 @@ export function LabelCapture({
 function VideoCapture({
   camera,
   ready,
+  recording,
+  onRecordingChange,
   onRecorded,
+  onFailed,
 }: {
   camera: RefObject<CameraView | null>;
   ready: boolean;
+  recording: boolean;
+  onRecordingChange: (recording: boolean) => void;
   onRecorded: (uri: string, seconds: number) => void;
+  onFailed: () => void;
 }) {
-  const [recording, setRecording] = useState(false);
   const [seconds, setSeconds] = useState(0);
 
   useEffect(() => {
@@ -176,15 +189,23 @@ function VideoCapture({
 
   async function start() {
     setSeconds(0);
-    setRecording(true);
+    onRecordingChange(true);
     const started = Date.now();
-    // Resolves when stopped, or by itself at the longest length.
-    const video = await camera.current?.recordAsync({
-      maxDuration: MAX_SECONDS,
-    });
-    setRecording(false);
-    if (video) {
-      onRecorded(video.uri, (Date.now() - started) / 1000);
+    try {
+      // Resolves when stopped, or by itself at the longest length.
+      const video = await camera.current?.recordAsync({
+        maxDuration: MAX_SECONDS,
+      });
+      onRecordingChange(false);
+      if (video) {
+        onRecorded(video.uri, (Date.now() - started) / 1000);
+      }
+    } catch (cause) {
+      if (__DEV__) {
+        console.warn("Recording the label failed", cause);
+      }
+      onRecordingChange(false);
+      onFailed();
     }
   }
 

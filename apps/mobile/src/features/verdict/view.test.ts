@@ -251,6 +251,23 @@ describe("verdictView", () => {
     );
   });
 
+  it("shows someone's flag when the overall person ties with only gaps", () => {
+    const gapOnly: VerdictReason = {
+      kind: "unchecked",
+      label: "Sugar not checked",
+      text: "Couldn’t check sugar",
+      rule_id: "sugar",
+    };
+    const tie = result({ severity: "yellow", member_id: AMMA }, [
+      verdict(amma, "yellow", [gapOnly]),
+      verdict(papa, "yellow", [nova]),
+    ]);
+    expect(verdictView(tie, family, ALL)).toMatchObject({
+      reasonLabel: "Biggest concern",
+      title: "Ultra-processed",
+    });
+  });
+
   it("gives the general verdict while nobody has conditions", () => {
     const general = result({ severity: "yellow", member_id: null }, [
       verdict(you, "yellow", [nova], false),

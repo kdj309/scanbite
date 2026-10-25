@@ -268,10 +268,18 @@ function allView(
         ? `Checked for ${checked.length} people`
         : `Checked for ${joinNames(names, "&")}`,
   };
-  const worst =
-    checked.find(({ member }) => member.id === result.overall.member_id) ??
-    checked[0];
-  const main = worst.verdict.verdict.reasons.find(isFlag);
+  // Others can tie the overall member's severity with a real flag while
+  // the overall member has only gaps: look at everyone at that level.
+  const atWorst = checked
+    .filter(({ verdict }) => verdict.verdict.severity === severity)
+    .sort(
+      (a, b) =>
+        Number(b.member.id === result.overall.member_id) -
+        Number(a.member.id === result.overall.member_id)
+    );
+  const main = (atWorst.length > 0 ? atWorst : checked)
+    .flatMap(({ verdict }) => verdict.verdict.reasons)
+    .find(isFlag);
   const everyonesChecks = {
     title: "What we checked",
     items: checked

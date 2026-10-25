@@ -34,11 +34,20 @@ const NUTRITION_KEYS = LABEL_NUTRIENTS.flatMap((nutrient) => [
   `${nutrient}_per_100ml`,
 ]);
 
-// Strict: a key the rules don't know (say "sodium_mg_per_100g") would
-// quietly become "Couldn't check salt", so it fails the read instead.
+/**
+ * Keys outside the list (fibre is common on Indian labels) are dropped,
+ * not a failed read; the caller logs them so a renamed one (say
+ * "sodium_mg_per_100g", which reads as "Couldn't check salt") shows up.
+ */
+export function unlistedNutritionKeys(nutrition: unknown): string[] {
+  if (typeof nutrition !== "object" || nutrition === null) {
+    return [];
+  }
+  return Object.keys(nutrition).filter((key) => !NUTRITION_KEYS.includes(key));
+}
+
 const nutritionSchema = z
   .object(Object.fromEntries(NUTRITION_KEYS.map((key) => [key, nutrientValue])))
-  .strict()
   // Missing nutrients are left out, never set to undefined.
   .transform(
     (nutrition) => nutrition as Record<string, number | string | null>

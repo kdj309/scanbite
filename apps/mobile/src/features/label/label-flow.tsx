@@ -42,7 +42,14 @@ export function LabelFlow({
 
   if (submissionId === undefined) {
     if (!inFront) {
-      return null;
+      // Sent to the back while sending: say so if the sending failed.
+      return upload.isError ? (
+        <Banner
+          text="Couldn’t send that label"
+          action="Try again"
+          onPress={onFront}
+        />
+      ) : null;
     }
     if (upload.isPending) {
       return (

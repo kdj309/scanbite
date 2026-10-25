@@ -92,12 +92,23 @@ function Scanner({
       }
       // The verdict screen shows this straight away (fresh for a minute).
       queryClient.setQueryData(productQueryKey(barcode), result);
-      router.replace({
-        pathname: "/product/[barcode]",
-        params: memberId ? { barcode, for: memberId } : { barcode },
-      });
+      openVerdict(barcode, labels.length > 0);
     },
   });
+
+  function openVerdict(barcode: string, labelsWaiting: boolean) {
+    const route = {
+      pathname: "/product/[barcode]",
+      params: memberId ? { barcode, for: memberId } : { barcode },
+    } as const;
+    // Labels still being read live on this screen: keep it under the
+    // verdict, or they'd stop checking and never show their banner.
+    if (labelsWaiting) {
+      router.push(route);
+    } else {
+      router.replace(route);
+    }
+  }
 
   function look(barcode: string) {
     taken.current = true;
@@ -226,8 +237,13 @@ function Scanner({
           onFront={() => setFront(barcode)}
           onDone={() => closeLabel(barcode)}
           onReady={() => {
+            // Already scanned once: open it without a second scan record.
             closeLabel(barcode);
-            look(barcode);
+            refreshRecentScans(queryClient);
+            openVerdict(
+              barcode,
+              labels.some((other) => other !== barcode)
+            );
           }}
         />
       ))}

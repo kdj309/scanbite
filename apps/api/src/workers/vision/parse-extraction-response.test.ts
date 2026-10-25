@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { unlistedNutritionKeys } from "./extraction-output";
 import { parseExtractionResponse } from "./parse-extraction-response";
 
 const VALID_JSON = JSON.stringify({
@@ -46,12 +47,21 @@ describe("parseExtractionResponse", () => {
     });
   });
 
-  it("throws on a nutrition key the rules don't read", () => {
-    const madeUp = VALID_JSON.replace(
+  it("drops nutrition keys the rules don't read, keeping the rest", () => {
+    const extra = VALID_JSON.replace(
       '"nutrition":{"sugar_per_100g":10}',
-      '"nutrition":{"total_sugars_per_100g":10,"sodium_mg_per_100g":5203}'
+      '"nutrition":{"sugar_per_100g":10,"dietary_fibre_per_100g":3}'
     );
-    assert.throws(() => parseExtractionResponse(madeUp));
+    assert.deepEqual(parseExtractionResponse(extra).nutrition, {
+      sugar_per_100g: 10,
+    });
+  });
+
+  it("names the dropped keys, so a renamed nutrient can be spotted", () => {
+    assert.deepEqual(
+      unlistedNutritionKeys({ sodium_mg_per_100g: 5203, sugar_per_100g: 0 }),
+      ["sodium_mg_per_100g"]
+    );
   });
 
   it("throws when the JSON doesn't match the schema", () => {
