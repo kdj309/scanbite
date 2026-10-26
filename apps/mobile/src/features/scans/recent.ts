@@ -7,6 +7,11 @@ const RANK: Record<Severity, number> = { green: 0, yellow: 1, red: 2 };
 /** Someone a scan checked personally, and their verdict at the time. */
 export type CheckedVerdict = { member: HouseholdMember; severity: Severity };
 
+/** No ingredients were read: no verdict to colour or ring (design 2c). */
+function unread(scan: Scan): boolean {
+  return scan.product?.has_ingredients === false;
+}
+
 /**
  * The verdicts that were personal: people who have conditions or allergies
  * (anyone else got the general verdict). Someone added after the scan
@@ -16,6 +21,9 @@ export function checkedVerdicts(
   scan: Scan,
   members: readonly HouseholdMember[]
 ): CheckedVerdict[] {
+  if (unread(scan)) {
+    return [];
+  }
   return members.filter(hasHealthProfile).flatMap((member) => {
     const verdict = scan.verdicts.find((v) => v.member_id === member.id);
     return verdict ? [{ member, severity: verdict.severity }] : [];
@@ -27,6 +35,9 @@ export function scanSeverity(
   scan: Scan,
   checked: readonly CheckedVerdict[]
 ): Severity | null {
+  if (unread(scan)) {
+    return null;
+  }
   if (checked.length === 0) {
     return scan.severity;
   }
@@ -60,6 +71,9 @@ export function scanSummary(
 ): string {
   if (!scan.found || scan.severity === null) {
     return "Not found";
+  }
+  if (unread(scan)) {
+    return "Couldn’t read the label";
   }
   if (checked.length === 0) {
     return `${SEVERITY_WORDS[scan.severity]} in general`;

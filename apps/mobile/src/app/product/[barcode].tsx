@@ -32,6 +32,7 @@ import { useProduct, useRuleExplainer } from "@/features/verdict/api";
 import { MoreList } from "@/features/verdict/more-list";
 import { PersonSwitcher } from "@/features/verdict/person-switcher";
 import { DisclaimerTip } from "@/features/verdict/tip";
+import { UnreadLabel } from "@/features/verdict/unread-label";
 import {
   defaultSelection,
   personOptions,
@@ -40,6 +41,7 @@ import {
 } from "@/features/verdict/view";
 import { WhySheet } from "@/features/verdict/why-sheet";
 import { colors, fonts, radii, screenGutter, spacing } from "@/theme";
+import { closeScreen } from "@/navigation/close-screen";
 
 /** One product's verdict, for each person (design S2 Avoid, S5 Safe). */
 export default function Product() {
@@ -70,6 +72,15 @@ export default function Product() {
   if (!product.data.found) {
     return <ComingNext title="We don’t know this product yet" />;
   }
+  if (!product.data.product.has_ingredients) {
+    return (
+      <UnreadLabel
+        barcode={barcode}
+        result={product.data}
+        scannedFor={scannedFor}
+      />
+    );
+  }
   return (
     <Verdict
       result={product.data}
@@ -77,14 +88,6 @@ export default function Product() {
       scannedFor={scannedFor}
     />
   );
-}
-
-function close() {
-  if (router.canGoBack()) {
-    router.back();
-  } else {
-    router.replace("/");
-  }
 }
 
 function Verdict({
@@ -182,7 +185,7 @@ function Hero({
         <IconButton
           icon="chevronLeft"
           label="Back"
-          onPress={close}
+          onPress={closeScreen}
           style={styles.barButton}
         />
       </View>

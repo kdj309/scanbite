@@ -17,6 +17,7 @@ type VersionFields = Pick<
   | "submitted_by"
   | "confirmed_at"
   | "declared_veg"
+  | "ingredients"
 >;
 
 /** What the app shows about a product. Built per request, never cached:
@@ -32,6 +33,7 @@ export function productSummary(
     product_version_id: version.id as string,
     source: aiPhotos ? "ai_photos" : "catalog",
     verifying: aiPhotos && !version.confirmed_at,
+    has_ingredients: version.ingredients.length > 0,
     image_url: version.image_url ?? null,
     quantity: version.quantity ?? null,
     veg: version.declared_veg ?? "unknown",

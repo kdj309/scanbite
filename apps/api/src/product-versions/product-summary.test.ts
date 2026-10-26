@@ -15,6 +15,9 @@ const aiVersion = {
   submitted_by: sender,
   confirmed_at: null as Date | null,
   declared_veg: null as "veg" | "non_veg" | null,
+  ingredients: [
+    { raw: "Potato", canonical_id: null, status: "unresolved" as const },
+  ],
 };
 
 describe("productSummary", () => {
@@ -86,5 +89,15 @@ describe("productSummary veg badge", () => {
 
   it("is unknown without the symbol — never guessed", () => {
     assert.equal(productSummary(aiVersion).veg, "unknown");
+  });
+});
+
+describe("productSummary.has_ingredients", () => {
+  it("says whether an ingredients list was read", () => {
+    assert.equal(productSummary(aiVersion).has_ingredients, true);
+    assert.equal(
+      productSummary({ ...aiVersion, ingredients: [] }).has_ingredients,
+      false
+    );
   });
 });

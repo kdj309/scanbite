@@ -81,6 +81,7 @@ function result(
       product_version_id: "6ab7d04ffb5027914b128af1",
       source: "catalog",
       verifying: false,
+      has_ingredients: true,
       image_url: null,
       quantity: "200 g",
       veg: "veg",

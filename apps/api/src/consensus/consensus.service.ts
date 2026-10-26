@@ -8,7 +8,7 @@ import {
   ProductVersion,
   ProductVersionDocument,
 } from "../database/schemas/product-version.schema";
-import { shouldAutoPromote } from "./conflict";
+import { fillsNoResult, shouldAutoPromote } from "./conflict";
 
 export type PromoteResult =
   | { promoted: true; productVersionId: string }
@@ -56,6 +56,16 @@ export class ConsensusService {
     const eligible = shouldAutoPromote({
       hasLiveVersion: Boolean(live),
       extractionConfidence: version.extraction_confidence ?? 0,
+      fillsNoResult:
+        live !== null &&
+        fillsNoResult(
+          { ingredientCount: live.ingredients.length, brand: live.brand },
+          {
+            ingredientCount: version.ingredients.length,
+            brand: version.brand,
+            extractionConfidence: version.extraction_confidence ?? 0,
+          }
+        ),
     });
     if (!eligible) {
       this.logger.log(`Leaving version ${productVersionId} pending for review`);

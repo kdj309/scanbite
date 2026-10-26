@@ -70,6 +70,28 @@ describe("checkedVerdicts", () => {
 });
 
 describe("scanSummary and scanSeverity", () => {
+  it("shows no verdict for a product whose ingredients weren't read", () => {
+    const s: Scan = {
+      ...scan({ [AMMA_ID]: "green", [PAPA_ID]: "green" }, "green"),
+      product: {
+        name: "Mango pickle",
+        brand: "Brand",
+        product_version_id: "6ab7d04ffb5027914b128af1",
+        source: "ai_photos",
+        verifying: true,
+        has_ingredients: false,
+        image_url: null,
+        quantity: null,
+        veg: "unknown",
+        buy_links: [],
+      },
+    };
+    const checked = checkedVerdicts(s, family);
+    expect(checked).toEqual([]);
+    expect(scanSummary(s, checked)).toBe("Couldn’t read the label");
+    expect(scanSeverity(s, checked)).toBeNull();
+  });
+
   it("names who to avoid it for, worst first, and colours by the worst", () => {
     const s = scan({ [AMMA_ID]: "yellow", [PAPA_ID]: "red" });
     const checked = checkedVerdicts(s, family);

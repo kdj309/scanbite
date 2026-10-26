@@ -30,10 +30,15 @@ import { LabelFlow } from "@/features/label/label-flow";
 import { productQueryKey } from "@/features/verdict/api";
 import { useLoop } from "@/hooks/use-loop";
 import { colors, radii, screenGutter, spacing } from "@/theme";
+import { closeScreen } from "@/navigation/close-screen";
 
 /** Point at a barcode; it scans by itself (design S10, step 1). */
 export default function Scan() {
-  const { for: memberId } = useLocalSearchParams<{ for?: string }>();
+  const { for: memberId, label } = useLocalSearchParams<{
+    for?: string;
+    /** A known product whose label couldn't be read (design 2c). */
+    label?: string;
+  }>();
   const [permission, requestPermission] = useCameraPermissions();
 
   if (!permission) {
@@ -42,26 +47,21 @@ export default function Scan() {
   return (
     <Scanner
       memberId={memberId}
+      label={label}
       permission={permission}
       onAllow={requestPermission}
     />
   );
 }
 
-function close() {
-  if (router.canGoBack()) {
-    router.back();
-  } else {
-    router.replace("/");
-  }
-}
-
 function Scanner({
   memberId,
+  label,
   permission,
   onAllow,
 }: {
   memberId: string | undefined;
+  label: string | undefined;
   permission: PermissionResponse;
   onAllow: () => Promise<PermissionResponse>;
 }) {
@@ -70,8 +70,8 @@ function Scanner({
   const [torch, setTorch] = useState(false);
   const [typing, setTyping] = useState(false);
   // New products being added from their labels, and the one in front.
-  const [labels, setLabels] = useState<string[]>([]);
-  const [front, setFront] = useState<string>();
+  const [labels, setLabels] = useState<string[]>(label ? [label] : []);
+  const [front, setFront] = useState(label);
   // The camera reports the same barcode many times a second; take one.
   const taken = useRef(false);
   const [confirmRead] = useState(createReadConfirmer);
@@ -182,7 +182,7 @@ function Scanner({
             icon="close"
             label="Close scanner"
             color={colors.onBrand}
-            onPress={close}
+            onPress={closeScreen}
           />
           {member && (
             <View style={styles.forChip}>
@@ -237,13 +237,10 @@ function Scanner({
           onFront={() => setFront(barcode)}
           onDone={() => closeLabel(barcode)}
           onReady={() => {
-            // Already scanned once: open it without a second scan record.
+            // Scanned again, now found: that scan is what puts it in
+            // Recent scans (they list found scans only).
             closeLabel(barcode);
-            refreshRecentScans(queryClient);
-            openVerdict(
-              barcode,
-              labels.some((other) => other !== barcode)
-            );
+            look(barcode);
           }}
         />
       ))}
@@ -393,7 +390,7 @@ function CameraPermission({
 }) {
   return (
     <SafeAreaView style={styles.permission}>
-      <IconButton icon="close" label="Close scanner" onPress={close} />
+      <IconButton icon="close" label="Close scanner" onPress={closeScreen} />
       <View style={styles.permissionBody}>
         <Bitey size={110} />
         <Text variant="h1" style={styles.centered}>

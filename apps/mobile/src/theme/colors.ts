@@ -25,6 +25,10 @@ export const colors = {
   hairline: "#EAE3EE",
   onBrand: "#FFFFFF",
 
+  /** "No result" (design 2c): a neutral hero and badge outline, never a verdict colour. */
+  noResultTint: "#EFEBF2",
+  noResultOutline: "#CFC6D6",
+
   /** The camera's record button. */
   record: "#E5484D",
 

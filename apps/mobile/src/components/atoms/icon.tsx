@@ -27,6 +27,27 @@ const ICONS = {
     />
   ),
   torch: <Path d="M11 2L4 11h5l-1 7 7-9h-5l1-7z" strokeWidth={1.9} />,
+  /** "Scan the label again" (design 2c). */
+  camera: (
+    <>
+      <Path
+        d="M3 7.2A1.4 1.4 0 0 1 4.4 5.8h1.8L7.5 4h5l1.3 1.8h1.8A1.4 1.4 0 0 1 17 7.2v7.4A1.4 1.4 0 0 1 15.6 16H4.4A1.4 1.4 0 0 1 3 14.6Z"
+        strokeWidth={1.8}
+      />
+      <Circle cx={10} cy={10.8} r={2.7} strokeWidth={1.8} />
+    </>
+  ),
+  /** "No result": no verdict, never a severity mark (design 2c). */
+  question: (
+    <>
+      <Circle cx={10} cy={10} r={8} strokeWidth={2} />
+      <Path
+        d="M7.8 7.6a2.3 2.3 0 1 1 3.2 2.1c-.6.3-1 .8-1 1.5v.4"
+        strokeWidth={2}
+      />
+      <Circle cx={10} cy={14.4} r={1} fill="currentColor" stroke="none" />
+    </>
+  ),
   // Tab bar icons, drawn on the canvas's 24×24 grid.
   home: (
     <G scale={20 / 24}>

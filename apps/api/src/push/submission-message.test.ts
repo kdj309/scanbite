@@ -18,10 +18,14 @@ const member = (
   verdict: { severity, reasons: [], checked: [] },
 });
 
-const ready = (members: MemberVerdict[], name = "Masala chips") =>
+const ready = (
+  members: MemberVerdict[],
+  name = "Masala chips",
+  hasIngredients = true
+) =>
   ({
     found: true,
-    product: { name },
+    product: { name, has_ingredients: hasIngredients },
     members,
   }) as unknown as ProductFoundResponse;
 
@@ -66,6 +70,16 @@ describe("submissionMessage", () => {
         ])
       ).body,
       "Safe for Amma & Papa"
+    );
+  });
+
+  it("never says safe when no ingredients were read", () => {
+    assert.equal(
+      submissionMessage(
+        "ready",
+        ready([member("Amma", "green")], "Mango pickle", false)
+      ).body,
+      "Couldn't read the label. Tap to try again."
     );
   });
 

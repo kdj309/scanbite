@@ -1,6 +1,16 @@
 export const AUTO_PROMOTE_CONFIDENCE = 0.9;
 
 /**
+ * "Scan the label again" goes live from this confidence; below it, review.
+ * Clear reads have scored 0.8-0.9 and blurry ones 0.5, and a wrong "Safe"
+ * is worse than "No result".
+ */
+export const FILL_NO_RESULT_CONFIDENCE = 0.7;
+
+/** The fewest letters a partly read brand needs to match a fuller one. */
+const MIN_BRAND_PREFIX = 3;
+
+/**
  * Vision-LLM re-reads of the same label are noisy — tolerate that noise as
  * a percentage of the value rather than a flat number, since nutrients live
  * on very different scales (sugar in single/double-digit grams, sodium in
@@ -119,11 +129,62 @@ export function versionsConflict(
 export function shouldAutoPromote(input: {
   hasLiveVersion: boolean;
   extractionConfidence: number;
+  /** See fillsNoResult: treated like a first read of the product. */
+  fillsNoResult?: boolean;
 }): boolean {
-  if (!input.hasLiveVersion) {
+  if (!input.hasLiveVersion || input.fillsNoResult) {
     return true;
   }
   return input.extractionConfidence >= AUTO_PROMOTE_CONFIDENCE;
+}
+
+function brandKey(brand: string): string {
+  return brand.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+/**
+ * Same brand, allowing for a read that caught only part of it ("SWAS" on
+ * a blurry pack, "SWASTIKS" on a clear one) if at least 3 letters were
+ * read. "unknown" (not visible on the photos) can't rule anything out.
+ */
+export function sameBrand(left: string, right: string): boolean {
+  const a = brandKey(left);
+  const b = brandKey(right);
+  if (a === "unknown" || b === "unknown") {
+    return true;
+  }
+  if (a === "" || b === "") {
+    return false;
+  }
+  if (a === b) {
+    return true;
+  }
+  return (
+    Math.min(a.length, b.length) >= MIN_BRAND_PREFIX &&
+    (a.startsWith(b) || b.startsWith(a))
+  );
+}
+
+/**
+ * "Scan the label again" (design 2c): the live version has no ingredients,
+ * so there was no verdict, and these photos read some from what looks like
+ * the same product. The new version replaces it whole, never merged into
+ * it (merging two photo sets can mix two products or recipes).
+ */
+export function fillsNoResult(
+  live: { ingredientCount: number; brand: string },
+  incoming: {
+    ingredientCount: number;
+    brand: string;
+    extractionConfidence: number;
+  }
+): boolean {
+  return (
+    live.ingredientCount === 0 &&
+    incoming.ingredientCount > 0 &&
+    incoming.extractionConfidence >= FILL_NO_RESULT_CONFIDENCE &&
+    sameBrand(live.brand, incoming.brand)
+  );
 }
 
 export function planAfterExtraction(input: {

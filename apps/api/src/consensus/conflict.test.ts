@@ -2,9 +2,11 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   AUTO_PROMOTE_CONFIDENCE,
+  fillsNoResult,
   NUTRITION_ABS_FLOOR,
   NUTRITION_RELATIVE_TOLERANCE,
   planAfterExtraction,
+  sameBrand,
   shouldAutoPromote,
   versionsConflict,
   type VersionSnapshot,
@@ -169,5 +171,95 @@ describe("consensus (pending vs live)", () => {
       shouldAutoPromote({ hasLiveVersion: true, extractionConfidence: 0.9 }),
       true
     );
+  });
+
+  it("auto-promotes a read that fills a product with no result, whatever its confidence", () => {
+    assert.equal(
+      shouldAutoPromote({
+        hasLiveVersion: true,
+        extractionConfidence: 0.5,
+        fillsNoResult: true,
+      }),
+      true
+    );
+  });
+});
+
+describe("fillsNoResult", () => {
+  const noIngredients = { ingredientCount: 0, brand: "SWAS" };
+
+  it("fills a product with no ingredients from a read that has some", () => {
+    assert.equal(
+      fillsNoResult(noIngredients, {
+        ingredientCount: 8,
+        brand: "SWASTIKS",
+        extractionConfidence: 0.8,
+      }),
+      true
+    );
+  });
+
+  it("never replaces a product that already has ingredients", () => {
+    assert.equal(
+      fillsNoResult(
+        { ingredientCount: 3, brand: "SWASTIKS" },
+        { ingredientCount: 8, brand: "SWASTIKS", extractionConfidence: 0.8 }
+      ),
+      false
+    );
+  });
+
+  it("needs the new read to have ingredients", () => {
+    assert.equal(
+      fillsNoResult(noIngredients, {
+        ingredientCount: 0,
+        brand: "SWAS",
+        extractionConfidence: 0.8,
+      }),
+      false
+    );
+  });
+
+  it("leaves a blurry read for review", () => {
+    assert.equal(
+      fillsNoResult(noIngredients, {
+        ingredientCount: 8,
+        brand: "SWASTIKS",
+        extractionConfidence: 0.5,
+      }),
+      false
+    );
+  });
+
+  it("leaves a different brand for review", () => {
+    assert.equal(
+      fillsNoResult(noIngredients, {
+        ingredientCount: 8,
+        brand: "Mother's",
+        extractionConfidence: 0.8,
+      }),
+      false
+    );
+  });
+});
+
+describe("sameBrand", () => {
+  it("matches a brand read only in part, ignoring case and punctuation", () => {
+    assert.equal(sameBrand("SWAS", "Swastiks"), true);
+    assert.equal(sameBrand("Haldiram's", "HALDIRAMS"), true);
+  });
+
+  it("can't rule anything out when a brand wasn't visible", () => {
+    assert.equal(sameBrand("unknown", "SWASTIKS"), true);
+  });
+
+  it("tells different brands apart", () => {
+    assert.equal(sameBrand("Priya", "Mother's Recipe"), false);
+  });
+
+  it("needs at least 3 letters to match a brand read in part", () => {
+    assert.equal(sameBrand("A", "Amul"), false);
+    assert.equal(sameBrand("AM", "Amul"), false);
+    assert.equal(sameBrand("AMU", "Amul"), true);
   });
 });

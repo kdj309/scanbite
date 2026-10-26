@@ -83,6 +83,10 @@ export const productSummarySchema = z.object({
   // ai_photos only: true until a different person's photos match it
   // ("Read by AI · verifying").
   verifying: z.boolean(),
+  // false = no ingredients list was read, so there's no verdict to show:
+  // the app shows "Couldn't read the label" (design 2c) and offers to scan
+  // the label again.
+  has_ingredients: z.boolean(),
   // Open Food Facts front photo (CC BY-SA — credit it); null otherwise.
   image_url: z.string().nullable(),
   // Pack size as printed, e.g. "1.25 l".
