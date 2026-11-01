@@ -81,7 +81,7 @@ export const productSummarySchema = z.object({
   // vision model from a user's label photos.
   source: z.enum(["catalog", "ai_photos"]),
   // ai_photos only: true until a different person's photos match it
-  // ("Read by AI · verifying").
+  // (shown as "Read by AI from the label").
   verifying: z.boolean(),
   // false = no ingredients list was read, so there's no verdict to show:
   // the app shows "Couldn't read the label" (design 2c) and offers to scan

@@ -218,7 +218,7 @@ function Hero({
           </View>
           {product.verifying && (
             <Text variant="label" style={styles.verifying}>
-              Read by AI · verifying
+              Read by AI from the label
             </Text>
           )}
         </View>
