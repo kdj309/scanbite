@@ -12,14 +12,19 @@ import {
   Submission,
   SubmissionDocument,
 } from "../database/schemas/submission.schema";
-import { ProductVersionIngestionService } from "../product-versions/product-version-ingestion.service";
+import {
+  ProductVersionIngestionService,
+  type ResolvedIngredientRow,
+} from "../product-versions/product-version-ingestion.service";
 import { confirmsVersion } from "../product-versions/product-summary";
 import {
   snapshotFromIncoming,
   snapshotFromVersion,
 } from "../product-versions/product-version-snapshot";
+import { ScansService } from "../scans/scans.service";
 import { ScoringService } from "../scoring/scoring.service";
 import { JobQueuesService } from "./job-queues.service";
+import type { ExtractionOutput } from "./vision/extraction-output";
 import { VISION_PORT, type VisionPort } from "./vision/vision.port";
 
 @Injectable()
@@ -34,7 +39,8 @@ export class ExtractionPipeline {
     @Inject(VISION_PORT) private readonly vision: VisionPort,
     private readonly ingestion: ProductVersionIngestionService,
     private readonly scoring: ScoringService,
-    private readonly queues: JobQueuesService
+    private readonly queues: JobQueuesService,
+    private readonly scans: ScansService
   ) {}
 
   async processSubmission(submissionId: string): Promise<void> {
@@ -47,12 +53,17 @@ export class ExtractionPipeline {
     }
 
     const extracted = await this.vision.extract({
-      barcode: submission.barcode,
+      barcode: submission.barcode ?? `label check ${submissionId}`,
       photoKeys: submission.photo_keys,
     });
     const ingredients = await this.ingestion.resolveIngredients(
       extracted.ingredients
     );
+
+    if (submission.barcode === null) {
+      await this.finishLabelCheck(submission, extracted, ingredients);
+      return;
+    }
 
     if (extracted.photo_consistency === "inconsistent") {
       // Confidently-extracted data from a mismatched photo set is worse than
@@ -130,6 +141,47 @@ export class ExtractionPipeline {
     this.logger.log(
       `Queued promote for submission ${submissionId} version ${pending.id as string}`
     );
+  }
+
+  /**
+   * A pack with no barcode: what the photos said stays on the submission,
+   * for this person alone — no product version, so nothing reaches the
+   * catalog. Its Recent scans entry is made here, not by the app, so it's
+   * there even if the app was closed while reading. Photos of two
+   * different packs can't be checked as one, and there's no review for a
+   * private check, so that's a failed read.
+   */
+  private async finishLabelCheck(
+    submission: SubmissionDocument,
+    extracted: ExtractionOutput,
+    ingredients: ResolvedIngredientRow[]
+  ): Promise<void> {
+    if (extracted.photo_consistency === "inconsistent") {
+      await this.finishSubmission(submission, {
+        status: "failed",
+        event: "failed",
+      });
+      return;
+    }
+    const label_facts = {
+      name: extracted.name,
+      brand: extracted.brand,
+      category: extracted.category,
+      ingredients,
+      nutrition: extracted.nutrition,
+      nova_group: extracted.nova_group,
+      additive_count: extracted.additive_count,
+    };
+    submission.label_facts = label_facts;
+    // Before it's marked ready: a failure here retries the whole job,
+    // where a ready submission would be skipped.
+    await this.scans.recordLabelCheck(
+      Object.assign(submission, { label_facts })
+    );
+    await this.finishSubmission(submission, {
+      status: "ready",
+      event: "ready",
+    });
   }
 
   private async finishSubmission(

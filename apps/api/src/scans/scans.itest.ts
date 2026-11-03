@@ -14,19 +14,26 @@ import {
   ProductVersionSchema,
 } from "../database/schemas/product-version.schema";
 import { Scan, ScanSchema } from "../database/schemas/scan.schema";
+import {
+  Submission,
+  SubmissionSchema,
+} from "../database/schemas/submission.schema";
+import { LabelChecksService } from "../submissions/label-checks.service";
 import { ScansService } from "./scans.service";
 
 describe("recent scans (integration)", () => {
   const scans = mongoose.model(Scan.name, ScanSchema);
   const versions = mongoose.model(ProductVersion.name, ProductVersionSchema);
-  // Listing needs only the two models; the rest are for creating scans.
+  const submissions = mongoose.model(Submission.name, SubmissionSchema);
+  // Listing needs only the models; the rest are for creating scans.
   const service = new ScansService(
     scans as never,
     versions as never,
     null as never,
     null as never,
     null as never,
-    null as never
+    null as never,
+    new LabelChecksService(submissions as never, null as never)
   );
 
   before(() => connectTestDb("itest_scans"));

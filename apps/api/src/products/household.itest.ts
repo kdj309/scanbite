@@ -46,6 +46,11 @@ import { AlternativesService } from "../alternatives/alternatives.service";
 import { ConsensusService } from "../consensus/consensus.service";
 import { Product, ProductSchema } from "../database/schemas/product.schema";
 import { Scan, ScanSchema } from "../database/schemas/scan.schema";
+import {
+  Submission,
+  SubmissionSchema,
+} from "../database/schemas/submission.schema";
+import { LabelChecksService } from "../submissions/label-checks.service";
 import type { OffExtraction } from "../off/off-extraction";
 import { ProductSummaryService } from "../product-versions/product-summary";
 import { ProductVersionIngestionService } from "../product-versions/product-version-ingestion.service";
@@ -144,13 +149,19 @@ describe("household verdicts (integration)", () => {
     summaries
   );
   const scanModel = mongoose.model(Scan.name, ScanSchema);
+  const submissions = mongoose.model(Submission.name, SubmissionSchema);
+  const labelChecks = new LabelChecksService(
+    submissions as never,
+    householdVerdicts
+  );
   const scans = new ScansService(
     scanModel as never,
     versions as never,
     household,
     householdVerdicts,
     products,
-    summaries
+    summaries,
+    labelChecks
   );
 
   let seq = 0;
@@ -202,6 +213,34 @@ describe("household verdicts (integration)", () => {
       nutrition,
     });
     return barcode;
+  }
+
+  /** A read label check (a pack with no barcode) of this user's; returns its id. */
+  async function readLabelCheck(
+    userId: string,
+    nutrition: Record<string, number>,
+    status: "ready" | "processing" = "ready"
+  ): Promise<string> {
+    const check = await submissions.create({
+      barcode: null,
+      photo_hash: `label-${seq++}`,
+      photo_keys: ["labels/no-barcode/a.jpg"],
+      user_id: new Types.ObjectId(userId),
+      status,
+      label_facts:
+        status === "ready"
+          ? {
+              name: "Besan laddoo",
+              brand: "Local shop",
+              category: "sweets",
+              ingredients: [
+                { raw: "gram flour", canonical_id: null, status: "unresolved" },
+              ],
+              nutrition,
+            }
+          : null,
+    });
+    return check.id as string;
   }
 
   /** Catalog tests each use their own category, so they only see their own products. */
@@ -746,6 +785,83 @@ describe("household verdicts (integration)", () => {
         [barcodes[0]]
       );
       assert.equal(rest.next_cursor, null);
+    });
+  });
+  describe("label checks (no barcode)", () => {
+    it("checks a label for the family, like a product but never in the catalog", async () => {
+      const { user, ids } = await newHousehold();
+      const id = await readLabelCheck(user.userId, { sugar_per_100g: 38 });
+      const result = await labelChecks.verdict(id, user.userId);
+      const papa = result.members.find((m) => m.member_id === ids.papa);
+      assert.equal(papa?.verdict.severity, "red");
+      assert.equal(
+        papa?.verdict.reasons[0].rule_id,
+        "diabetic_sugar_escalation"
+      );
+      assert.deepEqual(
+        [
+          result.product.source,
+          result.product.product_version_id,
+          result.product.verifying,
+          result.product.buy_links,
+        ],
+        ["label_check", id, false, []]
+      );
+    });
+
+    it("is only for the person who sent it, once it's read", async () => {
+      const { user } = await newHousehold();
+      const { user: other } = await newHousehold();
+      const id = await readLabelCheck(user.userId, {});
+      await assert.rejects(labelChecks.verdict(id, other.userId), /not found/);
+      const reading = await readLabelCheck(user.userId, {}, "processing");
+      await assert.rejects(
+        labelChecks.verdict(reading, user.userId),
+        /not found/
+      );
+      await assert.rejects(
+        labelChecks.verdict("not-an-id", user.userId),
+        /not found/
+      );
+    });
+
+    it("records each check's scan for who it's for, and lists them apart", async () => {
+      const { user, ids } = await newHousehold();
+      const first = await readLabelCheck(user.userId, { sugar_per_100g: 38 });
+      const second = await readLabelCheck(user.userId, {});
+      await submissions.updateOne(
+        { _id: first },
+        { $set: { for_member_id: new Types.ObjectId(ids.papa) } }
+      );
+      const record = async (id: string) =>
+        scans.recordLabelCheck(
+          (await submissions.findById(id).exec()) as never
+        );
+      await record(first);
+      await record(second);
+      await record(first);
+
+      const recent = await scans.listForHousehold(user, {});
+      assert.deepEqual(
+        recent.items.map((s) => [
+          s.barcode,
+          s.label_check_id,
+          s.product?.source,
+        ]),
+        [
+          [null, first, "label_check"],
+          [null, second, "label_check"],
+        ]
+      );
+      assert.deepEqual(
+        [recent.items[0].member_id, recent.items[0].severity],
+        [ids.papa, "red"]
+      );
+      const forPapa = await scans.listForMember(user, ids.papa, {});
+      assert.deepEqual(
+        forPapa.items.map((s) => s.label_check_id),
+        [first]
+      );
     });
   });
 });

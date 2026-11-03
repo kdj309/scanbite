@@ -25,8 +25,13 @@ export class Scan {
   @Prop({ type: Types.ObjectId, ref: "HouseholdMember", default: null })
   member_id!: Types.ObjectId | null;
 
-  @Prop({ required: true, trim: true })
-  barcode!: string;
+  /** One of these two: the product scanned, or a label check (a pack
+   *  with no barcode). */
+  @Prop({ type: String, trim: true, default: null })
+  barcode!: string | null;
+
+  @Prop({ type: Types.ObjectId, ref: "Submission", default: null })
+  label_check_id!: Types.ObjectId | null;
 
   @Prop({ type: Types.ObjectId, ref: "ProductVersion", default: null })
   product_version_id!: Types.ObjectId | null;

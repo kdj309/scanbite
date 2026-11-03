@@ -145,4 +145,22 @@ describe("photo submissions (integration)", () => {
     );
     assert.ok(await extraction.getJob(`extract-${submission_id}`));
   });
+
+  it("queues a label check (no barcode) like any upload", async () => {
+    const { submission_id } = await service.create(null, user(), photos(2));
+    const saved = (await submissions.findById(submission_id).exec())!;
+    assert.equal(saved.barcode, null);
+    assert.ok(await extraction.getJob(`extract-${submission_id}`));
+  });
+
+  it("dedupes a label check only for the person who sent it", async () => {
+    const same = photos(3);
+    const me = user();
+    const first = await service.create(null, me, same);
+    const again = await service.create(null, me, same);
+    const someoneElse = await service.create(null, user(), same);
+    assert.equal(again.submission_id, first.submission_id);
+    // Private: the same photos from someone else are their own check.
+    assert.notEqual(someoneElse.submission_id, first.submission_id);
+  });
 });

@@ -78,8 +78,11 @@ export const productSummarySchema = z.object({
   brand: z.string(),
   product_version_id: objectIdSchema,
   // "catalog": Open Food Facts or our curated seed. "ai_photos": read by the
-  // vision model from a user's label photos.
-  source: z.enum(["catalog", "ai_photos"]),
+  // vision model from a user's label photos. "label_check": a pack with no
+  // barcode, read from one person's photos for them alone — never a catalog
+  // product, so product_version_id is the label check's id and there are no
+  // buy links (design 2d).
+  source: z.enum(["catalog", "ai_photos", "label_check"]),
   // ai_photos only: true until a different person's photos match it
   // (shown as "Read by AI from the label").
   verifying: z.boolean(),

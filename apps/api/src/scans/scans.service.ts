@@ -16,9 +16,17 @@ import {
 import { Scan, ScanDocument } from "../database/schemas/scan.schema";
 import { HouseholdService } from "../household/household.service";
 import type { Severity } from "../database/schemas/scoring-record.schema";
-import { HouseholdVerdictService } from "../personalization/household-verdict.service";
+import {
+  HouseholdVerdictService,
+  type HouseholdProductVerdict,
+} from "../personalization/household-verdict.service";
+import type {
+  LabelFacts,
+  SubmissionDocument,
+} from "../database/schemas/submission.schema";
 import { ProductsService } from "../products/products.service";
 import { ProductSummaryService } from "../product-versions/product-summary";
+import { LabelChecksService } from "../submissions/label-checks.service";
 import { serializeScan } from "./serialize-scan";
 
 @Injectable()
@@ -30,7 +38,8 @@ export class ScansService {
     private readonly household: HouseholdService,
     private readonly householdVerdicts: HouseholdVerdictService,
     private readonly products: ProductsService,
-    private readonly summaries: ProductSummaryService
+    private readonly summaries: ProductSummaryService,
+    private readonly labelChecks: LabelChecksService
   ) {}
 
   /**
@@ -51,19 +60,13 @@ export class ScansService {
       ? await this.householdVerdicts.forVersion(version, user.userId)
       : null;
 
-    const scan = await this.scans.create({
-      user_id: new Types.ObjectId(user.userId),
-      member_id: forMember?._id ?? null,
+    const scan = await this.record({
+      userId: user.userId,
+      forMemberId: forMember?.id as string | undefined,
       barcode: body.barcode,
-      product_version_id: version?._id ?? null,
-      found: Boolean(version),
-      severity: verdict ? severityFor(verdict.response, forMember?.id) : null,
-      verdicts:
-        verdict?.response.members.map((member) => ({
-          member_id: new Types.ObjectId(member.member_id),
-          severity: member.verdict.severity,
-        })) ?? [],
-      rule_set_version: verdict?.ruleSetVersion ?? null,
+      labelCheckId: null,
+      productVersionId: version?._id ?? null,
+      verdict,
     });
     return {
       scan_id: scan.id as string,
@@ -71,12 +74,68 @@ export class ScansService {
     };
   }
 
+  /**
+   * A label check's Recent scans entry, made by the worker once its label
+   * is read — so it's there even if the app was closed meanwhile (there's
+   * no barcode to scan again).
+   */
+  async recordLabelCheck(
+    check: SubmissionDocument & { label_facts: LabelFacts }
+  ): Promise<void> {
+    const userId = String(check.user_id);
+    const verdict = await this.householdVerdicts.forLabelCheck(
+      check.id as string,
+      check.label_facts,
+      userId
+    );
+    await this.record({
+      userId,
+      forMemberId: check.for_member_id
+        ? String(check.for_member_id)
+        : undefined,
+      barcode: null,
+      labelCheckId: check._id as Types.ObjectId,
+      productVersionId: null,
+      verdict,
+    });
+  }
+
+  private record(input: {
+    userId: string;
+    forMemberId: string | undefined;
+    barcode: string | null;
+    labelCheckId: Types.ObjectId | null;
+    productVersionId: Types.ObjectId | null;
+    verdict: HouseholdProductVerdict | null;
+  }): Promise<ScanDocument> {
+    const { verdict } = input;
+    return this.scans.create({
+      user_id: new Types.ObjectId(input.userId),
+      member_id: input.forMemberId
+        ? new Types.ObjectId(input.forMemberId)
+        : null,
+      barcode: input.barcode,
+      label_check_id: input.labelCheckId,
+      product_version_id: input.productVersionId,
+      found: Boolean(verdict),
+      severity: verdict
+        ? severityFor(verdict.response, input.forMemberId)
+        : null,
+      verdicts:
+        verdict?.response.members.map((member) => ({
+          member_id: new Types.ObjectId(member.member_id),
+          severity: member.verdict.severity,
+        })) ?? [],
+      rule_set_version: verdict?.ruleSetVersion ?? null,
+    });
+  }
+
   /** Household recents (Home), newest first. */
   listForHousehold(
     user: RequestUser,
     query: ListScansQuery
   ): Promise<ListScansResponse> {
-    return this.page({ user_id: new Types.ObjectId(user.userId) }, query);
+    return this.page(user, { user_id: new Types.ObjectId(user.userId) }, query);
   }
 
   /** Scans made for one member. */
@@ -86,7 +145,7 @@ export class ScansService {
     query: ListScansQuery
   ): Promise<ListScansResponse> {
     await this.household.requireOwnedMember(user.userId, memberId);
-    return this.page({ member_id: new Types.ObjectId(memberId) }, query);
+    return this.page(user, { member_id: new Types.ObjectId(memberId) }, query);
   }
 
   /**
@@ -94,6 +153,7 @@ export class ScansService {
    * we found (a miss has no result to open). The full log stays stored.
    */
   private async page(
+    user: RequestUser,
     filter: FilterQuery<ScanDocument>,
     query: ListScansQuery
   ): Promise<ListScansResponse> {
@@ -111,7 +171,12 @@ export class ScansService {
     const pipeline: PipelineStage[] = [
       { $match: match },
       { $sort: { created_at: -1, _id: -1 } },
-      { $group: { _id: "$barcode", latest: { $first: "$$ROOT" } } },
+      {
+        $group: {
+          _id: { $ifNull: ["$barcode", "$label_check_id"] },
+          latest: { $first: "$$ROOT" },
+        },
+      },
       { $replaceRoot: { newRoot: "$latest" } },
     ];
     // After grouping, so an older scan of a product already listed can't
@@ -147,18 +212,27 @@ export class ScansService {
     const versions = versionIds.length
       ? await this.versions.find({ _id: { $in: versionIds } }).exec()
       : [];
-    const productById = new Map(
-      versions.map((version) => [
-        String(version._id),
-        this.summaries.summarize(version),
-      ])
+    const checks = await this.labelChecks.summaries(
+      page
+        .map((scan) => scan.label_check_id)
+        .filter((id): id is Types.ObjectId => Boolean(id)),
+      user.userId
     );
+    const productById = new Map([
+      ...versions.map(
+        (version) =>
+          [String(version._id), this.summaries.summarize(version)] as const
+      ),
+      ...checks,
+    ]);
 
     return {
       items: page.map((scan) =>
         serializeScan(
           scan,
-          productById.get(String(scan.product_version_id)) ?? null
+          productById.get(
+            String(scan.product_version_id ?? scan.label_check_id)
+          ) ?? null
         )
       ),
       next_cursor: hasMore ? (page[page.length - 1].id as string) : null,

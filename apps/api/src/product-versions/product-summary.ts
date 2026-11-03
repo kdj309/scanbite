@@ -5,6 +5,7 @@ import type { Env } from "../config/env";
 import { buyLinks, type AffiliateTags } from "./buy-links";
 import type { Types } from "mongoose";
 import type { ProductVersionDocument } from "../database/schemas/product-version.schema";
+import type { LabelFacts } from "../database/schemas/submission.schema";
 
 type VersionFields = Pick<
   ProductVersionDocument,
@@ -38,6 +39,26 @@ export function productSummary(
     quantity: version.quantity ?? null,
     veg: version.declared_veg ?? "unknown",
     buy_links: buyLinks(version, tags),
+  };
+}
+
+/** A label check shown like a product (design 2d): read from this
+ *  person's own photos, so nothing to confirm and nowhere to buy it. */
+export function labelCheckSummary(
+  labelCheckId: string,
+  label: Pick<LabelFacts, "name" | "brand" | "ingredients">
+): ProductSummary {
+  return {
+    name: label.name,
+    brand: label.brand,
+    product_version_id: labelCheckId,
+    source: "label_check",
+    verifying: false,
+    has_ingredients: label.ingredients.length > 0,
+    image_url: null,
+    quantity: null,
+    veg: "unknown",
+    buy_links: [],
   };
 }
 

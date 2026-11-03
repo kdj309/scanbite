@@ -21,8 +21,15 @@ export function productFormFilter(form: "solid" | "liquid") {
   return { "nutrition.sugar_per_100ml": { $exists: form === "liquid" } };
 }
 
+/** What scoring reads: a product version's label fields, or a label
+ *  check's (which has no version). */
+export type LabelFields = Pick<
+  ProductVersion,
+  "ingredients" | "nutrition" | "nova_group" | "additive_count"
+>;
+
 export function factsFromVersion(
-  version: ProductVersion,
+  version: LabelFields,
   ingredientCategories: string[]
 ): Record<string, unknown> {
   const nutrition = version.nutrition ?? {};
@@ -80,7 +87,7 @@ export function confidenceForVersion(
 }
 
 export function canonicalIdsFromVersion(
-  version: ProductVersion
+  version: Pick<ProductVersion, "ingredients">
 ): Types.ObjectId[] {
   return version.ingredients
     .map((ingredient) => ingredient.canonical_id)

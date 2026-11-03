@@ -10,6 +10,7 @@ import { PushNotifier } from "../push/push-notifier";
 import { PushSender } from "../push/push-sender";
 import type { Env } from "../config/env";
 import { ProductVersionIngestionModule } from "../product-versions/product-version-ingestion.module";
+import { ScansModule } from "../scans/scans.module";
 import { ScoringModule } from "../scoring/scoring.module";
 import { ExtractionPipeline } from "./extraction.pipeline";
 import { JobQueuesService } from "./job-queues.service";
@@ -60,6 +61,7 @@ const processors: Provider[] = workerModeEnabled()
     ProductVersionIngestionModule,
     PersonalizationModule,
     DevicesModule,
+    ScansModule,
   ],
   providers: [
     JobQueuesService,

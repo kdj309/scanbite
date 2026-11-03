@@ -25,7 +25,8 @@ export class VersionIngredient {
   status!: IngredientStatus;
 }
 
-const VersionIngredientSchema = SchemaFactory.createForClass(VersionIngredient);
+export const VersionIngredientSchema =
+  SchemaFactory.createForClass(VersionIngredient);
 
 @Schema({
   collection: "product_versions",
