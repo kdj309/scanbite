@@ -9,14 +9,16 @@ import { closeScreen } from "@/navigation/close-screen";
 /**
  * A product whose label was read but whose ingredients weren't (design
  * 2c): no verdict at all, since an empty list would pass every check.
- * Scanning the label again replaces it whole once the ingredients read.
+ * Scanning the label again replaces it whole once the ingredients read
+ * (a label check starts a new check instead).
  */
 export function UnreadLabel({
   barcode,
   result,
   scannedFor,
 }: {
-  barcode: string;
+  /** null = a label check (a pack with no barcode, design 2d). */
+  barcode: string | null;
   result: ProductFoundResponse;
   scannedFor: string | undefined;
 }) {
@@ -39,7 +41,11 @@ export function UnreadLabel({
           </View>
           <View style={styles.product}>
             <View style={styles.thumb}>
-              <Icon name="package" size={30} color={colors.inkSecondary} />
+              <Icon
+                name={barcode === null ? "label" : "package"}
+                size={30}
+                color={colors.inkSecondary}
+              />
             </View>
             <View style={styles.fill}>
               <Text
@@ -79,7 +85,10 @@ export function UnreadLabel({
           onPress={() =>
             router.replace({
               pathname: "/scan",
-              params: { label: barcode, ...forParam },
+              params: {
+                ...(barcode === null ? { noBarcode: "1" } : { label: barcode }),
+                ...forParam,
+              },
             })
           }
         />

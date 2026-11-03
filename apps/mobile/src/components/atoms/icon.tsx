@@ -26,6 +26,13 @@ const ICONS = {
       strokeWidth={1.6}
     />
   ),
+  /** A label check: a pack read from its label, no barcode (design 2d). */
+  label: (
+    <Path
+      d="M5.5 2.5h9A1.5 1.5 0 0 1 16 4v12a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 4 16V4a1.5 1.5 0 0 1 1.5-1.5ZM7 7h6M7 10h6M7 13h3.5"
+      strokeWidth={1.7}
+    />
+  ),
   torch: <Path d="M11 2L4 11h5l-1 7 7-9h-5l1-7z" strokeWidth={1.9} />,
   /** "Scan the label again" (design 2c). */
   camera: (

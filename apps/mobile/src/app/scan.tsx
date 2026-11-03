@@ -5,7 +5,7 @@ import {
   useCameraPermissions,
   type PermissionResponse,
 } from "expo-camera";
-import { router, useLocalSearchParams } from "expo-router";
+import { type Href, router, useLocalSearchParams } from "expo-router";
 import { useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -32,12 +32,22 @@ import { useLoop } from "@/hooks/use-loop";
 import { colors, radii, screenGutter, spacing } from "@/theme";
 import { closeScreen } from "@/navigation/close-screen";
 
+/** A label being sent and read: a new product's, or with no barcode, a
+ *  label check's (design 2d). */
+type LabelJob = { key: string; barcode: string | null };
+
 /** Point at a barcode; it scans by itself (design S10, step 1). */
 export default function Scan() {
-  const { for: memberId, label } = useLocalSearchParams<{
+  const {
+    for: memberId,
+    label,
+    noBarcode,
+  } = useLocalSearchParams<{
     for?: string;
     /** A known product whose label couldn't be read (design 2c). */
     label?: string;
+    /** Check a pack with no barcode by its label (design 2d). */
+    noBarcode?: string;
   }>();
   const [permission, requestPermission] = useCameraPermissions();
 
@@ -48,6 +58,7 @@ export default function Scan() {
     <Scanner
       memberId={memberId}
       label={label}
+      noBarcode={noBarcode !== undefined}
       permission={permission}
       onAllow={requestPermission}
     />
@@ -57,11 +68,13 @@ export default function Scan() {
 function Scanner({
   memberId,
   label,
+  noBarcode,
   permission,
   onAllow,
 }: {
   memberId: string | undefined;
   label: string | undefined;
+  noBarcode: boolean;
   permission: PermissionResponse;
   onAllow: () => Promise<PermissionResponse>;
 }) {
@@ -69,9 +82,16 @@ function Scanner({
   const household = useHousehold();
   const [torch, setTorch] = useState(false);
   const [typing, setTyping] = useState(false);
-  // New products being added from their labels, and the one in front.
-  const [labels, setLabels] = useState<string[]>(label ? [label] : []);
-  const [front, setFront] = useState(label);
+  // Labels being read (new products and label checks), and the one in front.
+  const checks = useRef(0);
+  const [labels, setLabels] = useState<LabelJob[]>(() =>
+    noBarcode
+      ? [{ key: "check-0", barcode: null }]
+      : label
+        ? [{ key: label, barcode: label }]
+        : []
+  );
+  const [front, setFront] = useState<string | undefined>(labels[0]?.key);
   // The camera reports the same barcode many times a second; take one.
   const taken = useRef(false);
   const [confirmRead] = useState(createReadConfirmer);
@@ -84,7 +104,11 @@ function Scanner({
       if (!result.found) {
         // New to us: straight on to its label, if the camera's allowed.
         if (permission.granted) {
-          setLabels((all) => (all.includes(barcode) ? all : [...all, barcode]));
+          setLabels((all) =>
+            all.some((job) => job.key === barcode)
+              ? all
+              : [...all, { key: barcode, barcode }]
+          );
           setFront(barcode);
           lookup.reset();
         }
@@ -97,10 +121,16 @@ function Scanner({
   });
 
   function openVerdict(barcode: string, labelsWaiting: boolean) {
-    const route = {
-      pathname: "/product/[barcode]",
-      params: memberId ? { barcode, for: memberId } : { barcode },
-    } as const;
+    open(
+      {
+        pathname: "/product/[barcode]",
+        params: memberId ? { barcode, for: memberId } : { barcode },
+      },
+      labelsWaiting
+    );
+  }
+
+  function open(route: Href, labelsWaiting: boolean) {
     // Labels still being read live on this screen: keep it under the
     // verdict, or they'd stop checking and never show their banner.
     if (labelsWaiting) {
@@ -108,6 +138,13 @@ function Scanner({
     } else {
       router.replace(route);
     }
+  }
+
+  function checkLabel() {
+    checks.current += 1;
+    const key = `check-${checks.current}`;
+    setLabels((all) => [...all, { key, barcode: null }]);
+    setFront(key);
   }
 
   function look(barcode: string) {
@@ -120,8 +157,8 @@ function Scanner({
     lookup.reset();
   }
 
-  function closeLabel(barcode: string) {
-    setLabels((all) => all.filter((b) => b !== barcode));
+  function closeLabel(key: string) {
+    setLabels((all) => all.filter((job) => job.key !== key));
     setFront(undefined);
     scanAnother();
   }
@@ -212,35 +249,61 @@ function Scanner({
         )}
         <View style={styles.bottom}>
           {scanning && (
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => setTyping(true)}
-              style={styles.typePill}
-            >
-              <Text variant="label" color="onBrand">
-                Type the barcode instead
-              </Text>
-            </Pressable>
+            <>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => setTyping(true)}
+                style={styles.typePill}
+              >
+                <Text variant="label" color="onBrand">
+                  Type the barcode instead
+                </Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                onPress={checkLabel}
+                style={styles.noBarcode}
+              >
+                <Text variant="label" color="onBrand" style={styles.underline}>
+                  No barcode? Check the label
+                </Text>
+              </Pressable>
+            </>
           )}
         </View>
       </SafeAreaView>
       {sheets}
-      {labels.map((barcode) => (
+      {labels.map(({ key, barcode }) => (
         <LabelFlow
-          key={barcode}
+          key={key}
           barcode={barcode}
-          inFront={front === barcode}
+          memberId={memberId}
+          inFront={front === key}
           onBack={() => {
             setFront(undefined);
             scanAnother();
           }}
-          onFront={() => setFront(barcode)}
-          onDone={() => closeLabel(barcode)}
-          onReady={() => {
-            // Scanned again, now found: that scan is what puts it in
-            // Recent scans (they list found scans only).
-            closeLabel(barcode);
-            look(barcode);
+          onFront={() => setFront(key)}
+          onDone={() => closeLabel(key)}
+          onReady={(submissionId) => {
+            closeLabel(key);
+            if (barcode === null) {
+              // Read: the server has added it to Recent scans.
+              refreshRecentScans(queryClient);
+              open(
+                {
+                  pathname: "/label-check/[id]",
+                  params: memberId
+                    ? { id: submissionId, for: memberId }
+                    : { id: submissionId },
+                },
+                labels.some((job) => job.key !== key)
+              );
+            } else {
+              // Scanned again, now found: that scan is what puts it in
+              // Recent scans (they list found scans only).
+              look(barcode);
+            }
           }}
         />
       ))}
@@ -496,7 +559,18 @@ const styles = StyleSheet.create({
   },
   hint: { gap: spacing.xxs, paddingHorizontal: screenGutter },
   centered: { textAlign: "center" },
-  bottom: { alignItems: "center", minHeight: 60, paddingBottom: spacing.md },
+  bottom: {
+    alignItems: "center",
+    gap: spacing.xxs,
+    minHeight: 60,
+    paddingBottom: spacing.md,
+  },
+  noBarcode: {
+    minHeight: 44,
+    justifyContent: "center",
+    paddingHorizontal: spacing.sm,
+  },
+  underline: { textDecorationLine: "underline" },
   typePill: {
     minHeight: 44,
     justifyContent: "center",

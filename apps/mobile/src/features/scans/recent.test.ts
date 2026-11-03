@@ -43,6 +43,7 @@ function scan(
   return {
     id: "6ab7d04ffb5027914b128af0",
     barcode: "8901234567890",
+    label_check_id: null,
     member_id: null,
     product_version_id: "6ab7d04ffb5027914b128af1",
     product: null,

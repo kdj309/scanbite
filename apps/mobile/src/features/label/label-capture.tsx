@@ -25,9 +25,11 @@ const MAX_PHOTOS = 3;
  * picks the frames) or up to 3 photos. Hands back JPEGs to upload.
  */
 export function LabelCapture({
+  title,
   onDone,
   onCancel,
 }: {
+  title: string;
   onDone: (photoUris: string[]) => void;
   onCancel: () => void;
 }) {
@@ -69,7 +71,7 @@ export function LabelCapture({
             <Bitey size={30} />
           </View>
           <Text variant="title" style={styles.fill}>
-            New product! Show me the label
+            {title}
           </Text>
           <Pressable
             accessibilityRole="button"

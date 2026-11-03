@@ -32,12 +32,7 @@ export function RecentScanRow({
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`${name}. ${summary}`}
-      onPress={() =>
-        router.push({
-          pathname: "/product/[barcode]",
-          params: { barcode: scan.barcode },
-        })
-      }
+      onPress={() => openScan(scan)}
       style={({ pressed }) => [styles.row, pressed && styles.pressed]}
     >
       <View
@@ -54,7 +49,7 @@ export function RecentScanRow({
           />
         ) : (
           <Icon
-            name="package"
+            name={scan.label_check_id ? "label" : "package"}
             size={24}
             color={tone?.onTint ?? colors.inkSecondary}
           />
@@ -96,6 +91,21 @@ export function RecentScanRow({
       </View>
     </Pressable>
   );
+}
+
+/** A product opens by its barcode; a label check (no barcode) by its id. */
+function openScan(scan: Scan) {
+  if (scan.label_check_id) {
+    router.push({
+      pathname: "/label-check/[id]",
+      params: { id: scan.label_check_id },
+    });
+  } else if (scan.barcode) {
+    router.push({
+      pathname: "/product/[barcode]",
+      params: { barcode: scan.barcode },
+    });
+  }
 }
 
 const styles = StyleSheet.create({

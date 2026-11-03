@@ -33,11 +33,14 @@ function useSeconds(running: boolean): number {
 
 export function LabelProgress({
   state,
+  labelCheck,
   onScanNext,
   onRetry,
   onHome,
 }: {
   state: LabelState;
+  /** A pack with no barcode, checked for this person only (design 2d). */
+  labelCheck: boolean;
   onScanNext: () => void;
   onRetry: () => void;
   onHome: () => void;
@@ -98,23 +101,35 @@ export function LabelProgress({
       </Sheet>
     );
   }
-  return <Reading sending={state === "sending"} onScanNext={onScanNext} />;
+  return (
+    <Reading
+      sending={state === "sending"}
+      labelCheck={labelCheck}
+      onScanNext={onScanNext}
+    />
+  );
 }
 
 /** "You added a new product!" while the label is read (design S10). */
 function Reading({
   sending,
+  labelCheck,
   onScanNext,
 }: {
   sending: boolean;
+  labelCheck: boolean;
   onScanNext: () => void;
 }) {
   const seconds = useSeconds(!sending);
   return (
     <Sheet
       tint={colors.mango}
-      title="You added a new product!"
-      line="Everyone who scans it next gets the answer instantly."
+      title={labelCheck ? "Checking your label" : "You added a new product!"}
+      line={
+        labelCheck
+          ? "Only you will see this result, in your recent scans."
+          : "Everyone who scans it next gets the answer instantly."
+      }
       jump
     >
       <Checklist sending={sending} />

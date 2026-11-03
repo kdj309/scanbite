@@ -10,20 +10,25 @@ import { LabelCapture } from "./label-capture";
 import { LabelProgress } from "./label-progress";
 
 /**
- * Adding one new product from its label (design S10, 10a, 10b): capture,
- * upload, then wait for it to be read. In front, it shows the camera and
+ * Adding one new product from its label (design S10, 10a, 10b), or with
+ * no barcode, checking one pack's label for this person only (2d):
+ * capture, upload, then wait for it to be read. In front, it shows the camera and
  * the progress sheet; sent to the back ("Scan the next product"), it keeps
  * checking and shows a banner once there's something to see.
  */
 export function LabelFlow({
   barcode,
+  memberId,
   inFront,
   onBack,
   onFront,
   onDone,
   onReady,
 }: {
-  barcode: string;
+  /** null = a label check: a pack with no barcode. */
+  barcode: string | null;
+  /** Who it's scanned for; omitted = everyone. */
+  memberId?: string;
   inFront: boolean;
   /** Keep checking, but let the person scan the next product. */
   onBack: () => void;
@@ -32,11 +37,13 @@ export function LabelFlow({
   /** Nothing more to do here. */
   onDone: () => void;
   /** Read and ready: open its verdict. */
-  onReady: () => void;
+  onReady: (submissionId: string) => void;
 }) {
+  const labelCheck = barcode === null;
   const [submissionId, setSubmissionId] = useState<string>();
   const upload = useMutation({
-    mutationFn: (photoUris: string[]) => uploadLabel(barcode, photoUris),
+    mutationFn: (photoUris: string[]) =>
+      uploadLabel(barcode, photoUris, memberId),
     onSuccess: ({ submission_id }) => setSubmissionId(submission_id),
   });
 
@@ -55,6 +62,7 @@ export function LabelFlow({
       return (
         <LabelProgress
           state="sending"
+          labelCheck={labelCheck}
           onScanNext={onBack}
           onRetry={onFront}
           onHome={onDone}
@@ -64,6 +72,11 @@ export function LabelFlow({
     return (
       <>
         <LabelCapture
+          title={
+            labelCheck
+              ? "No barcode? Show me the label"
+              : "New product! Show me the label"
+          }
           onDone={(uris) => upload.mutate(uris)}
           onCancel={onDone}
         />
@@ -80,6 +93,7 @@ export function LabelFlow({
   return (
     <Waiting
       submissionId={submissionId}
+      labelCheck={labelCheck}
       inFront={inFront}
       onBack={onBack}
       onDone={onDone}
@@ -96,6 +110,7 @@ export function LabelFlow({
 
 function Waiting({
   submissionId,
+  labelCheck,
   inFront,
   onBack,
   onDone,
@@ -103,10 +118,11 @@ function Waiting({
   onRetry,
 }: {
   submissionId: string;
+  labelCheck: boolean;
   inFront: boolean;
   onBack: () => void;
   onDone: () => void;
-  onReady: () => void;
+  onReady: (submissionId: string) => void;
   onRetry: () => void;
 }) {
   const submission = useSubmission(submissionId);
@@ -115,14 +131,15 @@ function Waiting({
   // In front, a ready product opens straight away.
   useEffect(() => {
     if (status === "ready" && inFront) {
-      onReady();
+      onReady(submissionId);
     }
-  }, [status, inFront, onReady]);
+  }, [status, inFront, onReady, submissionId]);
 
   if (inFront) {
     return (
       <LabelProgress
         state={status === "ready" ? "processing" : status}
+        labelCheck={labelCheck}
         onScanNext={onBack}
         onRetry={onRetry}
         onHome={() => {
@@ -135,9 +152,11 @@ function Waiting({
   if (status === "ready") {
     return (
       <Banner
-        text="Your new product is ready"
+        text={
+          labelCheck ? "Your label is checked" : "Your new product is ready"
+        }
         action="See it"
-        onPress={onReady}
+        onPress={() => onReady(submissionId)}
       />
     );
   }
