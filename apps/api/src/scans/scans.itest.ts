@@ -33,7 +33,12 @@ describe("recent scans (integration)", () => {
     null as never,
     null as never,
     null as never,
-    new LabelChecksService(submissions as never, null as never)
+    new LabelChecksService(
+      submissions as never,
+      scans as never,
+      null as never,
+      null as never
+    )
   );
 
   before(() => connectTestDb("itest_scans"));

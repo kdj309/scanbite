@@ -17,9 +17,15 @@ import { VerdictRing } from "./verdict-ring";
 export function RecentScanRow({
   scan,
   members,
+  onPress = () => openScan(scan),
+  onRemove,
 }: {
   scan: Scan;
   members: readonly HouseholdMember[];
+  /** Default: open its result. */
+  onPress?: () => void;
+  /** Offered to screen readers, which can't swipe the row. */
+  onRemove?: () => void;
 }) {
   const checked = checkedVerdicts(scan, members);
   const severity = scanSeverity(scan, checked);
@@ -32,7 +38,15 @@ export function RecentScanRow({
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`${name}. ${summary}`}
-      onPress={() => openScan(scan)}
+      onPress={onPress}
+      accessibilityActions={
+        onRemove ? [{ name: "remove", label: "Remove" }] : undefined
+      }
+      onAccessibilityAction={(event) => {
+        if (event.nativeEvent.actionName === "remove") {
+          onRemove?.();
+        }
+      }}
       style={({ pressed }) => [styles.row, pressed && styles.pressed]}
     >
       <View

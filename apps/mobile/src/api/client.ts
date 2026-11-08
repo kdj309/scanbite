@@ -135,6 +135,9 @@ async function validTokens(): Promise<StoredTokens> {
     : refreshTokens(tokens);
 }
 
+/** For calls answered with 204: there's no body to parse. */
+export const NO_CONTENT = { parse: (): void => undefined };
+
 /** An authenticated API call, parsed with the shared contract. */
 export async function api<T>(
   path: string,

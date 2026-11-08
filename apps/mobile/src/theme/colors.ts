@@ -29,6 +29,9 @@ export const colors = {
   noResultTint: "#EFEBF2",
   noResultOutline: "#CFC6D6",
 
+  /** Destructive actions (swipe-to-remove). White text. */
+  remove: "#B42318",
+
   /** The camera's record button. */
   record: "#E5484D",
 

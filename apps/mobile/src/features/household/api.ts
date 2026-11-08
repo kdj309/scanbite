@@ -7,7 +7,7 @@ import {
   type UpdateHouseholdMemberRequest,
 } from "@foodscanner/shared";
 import { type QueryClient, useQuery } from "@tanstack/react-query";
-import { api } from "@/api/client";
+import { api, NO_CONTENT } from "@/api/client";
 import { productsQueryKey } from "@/features/verdict/api";
 import { withMember, withoutMember } from "./members";
 
@@ -45,9 +45,6 @@ export function updateMember(
 export function deleteMember(id: string): Promise<void> {
   return api(`/household-members/${id}`, NO_CONTENT, { method: "DELETE" });
 }
-
-/** A 204 has no body to parse. */
-const NO_CONTENT = { parse: (): void => undefined };
 
 /**
  * After a save, show the person the API returned straight away, then

@@ -1,7 +1,9 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import type { LabelCheckResponse, ProductSummary } from "@foodscanner/shared";
 import { Model, Types } from "mongoose";
+import { ObjectStorageService } from "../common/object-storage.service";
+import { Scan, ScanDocument } from "../database/schemas/scan.schema";
 import {
   type LabelFacts,
   Submission,
@@ -18,11 +20,40 @@ type ReadyLabelCheck = SubmissionDocument & { label_facts: LabelFacts };
  */
 @Injectable()
 export class LabelChecksService {
+  private readonly logger = new Logger(LabelChecksService.name);
+
   constructor(
     @InjectModel(Submission.name)
     private readonly submissions: Model<SubmissionDocument>,
-    private readonly householdVerdicts: HouseholdVerdictService
+    @InjectModel(Scan.name) private readonly scans: Model<ScanDocument>,
+    private readonly householdVerdicts: HouseholdVerdictService,
+    private readonly storage: ObjectStorageService
   ) {}
+
+  /**
+   * Erases one of this user's label checks for good: its photos, what was
+   * read, and its Recent scans entries. It was never in the catalog, so
+   * nothing else refers to it.
+   */
+  async delete(id: Types.ObjectId, userId: string): Promise<void> {
+    const check = await this.submissions
+      .findOne({ _id: id, barcode: null, user_id: userId })
+      .exec();
+    await this.scans.deleteMany({ user_id: userId, label_check_id: id }).exec();
+    if (!check) {
+      return;
+    }
+    // The record first: a failure part-way leaves stray photos, never a
+    // check whose photos are gone.
+    await this.submissions.deleteOne({ _id: check._id }).exec();
+    await Promise.all(
+      check.photo_keys.map((key) =>
+        this.storage.deleteLabelPhoto(key).catch((error: unknown) => {
+          this.logger.warn(`photo delete failed key=${key}: ${String(error)}`);
+        })
+      )
+    );
+  }
 
   /** Today's verdicts for the family; only its owner can open it, once read. */
   async verdict(id: string, userId: string): Promise<LabelCheckResponse> {

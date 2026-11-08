@@ -150,9 +150,16 @@ describe("household verdicts (integration)", () => {
   );
   const scanModel = mongoose.model(Scan.name, ScanSchema);
   const submissions = mongoose.model(Submission.name, SubmissionSchema);
+  const deletedPhotos: string[] = [];
   const labelChecks = new LabelChecksService(
     submissions as never,
-    householdVerdicts
+    scanModel as never,
+    householdVerdicts,
+    {
+      deleteLabelPhoto: async (key: string) => {
+        deletedPhotos.push(key);
+      },
+    } as never
   );
   const scans = new ScansService(
     scanModel as never,
@@ -862,6 +869,53 @@ describe("household verdicts (integration)", () => {
         forPapa.items.map((s) => s.label_check_id),
         [first]
       );
+    });
+  });
+  describe("removing a recent scan", () => {
+    it("removes every scan of that product, and keeps the product", async () => {
+      const { user } = await newHousehold();
+      const kept = await liveProduct({});
+      const removed = await liveProduct({});
+      await scans.create(user, { barcode: removed });
+      await scans.create(user, { barcode: kept });
+      const { scan_id } = await scans.create(user, { barcode: removed });
+
+      await scans.remove(user, scan_id);
+
+      const recent = await scans.listForHousehold(user, {});
+      assert.deepEqual(
+        recent.items.map((s) => s.barcode),
+        [kept]
+      );
+      assert.ok(
+        await versions.exists({ barcode: removed, status: "live" }),
+        "still in the catalog"
+      );
+    });
+
+    it("erases a label check whole: photos, what was read, its scans", async () => {
+      const { user } = await newHousehold();
+      const id = await readLabelCheck(user.userId, {});
+      await scans.recordLabelCheck(
+        (await submissions.findById(id).exec()) as never
+      );
+      const [row] = (await scans.listForHousehold(user, {})).items;
+
+      await scans.remove(user, row.id);
+
+      assert.equal(await submissions.exists({ _id: id }), null);
+      assert.equal(await scanModel.exists({ label_check_id: id }), null);
+      assert.ok(deletedPhotos.includes("labels/no-barcode/a.jpg"));
+    });
+
+    it("can't remove someone else's scan", async () => {
+      const { user } = await newHousehold();
+      const { user: other } = await newHousehold();
+      const { scan_id } = await scans.create(user, {
+        barcode: await liveProduct({}),
+      });
+      await assert.rejects(scans.remove(other, scan_id), /not found/i);
+      assert.ok(await scanModel.exists({ _id: scan_id }));
     });
   });
 });

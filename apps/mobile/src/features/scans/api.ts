@@ -5,9 +5,9 @@ import {
   type CreateScanResponse,
 } from "@foodscanner/shared";
 import { type QueryClient, useQuery } from "@tanstack/react-query";
-import { api } from "@/api/client";
+import { api, NO_CONTENT } from "@/api/client";
 
-const recentScansQueryKey = ["scans", "recent"] as const;
+export const recentScansQueryKey = ["scans", "recent"] as const;
 
 /** The household's latest scans, newest first (Home). */
 export function useRecentScans() {
@@ -22,6 +22,11 @@ export function createScan(
   body: CreateScanRequest
 ): Promise<CreateScanResponse> {
   return api("/scans", createScanResponseSchema, { method: "POST", body });
+}
+
+/** Removes a Recent scans row for good (the product stays in the catalogue). */
+export function removeScan(id: string): Promise<void> {
+  return api(`/scans/${id}`, NO_CONTENT, { method: "DELETE" });
 }
 
 /** A new scan was made: Home's list is out of date. */

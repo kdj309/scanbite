@@ -1,4 +1,4 @@
-import type { HouseholdMember } from "@foodscanner/shared";
+import type { HouseholdMember, Scan } from "@foodscanner/shared";
 import { useQueryClient } from "@tanstack/react-query";
 import { Redirect, router } from "expo-router";
 import { useState } from "react";
@@ -30,6 +30,9 @@ import {
 import { useRecentScans } from "@/features/scans/api";
 import { joinNames, sentenceName } from "@/features/scans/recent";
 import { RecentScanRow } from "@/features/scans/recent-scan-row";
+import { SwipeToRemove } from "@/features/scans/swipe-to-remove";
+import { UndoBar } from "@/features/scans/undo-bar";
+import { useUndoableRemove } from "@/features/scans/use-undoable-remove";
 import { colors, radii, screenGutter, shadows, spacing } from "@/theme";
 
 /** Scan, recent scans, and a nudge to finish the family (design S1). */
@@ -38,6 +41,7 @@ export default function Home() {
   const household = useHousehold();
   const insets = useSafeAreaInsets();
   const [scanForId, setScanForId] = useState<string | undefined>();
+  const removal = useUndoableRemove();
 
   if (setupSeen.isPending) {
     return <ActivityIndicator style={styles.fill} />;
@@ -86,10 +90,26 @@ export default function Home() {
         )}
       </View>
       <ScrollView contentContainerStyle={styles.content}>
-        <RecentScans members={members} checked={checked} />
+        <RecentScans
+          members={members}
+          checked={checked}
+          hiddenId={removal.waiting?.id}
+          onRemove={removal.remove}
+        />
         <FamilyNudge self={self} checked={checked} />
         {__DEV__ && <ReplaySetup />}
       </ScrollView>
+      {removal.waiting && (
+        <UndoBar
+          text={
+            removal.waiting.label_check_id
+              ? "Label check removed"
+              : "Removed from recent scans"
+          }
+          onUndo={removal.undo}
+          bottom={spacing.md}
+        />
+      )}
     </View>
   );
 }
@@ -97,11 +117,18 @@ export default function Home() {
 function RecentScans({
   members,
   checked,
+  hiddenId,
+  onRemove,
 }: {
   members: readonly HouseholdMember[];
   checked: readonly HouseholdMember[];
+  /** Removed, waiting out its Undo. */
+  hiddenId: string | undefined;
+  onRemove: (scan: Scan) => void;
 }) {
   const scans = useRecentScans();
+  // One row swiped open at a time.
+  const [openId, setOpenId] = useState<string>();
   if (scans.data === undefined) {
     return scans.isError ? (
       <View style={styles.center}>
@@ -116,7 +143,8 @@ function RecentScans({
       <ActivityIndicator style={styles.center} />
     );
   }
-  if (scans.data.items.length === 0) {
+  const items = scans.data.items.filter((scan) => scan.id !== hiddenId);
+  if (items.length === 0) {
     return <NoScansYet />;
   }
   return (
@@ -133,8 +161,32 @@ function RecentScans({
           </Text>
         )}
       </View>
-      {scans.data.items.map((scan) => (
-        <RecentScanRow key={scan.id} scan={scan} members={members} />
+      {items.map((scan) => (
+        <SwipeToRemove
+          key={scan.id}
+          open={openId === scan.id}
+          onOpenChange={(open) =>
+            // A drag ending closed on one row leaves another open row alone.
+            setOpenId((current) =>
+              open ? scan.id : current === scan.id ? undefined : current
+            )
+          }
+          onRemove={() => {
+            setOpenId(undefined);
+            onRemove(scan);
+          }}
+          label={`Remove ${scan.product?.name ?? "this scan"}`}
+        >
+          <RecentScanRow
+            scan={scan}
+            members={members}
+            onRemove={() => onRemove(scan)}
+            // An open row closes on a tap instead of opening.
+            onPress={
+              openId === scan.id ? () => setOpenId(undefined) : undefined
+            }
+          />
+        </SwipeToRemove>
       ))}
     </View>
   );

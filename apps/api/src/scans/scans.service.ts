@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import type {
   CreateScanRequest,
@@ -128,6 +128,28 @@ export class ScansService {
         })) ?? [],
       rule_set_version: verdict?.ruleSetVersion ?? null,
     });
+  }
+
+  /**
+   * Removes a Recent scans row for good. A product row takes all of this
+   * user's scans of it (or an older one would show again); the product
+   * stays in the catalog. A label check is this user's alone, so it goes
+   * whole: photos, what was read, and its scans.
+   */
+  async remove(user: RequestUser, scanId: string): Promise<void> {
+    const scan = Types.ObjectId.isValid(scanId)
+      ? await this.scans.findOne({ _id: scanId, user_id: user.userId }).exec()
+      : null;
+    if (!scan) {
+      throw new NotFoundException("Scan not found");
+    }
+    if (scan.label_check_id) {
+      await this.labelChecks.delete(scan.label_check_id, user.userId);
+      return;
+    }
+    await this.scans
+      .deleteMany({ user_id: user.userId, barcode: scan.barcode })
+      .exec();
   }
 
   /** Household recents (Home), newest first. */
