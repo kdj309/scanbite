@@ -81,6 +81,10 @@ function Scanner({
   const queryClient = useQueryClient();
   const household = useHousehold();
   const [torch, setTorch] = useState(false);
+  // On Android, a camera starting up switches off any other one already
+  // running: a label camera opened before this one is up would go dark
+  // or stop recording ("stopped before any data could be produced").
+  const [cameraUp, setCameraUp] = useState(false);
   const [typing, setTyping] = useState(false);
   // Labels being read (new products and label checks), and the one in front.
   const checks = useRef(0);
@@ -201,17 +205,20 @@ function Scanner({
         style={StyleSheet.absoluteFill}
         facing="back"
         enableTorch={torch}
+        onCameraReady={() => setCameraUp(true)}
         barcodeScannerSettings={{ barcodeTypes: [...BARCODE_TYPES] }}
-        onBarcodeScanned={
-          scanning
-            ? ({ data }) => {
-                const barcode = parseBarcode(data);
-                if (barcode && confirmRead(barcode) && !taken.current) {
-                  look(barcode);
-                }
-              }
-            : undefined
-        }
+        // Always set, never switched off: on Android, turning scanning off
+        // restarts this camera, which switches off a label camera opened
+        // meanwhile (its video then has no data). Reads are ignored instead.
+        onBarcodeScanned={({ data }) => {
+          if (!scanning) {
+            return;
+          }
+          const barcode = parseBarcode(data);
+          if (barcode && confirmRead(barcode) && !taken.current) {
+            look(barcode);
+          }
+        }}
       />
       <SafeAreaView style={styles.overlay}>
         <View style={styles.topBar}>
@@ -273,40 +280,41 @@ function Scanner({
         </View>
       </SafeAreaView>
       {sheets}
-      {labels.map(({ key, barcode }) => (
-        <LabelFlow
-          key={key}
-          barcode={barcode}
-          memberId={memberId}
-          inFront={front === key}
-          onBack={() => {
-            setFront(undefined);
-            scanAnother();
-          }}
-          onFront={() => setFront(key)}
-          onDone={() => closeLabel(key)}
-          onReady={(submissionId) => {
-            closeLabel(key);
-            if (barcode === null) {
-              // Read: the server has added it to Recent scans.
-              refreshRecentScans(queryClient);
-              open(
-                {
-                  pathname: "/label-check/[id]",
-                  params: memberId
-                    ? { id: submissionId, for: memberId }
-                    : { id: submissionId },
-                },
-                labels.some((job) => job.key !== key)
-              );
-            } else {
-              // Scanned again, now found: that scan is what puts it in
-              // Recent scans (they list found scans only).
-              look(barcode);
-            }
-          }}
-        />
-      ))}
+      {cameraUp &&
+        labels.map(({ key, barcode }) => (
+          <LabelFlow
+            key={key}
+            barcode={barcode}
+            memberId={memberId}
+            inFront={front === key}
+            onBack={() => {
+              setFront(undefined);
+              scanAnother();
+            }}
+            onFront={() => setFront(key)}
+            onDone={() => closeLabel(key)}
+            onReady={(submissionId) => {
+              closeLabel(key);
+              if (barcode === null) {
+                // Read: the server has added it to Recent scans.
+                refreshRecentScans(queryClient);
+                open(
+                  {
+                    pathname: "/label-check/[id]",
+                    params: memberId
+                      ? { id: submissionId, for: memberId }
+                      : { id: submissionId },
+                  },
+                  labels.some((job) => job.key !== key)
+                );
+              } else {
+                // Scanned again, now found: that scan is what puts it in
+                // Recent scans (they list found scans only).
+                look(barcode);
+              }
+            }}
+          />
+        ))}
     </View>
   );
 }
