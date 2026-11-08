@@ -6,7 +6,7 @@ import {
   type PermissionResponse,
 } from "expo-camera";
 import { type Href, router, useLocalSearchParams } from "expo-router";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Animated,
@@ -96,6 +96,24 @@ function Scanner({
         : []
   );
   const [front, setFront] = useState<string | undefined>(labels[0]?.key);
+  // A label camera switches this one off too when it closes; turn it back
+  // on when scanning again. A moment later: closing the label camera
+  // (e.g. "Not now") finishes on the native side after this runs, and
+  // would switch off a camera restarted sooner.
+  const camera = useRef<CameraView>(null);
+  const hadLabelInFront = useRef(front !== undefined);
+  useEffect(() => {
+    const returning = front === undefined && hadLabelInFront.current;
+    hadLabelInFront.current = front !== undefined;
+    if (!returning) {
+      return;
+    }
+    const restart = setTimeout(
+      () => void camera.current?.resumePreview(),
+      CAMERA_RESTART_DELAY_MS
+    );
+    return () => clearTimeout(restart);
+  }, [front]);
   // The camera reports the same barcode many times a second; take one.
   const taken = useRef(false);
   const [confirmRead] = useState(createReadConfirmer);
@@ -202,6 +220,7 @@ function Scanner({
   return (
     <View style={styles.camera}>
       <CameraView
+        ref={camera}
         style={StyleSheet.absoluteFill}
         facing="back"
         enableTorch={torch}
@@ -491,6 +510,7 @@ function CameraPermission({
   );
 }
 
+const CAMERA_RESTART_DELAY_MS = 400;
 const FRAME_HEIGHT = 170;
 const CORNER = 34;
 
