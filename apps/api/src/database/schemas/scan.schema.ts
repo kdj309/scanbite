@@ -1,10 +1,10 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { HydratedDocument, Types } from "mongoose";
+import { HydratedDocument, SchemaTypes, Types } from "mongoose";
 import { SEVERITIES, type Severity } from "./rule-set.schema";
 
 @Schema({ _id: false })
 export class ScanMemberVerdict {
-  @Prop({ type: Types.ObjectId, ref: "HouseholdMember", required: true })
+  @Prop({ type: SchemaTypes.ObjectId, ref: "HouseholdMember", required: true })
   member_id!: Types.ObjectId;
 
   @Prop({ type: String, enum: SEVERITIES, required: true })
@@ -18,11 +18,11 @@ const ScanMemberVerdictSchema = SchemaFactory.createForClass(ScanMemberVerdict);
   timestamps: { createdAt: "created_at", updatedAt: false },
 })
 export class Scan {
-  @Prop({ type: Types.ObjectId, ref: "User", required: true })
+  @Prop({ type: SchemaTypes.ObjectId, ref: "User", required: true })
   user_id!: Types.ObjectId;
 
   /** Who it was scanned for; null = everyone. */
-  @Prop({ type: Types.ObjectId, ref: "HouseholdMember", default: null })
+  @Prop({ type: SchemaTypes.ObjectId, ref: "HouseholdMember", default: null })
   member_id!: Types.ObjectId | null;
 
   /** One of these two: the product scanned, or a label check (a pack
@@ -30,10 +30,10 @@ export class Scan {
   @Prop({ type: String, trim: true, default: null })
   barcode!: string | null;
 
-  @Prop({ type: Types.ObjectId, ref: "Submission", default: null })
+  @Prop({ type: SchemaTypes.ObjectId, ref: "Submission", default: null })
   label_check_id!: Types.ObjectId | null;
 
-  @Prop({ type: Types.ObjectId, ref: "ProductVersion", default: null })
+  @Prop({ type: SchemaTypes.ObjectId, ref: "ProductVersion", default: null })
   product_version_id!: Types.ObjectId | null;
 
   @Prop({ required: true })

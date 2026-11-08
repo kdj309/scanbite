@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { HydratedDocument, Types } from "mongoose";
+import { HydratedDocument, SchemaTypes, Types } from "mongoose";
 import { SEVERITIES, type Severity } from "./rule-set.schema";
 
 export type { Severity };
@@ -30,7 +30,7 @@ const ScoringBreakdownItemSchema =
   timestamps: { createdAt: "computed_at", updatedAt: false },
 })
 export class ScoringRecord {
-  @Prop({ type: Types.ObjectId, ref: "ProductVersion", required: true })
+  @Prop({ type: SchemaTypes.ObjectId, ref: "ProductVersion", required: true })
   product_version_id!: Types.ObjectId;
 
   @Prop({ required: true })

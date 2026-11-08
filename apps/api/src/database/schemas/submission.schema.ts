@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { HydratedDocument, Types } from "mongoose";
+import { HydratedDocument, SchemaTypes, Types } from "mongoose";
 import {
   VersionIngredient,
   VersionIngredientSchema,
@@ -52,7 +52,7 @@ export class Submission {
   @Prop({ required: true, type: [String] })
   photo_keys!: string[];
 
-  @Prop({ type: Types.ObjectId, ref: "User", required: true })
+  @Prop({ type: SchemaTypes.ObjectId, ref: "User", required: true })
   user_id!: Types.ObjectId;
 
   @Prop({
@@ -62,11 +62,11 @@ export class Submission {
   })
   status!: SubmissionStatus;
 
-  @Prop({ type: Types.ObjectId, ref: "ProductVersion", default: null })
+  @Prop({ type: SchemaTypes.ObjectId, ref: "ProductVersion", default: null })
   product_version_id!: Types.ObjectId | null;
 
   /** Label checks only: who it's checked for; null = everyone. */
-  @Prop({ type: Types.ObjectId, ref: "HouseholdMember", default: null })
+  @Prop({ type: SchemaTypes.ObjectId, ref: "HouseholdMember", default: null })
   for_member_id!: Types.ObjectId | null;
 
   /** Label checks only, once read. */

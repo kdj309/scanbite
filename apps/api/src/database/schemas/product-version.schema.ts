@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { ALLERGEN_CODES, type DeclaredVeg } from "@foodscanner/shared";
-import { HydratedDocument, Types } from "mongoose";
+import { HydratedDocument, SchemaTypes, Types } from "mongoose";
 import type { DeclaredAllergens } from "../../allergens/allergen-evidence";
 
 export type IngredientStatus = "resolved" | "unresolved";
@@ -18,7 +18,7 @@ export class VersionIngredient {
   @Prop({ required: true, trim: true })
   raw!: string;
 
-  @Prop({ type: Types.ObjectId, ref: "Ingredient", default: null })
+  @Prop({ type: SchemaTypes.ObjectId, ref: "Ingredient", default: null })
   canonical_id!: Types.ObjectId | null;
 
   @Prop({ required: true, enum: ["resolved", "unresolved"] })
@@ -33,7 +33,7 @@ export const VersionIngredientSchema =
   timestamps: { createdAt: "created_at", updatedAt: false },
 })
 export class ProductVersion {
-  @Prop({ type: Types.ObjectId, ref: "Product", required: true })
+  @Prop({ type: SchemaTypes.ObjectId, ref: "Product", required: true })
   product_id!: Types.ObjectId;
 
   @Prop({ required: true, trim: true })
@@ -94,7 +94,7 @@ export class ProductVersion {
   quantity!: string | null;
 
   /** user_submission only: who sent the photos it was read from. */
-  @Prop({ type: Types.ObjectId, ref: "User", default: null })
+  @Prop({ type: SchemaTypes.ObjectId, ref: "User", default: null })
   submitted_by!: Types.ObjectId | null;
 
   /** user_submission only: when a different user's photos matched it. */

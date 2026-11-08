@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { HydratedDocument, Types } from "mongoose";
+import { HydratedDocument, SchemaTypes, Types } from "mongoose";
 
 /** A phone that receives push notifications for an account. */
 @Schema({
@@ -7,7 +7,12 @@ import { HydratedDocument, Types } from "mongoose";
   timestamps: { createdAt: "created_at", updatedAt: "updated_at" },
 })
 export class Device {
-  @Prop({ type: Types.ObjectId, ref: "User", required: true, index: true })
+  @Prop({
+    type: SchemaTypes.ObjectId,
+    ref: "User",
+    required: true,
+    index: true,
+  })
   user_id!: Types.ObjectId;
 
   /** Expo push token. One phone = one token; it follows whoever signed in

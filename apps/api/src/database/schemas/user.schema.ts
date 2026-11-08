@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { HydratedDocument, Types } from "mongoose";
+import { HydratedDocument, SchemaTypes, Types } from "mongoose";
 
 export const USER_ROLES = ["user", "admin"] as const;
 export type UserRole = (typeof USER_ROLES)[number];
@@ -45,7 +45,7 @@ export class User {
   @Prop({ required: true, enum: USER_ROLES, default: "user" })
   role!: UserRole;
 
-  @Prop({ type: Types.ObjectId, ref: "HouseholdMember" })
+  @Prop({ type: SchemaTypes.ObjectId, ref: "HouseholdMember" })
   default_member_id?: Types.ObjectId;
 
   created_at!: Date;

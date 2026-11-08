@@ -1,9 +1,9 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { HydratedDocument, Types } from "mongoose";
+import { HydratedDocument, SchemaTypes, Types } from "mongoose";
 
 @Schema({ collection: "ingredient_aliases", timestamps: false })
 export class IngredientAlias {
-  @Prop({ type: Types.ObjectId, ref: "Ingredient", required: true })
+  @Prop({ type: SchemaTypes.ObjectId, ref: "Ingredient", required: true })
   ingredient_id!: Types.ObjectId;
 
   // trim + lowercase are enforced here, not just by callers normalizing

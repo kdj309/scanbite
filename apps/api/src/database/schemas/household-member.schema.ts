@@ -5,7 +5,7 @@ import {
   type AllergenCode,
   type HealthConditionCode,
 } from "@foodscanner/shared";
-import { HydratedDocument, Types } from "mongoose";
+import { HydratedDocument, SchemaTypes, Types } from "mongoose";
 
 export type Relationship = "self" | "spouse" | "child" | "parent" | "other";
 
@@ -14,7 +14,7 @@ export type Relationship = "self" | "spouse" | "child" | "parent" | "other";
   timestamps: { createdAt: "created_at", updatedAt: "updated_at" },
 })
 export class HouseholdMember {
-  @Prop({ type: Types.ObjectId, ref: "User", required: true })
+  @Prop({ type: SchemaTypes.ObjectId, ref: "User", required: true })
   owner_user_id!: Types.ObjectId;
 
   @Prop({ required: true, trim: true })

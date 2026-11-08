@@ -54,9 +54,6 @@ export class SubmissionsService {
 
     // Matches the unique indexes: a label check is only a repeat for the
     // same person.
-    // Real ObjectIds: the schema's `Types.ObjectId` fields are untyped to
-    // Mongoose, so a string would be stored as a string and miss lookups
-    // by ObjectId (a label check then showed as "Unknown product").
     const owner = new Types.ObjectId(userId);
     const same = barcode
       ? { barcode, photo_hash: setHash }
