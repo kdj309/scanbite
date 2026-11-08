@@ -10,7 +10,7 @@ import type {
   SubmissionStatusResponse,
 } from "@foodscanner/shared";
 import { createHash } from "node:crypto";
-import { Model } from "mongoose";
+import { Model, Types } from "mongoose";
 import { isDuplicateKeyError } from "../common/mongo-errors";
 import { ObjectStorageService } from "../common/object-storage.service";
 import {
@@ -54,9 +54,13 @@ export class SubmissionsService {
 
     // Matches the unique indexes: a label check is only a repeat for the
     // same person.
+    // Real ObjectIds: the schema's `Types.ObjectId` fields are untyped to
+    // Mongoose, so a string would be stored as a string and miss lookups
+    // by ObjectId (a label check then showed as "Unknown product").
+    const owner = new Types.ObjectId(userId);
     const same = barcode
       ? { barcode, photo_hash: setHash }
-      : { barcode: null, user_id: userId, photo_hash: setHash };
+      : { barcode: null, user_id: owner, photo_hash: setHash };
     const existing = await this.submissions.findOne(same).exec();
     if (existing) {
       return { submission_id: existing.id as string };
@@ -78,10 +82,10 @@ export class SubmissionsService {
         barcode,
         photo_hash: setHash,
         photo_keys: photoKeys,
-        user_id: userId,
+        user_id: owner,
         status: "processing",
         product_version_id: null,
-        for_member_id: forMemberId,
+        for_member_id: forMemberId ? new Types.ObjectId(forMemberId) : null,
       });
     } catch (error) {
       if (isDuplicateKeyError(error)) {

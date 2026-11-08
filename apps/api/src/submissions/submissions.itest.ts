@@ -153,6 +153,15 @@ describe("photo submissions (integration)", () => {
     assert.ok(await extraction.getJob(`extract-${submission_id}`));
   });
 
+  it("stores who sent it as an ObjectId, so lookups by user find it", async () => {
+    const me = user();
+    const { submission_id } = await service.create(null, me, photos(1));
+    const found = await submissions
+      .findOne({ _id: submission_id, user_id: new Types.ObjectId(me) })
+      .exec();
+    assert.ok(found);
+  });
+
   it("dedupes a label check only for the person who sent it", async () => {
     const same = photos(3);
     const me = user();
