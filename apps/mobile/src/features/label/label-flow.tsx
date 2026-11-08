@@ -72,11 +72,11 @@ export function LabelFlow({
     return (
       <>
         <LabelCapture
+          // A label check was asked for, so no question and no "Not now".
           title={
-            labelCheck
-              ? "No barcode? Show me the label"
-              : "New product! Show me the label"
+            labelCheck ? "Show me the label" : "New product! Show me the label"
           }
+          cancelLabel={labelCheck ? "Cancel" : "Not now"}
           onDone={(uris) => upload.mutate(uris)}
           onCancel={onDone}
         />

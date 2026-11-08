@@ -5,18 +5,26 @@ import { Platform } from "react-native";
 /** Frames sent from a label video; the API takes up to 5 images. */
 const FRAME_COUNT = 5;
 
+/** How long the video prompts hold each side; the front comes first. */
+export const SIDE_SECONDS = 2;
+
 /** Labels stay readable at this width; smaller files upload faster. */
 const MAX_WIDTH = 1280;
 
 /**
- * Evenly spread through the clip, skipping the very start and end (the
- * pack is usually still moving into or out of view).
+ * One frame from the middle of the front (the first side the prompts ask
+ * for, so the name can be read), the rest spread evenly over the other
+ * sides, away from the very end (the pack is usually moving out of view).
  */
 export function frameTimes(durationSeconds: number, count = FRAME_COUNT) {
-  return Array.from(
-    { length: count },
-    (_, i) => (durationSeconds * (i + 1)) / (count + 1)
-  );
+  const rest = durationSeconds - SIDE_SECONDS;
+  return [
+    SIDE_SECONDS / 2,
+    ...Array.from(
+      { length: count - 1 },
+      (_, i) => SIDE_SECONDS + (rest * (i + 1)) / count
+    ),
+  ];
 }
 
 /**

@@ -225,6 +225,9 @@ function Scanner({
         facing="back"
         enableTorch={torch}
         onCameraReady={() => setCameraUp(true)}
+        // A camera that can't start never gets ready: don't leave a label
+        // waiting on it forever.
+        onMountError={() => setCameraUp(true)}
         barcodeScannerSettings={{ barcodeTypes: [...BARCODE_TYPES] }}
         // Always set, never switched off: on Android, turning scanning off
         // restarts this camera, which switches off a label camera opened

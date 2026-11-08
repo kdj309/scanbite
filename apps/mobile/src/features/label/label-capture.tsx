@@ -11,14 +11,21 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Svg, { Circle } from "react-native-svg";
 import { Bitey, Icon, Text } from "@/components";
 import { colors, minTouchTarget, radii, spacing } from "@/theme";
-import { inTurn, shrinkPhoto, videoFrames } from "./frames";
+import { SIDE_SECONDS, inTurn, shrinkPhoto, videoFrames } from "./frames";
 
 type Mode = "video" | "photos";
 
-/** A label video: long enough to turn the pack, short enough to upload. */
-const MIN_SECONDS = 4;
+/**
+ * The sides to show, in order. The front comes first: without it the name
+ * and brand can't be read, and the product shows as "unknown".
+ */
+const SIDES = ["Front of the pack", "Ingredients", "Nutrition table"];
+
+/** A label video: every side shown once, short enough to upload. */
+const MIN_SECONDS = SIDES.length * SIDE_SECONDS;
 const MAX_SECONDS = 15;
-const MAX_PHOTOS = 3;
+/** One photo per side. */
+const MAX_PHOTOS = SIDES.length;
 
 /**
  * "New product! Show me the label" (design S10): a short video (the phone
@@ -26,10 +33,13 @@ const MAX_PHOTOS = 3;
  */
 export function LabelCapture({
   title,
+  cancelLabel,
   onDone,
   onCancel,
 }: {
   title: string;
+  /** "Not now" when the app offered this; "Cancel" when it was asked for. */
+  cancelLabel: string;
   onDone: (photoUris: string[]) => void;
   onCancel: () => void;
 }) {
@@ -64,6 +74,9 @@ export function LabelCapture({
         // The label is what matters; no microphone needed.
         mute
         onCameraReady={() => setReady(true)}
+        onMountError={() =>
+          setError("Couldn’t start the camera. Close this and try again.")
+        }
       />
       <SafeAreaView style={styles.overlay}>
         <View style={styles.banner}>
@@ -80,7 +93,7 @@ export function LabelCapture({
             style={styles.notNow}
           >
             <Text variant="label" color="secondary">
-              Not now
+              {cancelLabel}
             </Text>
           </Pressable>
         </View>
@@ -214,11 +227,10 @@ function VideoCapture({
   const canStop = seconds >= MIN_SECONDS;
   // Blur comes from distance and movement: ask for each side close and still.
   let title = "Hold each side close and still";
-  let hint = "Ingredients, then the nutrition table · 2 seconds each";
+  let hint = "Front, ingredients, then the nutrition table · 2 seconds each";
   if (recording) {
-    title = canStop
-      ? "Now the nutrition table, close and still"
-      : "Ingredients first, close and still";
+    const side = Math.min(SIDES.length - 1, Math.floor(seconds / SIDE_SECONDS));
+    title = `${side === 0 ? "" : "Now: "}${SIDES[side]}, close and still`;
     hint = canStop
       ? `Tap to stop · stops by itself in ${Math.ceil(MAX_SECONDS - seconds)}s`
       : `Keep going · ${Math.ceil(MIN_SECONDS - seconds)}s until you can stop`;
@@ -304,7 +316,12 @@ function PhotoCapture({
   ready: boolean;
   onSend: (uris: string[]) => void;
 }) {
-  const [photos, setPhotos] = useState<string[]>([]);
+  // A slot per side, so retaking one doesn't shift the others.
+  const [photos, setPhotos] = useState<(string | undefined)[]>([]);
+  const taken = photos.filter((uri): uri is string => uri !== undefined);
+  const nextSlot = Array.from({ length: MAX_PHOTOS }, (_, i) => i).find(
+    (i) => photos[i] === undefined
+  );
   const [taking, setTaking] = useState(false);
 
   async function shoot() {
@@ -314,11 +331,13 @@ function PhotoCapture({
       if (!photo) {
         return;
       }
-      const next = [...photos, photo.uri];
+      const next = [...photos];
+      next[nextSlot ?? photos.length] = photo.uri;
       setPhotos(next);
-      // The third photo is the last: send without another tap.
-      if (next.length === MAX_PHOTOS) {
-        onSend(next);
+      // The last slot filled: send without another tap.
+      const all = next.filter((uri): uri is string => uri !== undefined);
+      if (all.length === MAX_PHOTOS) {
+        onSend(all);
       }
     } finally {
       setTaking(false);
@@ -328,9 +347,9 @@ function PhotoCapture({
   return (
     <>
       <Text variant="title" color="onBrand" style={styles.centered}>
-        {photos.length >= MAX_PHOTOS
-          ? "All 3 done"
-          : `Ingredients or nutrition table · ${photos.length + 1} of ${MAX_PHOTOS}`}
+        {nextSlot === undefined
+          ? `All ${MAX_PHOTOS} done`
+          : `${SIDES[nextSlot]} · ${nextSlot + 1} of ${MAX_PHOTOS}`}
       </Text>
       <View style={styles.slots}>
         {Array.from({ length: MAX_PHOTOS }, (_, i) => (
@@ -346,7 +365,9 @@ function PhotoCapture({
                   accessibilityRole="button"
                   accessibilityLabel={`Retake photo ${i + 1}`}
                   onPress={() =>
-                    setPhotos((all) => all.filter((_, j) => j !== i))
+                    setPhotos((all) =>
+                      all.map((uri, j) => (j === i ? undefined : uri))
+                    )
                   }
                   hitSlop={spacing.xs}
                   style={styles.retake}
@@ -367,17 +388,17 @@ function PhotoCapture({
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Take photo"
-          disabled={!ready || taking || photos.length >= MAX_PHOTOS}
+          disabled={!ready || taking || nextSlot === undefined}
           onPress={() => void shoot()}
           style={styles.shutter}
         >
           <View style={styles.photoMark} />
         </Pressable>
         <View style={[styles.side, styles.sideEnd]}>
-          {photos.length > 0 && photos.length < MAX_PHOTOS && (
+          {taken.length > 0 && taken.length < MAX_PHOTOS && (
             <Pressable
               accessibilityRole="button"
-              onPress={() => onSend(photos)}
+              onPress={() => onSend(taken)}
               style={styles.send}
             >
               <Text variant="label">Send</Text>
