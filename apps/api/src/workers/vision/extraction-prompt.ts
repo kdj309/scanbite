@@ -27,11 +27,11 @@ Return ONLY valid JSON matching this exact shape (no markdown fences, no comment
   "photo_consistency": "consistent" | "inconsistent"
 }
 
-Nutrition keys: use ONLY these names, each ending in _per_100g (or _per_100ml if the label gives values per 100 ml), with the per-100 value, not per serving. Leave out any nutrient not in this list.
-- energy_kcal (kcal)
-- protein, carbohydrate, total_fat, saturated_fat, trans_fat (g)
-- sugar (g) — the label's total sugars
-- added_sugar (g)
-- cholesterol (mg)
-- sodium (mg)
-For example: "sugar_per_100g": 12.5, "sodium_per_100g": 480. If the product name/brand isn't visible in these photos, use "unknown".`;
+Nutrition keys: use ONLY these names, each ending in _per_100g (or _per_100ml if the label gives values per 100 ml), with the per-100 value, not per serving. Leave out any nutrient not in this list. Give each value as a string copied exactly as printed, with its unit and any "<" — "17.47 g", "<0.1 g", "480 mg", "574.78 kcal" — and don't convert it yourself. If the unit is printed only in the row or column heading ("Sodium (mg)"), add it to the value. The letter after a number is its unit, not a digit: "0.1g" is "0.1 g", never "0.19".
+- energy_kcal
+- protein, carbohydrate, total_fat, saturated_fat, trans_fat
+- sugar — the label's total sugars
+- added_sugar
+- cholesterol
+- sodium
+For example: "sugar_per_100g": "12.5 g", "sodium_per_100g": "0.48 g". If the product name/brand isn't visible in these photos, use "unknown".`;
