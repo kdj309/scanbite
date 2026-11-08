@@ -13,7 +13,7 @@ export function mapOffProduct(product: OffProduct): OffExtraction | null {
   return {
     name: product.product_name?.trim() || "unknown",
     brand: firstOf(product.brands) || "unknown",
-    category: firstOf(product.categories) || "unknown",
+    category: offCategory(product),
     ingredients,
     nutrition: nutritionFromProduct(product),
     nova_group: product.nova_group,
@@ -23,6 +23,20 @@ export function mapOffProduct(product: OffProduct): OffExtraction | null {
     declared_allergens: declaredAllergens(product),
     declared_veg: declaredVeg(product),
   };
+}
+
+/**
+ * OFF's standard food group (pnns_groups_2: "Biscuits and cakes"), the
+ * same vocabulary as the imported catalogue, so it lands on a shelf
+ * (product-versions/shelves.ts); the contributor's first free-text
+ * category only when OFF has no group for it.
+ */
+function offCategory(product: OffProduct): string {
+  const group = product.pnns_groups_2?.trim();
+  if (group && group.toLowerCase() !== "unknown") {
+    return group;
+  }
+  return firstOf(product.categories) || "unknown";
 }
 
 /**

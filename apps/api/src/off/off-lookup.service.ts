@@ -9,6 +9,7 @@ const OFF_FIELDS = [
   "brands",
   "categories",
   "categories_tags",
+  "pnns_groups_2",
   "ingredients_text",
   "ingredients",
   "nutriments",

@@ -19,12 +19,13 @@ type Member = Pick<HouseholdMemberInput, "conditions" | "allergies">;
 import { PersonalizationService } from "../personalization/personalization.service";
 import { productContext } from "../personalization/product-context";
 import { ProductSummaryService } from "../product-versions/product-summary";
+import { categoriesOn, shelfOf } from "../product-versions/shelves";
 import { productFormFilter } from "../scoring/facts";
 import { ScoringService } from "../scoring/scoring.service";
 import { rankAlternatives, type RuleFacts } from "./rank-alternatives";
 
 const MAX_ALTERNATIVES = 5;
-/** Enough of a category to find good options without scoring thousands. */
+/** Enough of a shelf to find good options without scoring thousands. */
 const MAX_CANDIDATES = 200;
 
 @Injectable()
@@ -76,14 +77,17 @@ export class AlternativesService {
       for_member_ids: notSafeFor.map((member) => member.id),
       alternatives: [] as AlternativesResponse["alternatives"],
     };
-    if (lookingFor.length === 0 || original.category === "unknown") {
+    // Swaps come from the same shelf: categories are filed too unevenly to
+    // compare within one (product-versions/shelves.ts).
+    const shelf = shelfOf(original.category);
+    if (lookingFor.length === 0 || shelf === null) {
       return response;
     }
 
     const candidates = await this.versions
       .find({
         status: "live",
-        category: original.category,
+        category: { $in: categoriesOn(shelf) },
         barcode: { $ne: barcode },
         // Can't show or link to a product we can't name.
         name: { $not: /^unknown$/i },

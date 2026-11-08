@@ -59,10 +59,15 @@ export class ConsensusService {
       fillsNoResult:
         live !== null &&
         fillsNoResult(
-          { ingredientCount: live.ingredients.length, brand: live.brand },
+          {
+            ingredientCount: live.ingredients.length,
+            brand: live.brand,
+            name: live.name,
+          },
           {
             ingredientCount: version.ingredients.length,
             brand: version.brand,
+            name: version.name,
             extractionConfidence: version.extraction_confidence ?? 0,
           }
         ),

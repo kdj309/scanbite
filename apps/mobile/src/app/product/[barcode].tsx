@@ -52,6 +52,7 @@ export default function Product() {
       result={product.data}
       members={household.data.members}
       scannedFor={scannedFor}
+      barcode={barcode}
     />
   );
 }

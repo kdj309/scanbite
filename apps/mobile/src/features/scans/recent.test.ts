@@ -83,6 +83,7 @@ describe("scanSummary and scanSeverity", () => {
         has_ingredients: false,
         image_url: null,
         quantity: null,
+        shelf: null,
         veg: "unknown",
         buy_links: [],
       },

@@ -6,6 +6,7 @@ import { buyLinks, type AffiliateTags } from "./buy-links";
 import type { Types } from "mongoose";
 import type { ProductVersionDocument } from "../database/schemas/product-version.schema";
 import type { LabelFacts } from "../database/schemas/submission.schema";
+import { shelfOf } from "./shelves";
 
 type VersionFields = Pick<
   ProductVersionDocument,
@@ -19,6 +20,7 @@ type VersionFields = Pick<
   | "confirmed_at"
   | "declared_veg"
   | "ingredients"
+  | "category"
 >;
 
 /** What the app shows about a product. Built per request, never cached:
@@ -37,6 +39,7 @@ export function productSummary(
     has_ingredients: version.ingredients.length > 0,
     image_url: version.image_url ?? null,
     quantity: version.quantity ?? null,
+    shelf: shelfOf(version.category),
     veg: version.declared_veg ?? "unknown",
     buy_links: buyLinks(version, tags),
   };
@@ -57,6 +60,8 @@ export function labelCheckSummary(
     has_ingredients: label.ingredients.length > 0,
     image_url: null,
     quantity: null,
+    // Not a catalogue product: nothing to compare it with.
+    shelf: null,
     veg: "unknown",
     buy_links: [],
   };

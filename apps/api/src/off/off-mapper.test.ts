@@ -184,6 +184,23 @@ describe("mapOffProduct", () => {
     assert.equal(result?.additive_count, 2);
   });
 
+  it("files a product under OFF's food group, like the catalogue", () => {
+    const product = {
+      ingredients_text: "Sugar",
+      categories: "Biscuits,Snacks",
+    };
+    assert.equal(
+      mapOffProduct({ ...product, pnns_groups_2: "Biscuits and cakes" })
+        ?.category,
+      "Biscuits and cakes"
+    );
+    // OFF says "unknown" when it has no group: keep the free text then.
+    assert.equal(
+      mapOffProduct({ ...product, pnns_groups_2: "unknown" })?.category,
+      "Biscuits"
+    );
+  });
+
   it("defaults name/brand/category to unknown when OFF doesn't have them", () => {
     const result = mapOffProduct({ ingredients_text: "Sugar" });
     assert.equal(result?.name, "unknown");

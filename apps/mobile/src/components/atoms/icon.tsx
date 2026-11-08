@@ -33,6 +33,13 @@ const ICONS = {
       strokeWidth={1.7}
     />
   ),
+  /** "Top pick" on better options (design S4). */
+  star: (
+    <Path
+      d="M10 2.5l2.2 4.6 5 .6-3.7 3.4 1 5-4.5-2.5-4.5 2.5 1-5-3.7-3.4 5-.6Z"
+      strokeWidth={1.8}
+    />
+  ),
   torch: <Path d="M11 2L4 11h5l-1 7 7-9h-5l1-7z" strokeWidth={1.9} />,
   /** "Scan the label again" (design 2c). */
   camera: (

@@ -166,16 +166,61 @@ export function sameBrand(left: string, right: string): boolean {
 }
 
 /**
+ * The same pack even when the two reads name the brand differently: a
+ * company on one ("Sunfeast") and its product line on the other ("Mom's
+ * Magic"), where that line is part of the other read's product name.
+ */
+export function samePack(
+  left: { brand: string; name: string },
+  right: { brand: string; name: string }
+): boolean {
+  return (
+    sameBrand(left.brand, right.brand) ||
+    brandInName(left.brand, right.name) ||
+    brandInName(right.brand, left.name)
+  );
+}
+
+function words(text: string): string[] {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, "")
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
+/**
+ * The brand's whole words, in order, inside the name ("Mom's Magic" in
+ * "Mom's Magic Ghee Roasted…"), never letters inside another word ("Real"
+ * in "Corn Flakes Cereal"). "unknown" (not read) names nothing.
+ */
+function brandInName(brand: string, name: string): boolean {
+  const brandWords = words(brand);
+  const nameWords = words(name);
+  if (
+    brandWords.join("").length < MIN_BRAND_PREFIX ||
+    brandKey(brand) === "unknown" ||
+    brandKey(name) === "unknown"
+  ) {
+    return false;
+  }
+  return nameWords.some((_, start) =>
+    brandWords.every((word, i) => nameWords[start + i] === word)
+  );
+}
+
+/**
  * "Scan the label again" (design 2c): the live version has no ingredients,
  * so there was no verdict, and these photos read some from what looks like
  * the same product. The new version replaces it whole, never merged into
  * it (merging two photo sets can mix two products or recipes).
  */
 export function fillsNoResult(
-  live: { ingredientCount: number; brand: string },
+  live: { ingredientCount: number; brand: string; name: string },
   incoming: {
     ingredientCount: number;
     brand: string;
+    name: string;
     extractionConfidence: number;
   }
 ): boolean {
@@ -183,7 +228,7 @@ export function fillsNoResult(
     live.ingredientCount === 0 &&
     incoming.ingredientCount > 0 &&
     incoming.extractionConfidence >= FILL_NO_RESULT_CONFIDENCE &&
-    sameBrand(live.brand, incoming.brand)
+    samePack(live, incoming)
   );
 }
 

@@ -43,10 +43,13 @@ export function Verdict({
   result,
   members,
   scannedFor,
+  barcode,
 }: {
   result: ProductFoundResponse;
   members: readonly HouseholdMember[];
   scannedFor: string | undefined;
+  /** A catalogue product's: what "See better options" looks up. */
+  barcode?: string;
 }) {
   const insets = useSafeAreaInsets();
   const [chosen, setChosen] = useState<string>();
@@ -102,6 +105,8 @@ export function Verdict({
             view={view}
             person={person}
             buyLinks={result.product.buy_links}
+            // No shelf, nothing to compare it with: no better options.
+            barcode={result.product.shelf ? barcode : undefined}
           />
         )}
       </View>
@@ -305,7 +310,7 @@ function VegMark({ veg }: { veg: "veg" | "non_veg" }) {
   );
 }
 
-const STORE_NAMES: Record<BuyLink["store"], string> = {
+export const STORE_NAMES: Record<BuyLink["store"], string> = {
   amazon: "Amazon",
   bigbasket: "BigBasket",
 };
@@ -315,12 +320,19 @@ function Actions({
   view,
   person,
   buyLinks,
+  barcode,
 }: {
   view: VerdictView;
   person: HouseholdMember | undefined;
   buyLinks: readonly BuyLink[];
+  barcode: string | undefined;
 }) {
   if (view.flagged) {
+    // Never where to buy something flagged; better options only when
+    // there's a shelf to compare it on.
+    if (!barcode) {
+      return null;
+    }
     return (
       <Button
         title={
@@ -328,7 +340,9 @@ function Actions({
             ? `See better options for ${person.name}`
             : "See better options"
         }
-        onPress={() => router.push("/better-options")}
+        onPress={() =>
+          router.push({ pathname: "/better-options", params: { barcode } })
+        }
       />
     );
   }

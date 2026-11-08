@@ -404,16 +404,17 @@ describe("household verdicts (integration)", () => {
   });
 
   describe("better options", () => {
-    it("finds same-category products Safe for everyone it isn't Safe for", async () => {
+    it("finds products on the same shelf Safe for everyone it isn't Safe for", async () => {
       const { user, ids } = await newHousehold();
-      const category = newCategory();
+      // A shelf no other test here uses; both categories sit on it.
+      const category = "Ice cream";
       const sweet = await liveProduct(
         { sugar_per_100g: 30 },
         { category, name: "Sweet" }
       );
       await liveProduct(
         { sugar_per_100g: 1 },
-        { category, name: "Barely sweet" }
+        { category: "Dairy desserts", name: "Barely sweet" }
       );
       await liveProduct(
         { sugar_per_100g: 10 },
@@ -454,9 +455,15 @@ describe("household verdicts (integration)", () => {
         conditions: [],
       });
       const user = { userId: userId.toHexString() } as RequestUser;
-      const category = newCategory();
-      const sweet = await liveProduct({ sugar_per_100g: 30 }, { category });
-      await liveProduct({ sugar_per_100g: 1 }, { category, name: "Plain" });
+      // Another shelf of its own: Dals, nuts & dry fruit.
+      const sweet = await liveProduct(
+        { sugar_per_100g: 30 },
+        { category: "Legumes" }
+      );
+      await liveProduct(
+        { sugar_per_100g: 1 },
+        { category: "Nuts", name: "Plain" }
+      );
 
       const result = await betterOptions.forProduct(sweet, user);
       assert.deepEqual(result.for_member_ids, []);
@@ -468,7 +475,8 @@ describe("household verdicts (integration)", () => {
 
     it("has nothing to offer when the product is already Safe for them", async () => {
       const { user } = await newHousehold();
-      const category = newCategory();
+      // A real shelf, so it's the safety check that says no.
+      const category = "Fats";
       const plain = await liveProduct({ sugar_per_100g: 1 }, { category });
       await liveProduct({ sugar_per_100g: 0 }, { category });
       const result = await betterOptions.forProduct(plain, user);

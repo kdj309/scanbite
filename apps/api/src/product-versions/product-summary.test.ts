@@ -12,6 +12,7 @@ const aiVersion = {
   source: "user_submission" as const,
   image_url: null,
   quantity: null,
+  category: "Chips",
   submitted_by: sender,
   confirmed_at: null as Date | null,
   declared_veg: null as "veg" | "non_veg" | null,
@@ -21,6 +22,14 @@ const aiVersion = {
 };
 
 describe("productSummary", () => {
+  it("puts a product on its shelf, or none when its category has none", () => {
+    assert.equal(productSummary(aiVersion).shelf, "Salty snacks");
+    assert.equal(
+      productSummary({ ...aiVersion, category: "unknown" }).shelf,
+      null
+    );
+  });
+
   it("marks an unconfirmed photo-read product as verifying", () => {
     const summary = productSummary(aiVersion);
     assert.equal(summary.source, "ai_photos");

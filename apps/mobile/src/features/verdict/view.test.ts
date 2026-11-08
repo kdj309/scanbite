@@ -83,6 +83,7 @@ function result(
       verifying: false,
       has_ingredients: true,
       image_url: null,
+      shelf: "Biscuits & cakes",
       quantity: "200 g",
       veg: "veg",
       buy_links: [],

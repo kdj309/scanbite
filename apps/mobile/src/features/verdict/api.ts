@@ -1,4 +1,5 @@
 import {
+  alternativesResponseSchema,
   listRuleExplainersResponseSchema,
   productLookupResponseSchema,
 } from "@foodscanner/shared";
@@ -19,6 +20,17 @@ export function useProduct(barcode: string) {
     // Just scanned: the scan's own result is current, no need to ask again.
     staleTime: 60_000,
     queryFn: () => api(`/products/${barcode}`, productLookupResponseSchema),
+  });
+}
+
+/** Healthier swaps for a flagged product, Safe for everyone it flagged. */
+export function useBetterOptions(barcode: string) {
+  return useQuery({
+    queryKey: [...productQueryKey(barcode), "better-options"],
+    queryFn: () =>
+      api(`/products/${barcode}/alternatives`, alternativesResponseSchema),
+    // Opened without a product (e.g. a stale link): nothing to look up.
+    enabled: Boolean(barcode),
   });
 }
 

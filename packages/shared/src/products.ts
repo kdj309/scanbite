@@ -94,6 +94,9 @@ export const productSummarySchema = z.object({
   image_url: z.string().nullable(),
   // Pack size as printed, e.g. "1.25 l".
   quantity: z.string().nullable(),
+  // Where it's compared for better options ("Salty snacks"); null when we
+  // can't tell, so the app doesn't offer better options.
+  shelf: z.string().nullable(),
   veg: vegStatusSchema,
   buy_links: z.array(buyLinkSchema),
 });

@@ -7,6 +7,7 @@ import {
   NUTRITION_RELATIVE_TOLERANCE,
   planAfterExtraction,
   sameBrand,
+  samePack,
   shouldAutoPromote,
   versionsConflict,
   type VersionSnapshot,
@@ -186,13 +187,14 @@ describe("consensus (pending vs live)", () => {
 });
 
 describe("fillsNoResult", () => {
-  const noIngredients = { ingredientCount: 0, brand: "SWAS" };
+  const noIngredients = { ingredientCount: 0, brand: "SWAS", name: "Pickle" };
 
   it("fills a product with no ingredients from a read that has some", () => {
     assert.equal(
       fillsNoResult(noIngredients, {
         ingredientCount: 8,
         brand: "SWASTIKS",
+        name: "Pickle",
         extractionConfidence: 0.8,
       }),
       true
@@ -202,8 +204,13 @@ describe("fillsNoResult", () => {
   it("never replaces a product that already has ingredients", () => {
     assert.equal(
       fillsNoResult(
-        { ingredientCount: 3, brand: "SWASTIKS" },
-        { ingredientCount: 8, brand: "SWASTIKS", extractionConfidence: 0.8 }
+        { ingredientCount: 3, brand: "SWASTIKS", name: "Pickle" },
+        {
+          ingredientCount: 8,
+          brand: "SWASTIKS",
+          name: "Pickle",
+          extractionConfidence: 0.8,
+        }
       ),
       false
     );
@@ -214,6 +221,7 @@ describe("fillsNoResult", () => {
       fillsNoResult(noIngredients, {
         ingredientCount: 0,
         brand: "SWAS",
+        name: "Pickle",
         extractionConfidence: 0.8,
       }),
       false
@@ -225,6 +233,7 @@ describe("fillsNoResult", () => {
       fillsNoResult(noIngredients, {
         ingredientCount: 8,
         brand: "SWASTIKS",
+        name: "Pickle",
         extractionConfidence: 0.5,
       }),
       false
@@ -236,8 +245,55 @@ describe("fillsNoResult", () => {
       fillsNoResult(noIngredients, {
         ingredientCount: 8,
         brand: "Mother's",
+        name: "Pickle",
         extractionConfidence: 0.8,
       }),
+      false
+    );
+  });
+});
+
+describe("samePack", () => {
+  it("matches a company on one read and its product line on the other", () => {
+    // A real pair: the video read the company, the photos the line.
+    assert.equal(
+      samePack(
+        { brand: "Sunfeast", name: "MOM'S MAGIC GHEE ROASTED CASHEW & ALMOND" },
+        {
+          brand: "MOM'S MAGIC",
+          name: "MOM'S MAGIC ghee roasted CASHEW & ALMOND",
+        }
+      ),
+      true
+    );
+  });
+
+  it("needs the brand's whole words in the name, not letters inside one", () => {
+    assert.equal(
+      samePack(
+        { brand: "Real", name: "Fruit juice" },
+        { brand: "Kellogg's", name: "Corn Flakes Cereal" }
+      ),
+      false
+    );
+  });
+
+  it("treats an unread brand or name as naming nothing", () => {
+    assert.equal(
+      samePack(
+        { brand: "Priya", name: "unknown" },
+        { brand: "Mother's", name: "unknown" }
+      ),
+      false
+    );
+  });
+
+  it("still tells different packs apart", () => {
+    assert.equal(
+      samePack(
+        { brand: "Priya", name: "Mango pickle" },
+        { brand: "Mother's Recipe", name: "Lime pickle" }
+      ),
       false
     );
   });

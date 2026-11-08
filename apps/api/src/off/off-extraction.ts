@@ -24,6 +24,7 @@ export type OffProductPayload = {
     brands?: string;
     categories?: string;
     categories_tags?: string[];
+    pnns_groups_2?: string;
     ingredients_text?: string;
     ingredients?: Array<{ text?: string }>;
     nutriments?: Record<string, number | string | undefined>;

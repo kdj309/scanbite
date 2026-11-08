@@ -1,4 +1,5 @@
 import { MAX_SUBMISSION_PHOTOS } from "@foodscanner/shared";
+import { SHELF_NAMES } from "../../product-versions/shelves";
 
 /**
  * Shared across every real VisionPort adapter so Gemini and Claude are
@@ -34,4 +35,5 @@ Nutrition keys: use ONLY these names, each ending in _per_100g (or _per_100ml if
 - added_sugar
 - cholesterol
 - sodium
-For example: "sugar_per_100g": "12.5 g", "sodium_per_100g": "0.48 g". If the product name/brand isn't visible in these photos, use "unknown".`;
+For example: "sugar_per_100g": "12.5 g", "sodium_per_100g": "0.48 g". If the product name/brand isn't visible in these photos, use "unknown".
+Category: exactly one of ${SHELF_NAMES.map((shelf) => JSON.stringify(shelf)).join(", ")} — the one a shopper would find it on — or "unknown" if you can't tell.`;
