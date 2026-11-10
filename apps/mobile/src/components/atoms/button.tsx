@@ -91,6 +91,8 @@ export type ButtonProps = Omit<PressableProps, "style" | "children"> & {
   loading?: boolean;
   /** Overrides the variant's text colour, e.g. a link on a blue screen. */
   textColor?: TextColor;
+  /** "medium": a smaller button inside a card (still a full touch target). */
+  size?: "large" | "medium";
   style?: StyleProp<ViewStyle>;
 };
 
@@ -100,6 +102,7 @@ export function Button({
   icon,
   loading = false,
   textColor,
+  size = "large",
   disabled,
   accessibilityState,
   style,
@@ -121,6 +124,7 @@ export function Button({
       }}
       style={({ pressed }) => [
         styles.button,
+        size === "medium" && styles.medium,
         look.base,
         pressed && look.pressed,
         disabled === true && styles.disabled,
@@ -130,7 +134,11 @@ export function Button({
       {/* Stays laid out while loading, so the button keeps its size. */}
       <View style={[styles.content, loading && styles.hidden]}>
         {icon && <Icon name={icon} color={look.iconColor} />}
-        <Text variant="button" color={textColor ?? look.text}>
+        <Text
+          variant="button"
+          color={textColor ?? look.text}
+          style={size === "medium" && styles.mediumText}
+        >
           {title}
         </Text>
       </View>
@@ -151,6 +159,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  medium: {
+    minHeight: minTouchTarget,
+    paddingHorizontal: spacing.md,
+    borderRadius: radii.md,
+  },
+  mediumText: { fontSize: 14, lineHeight: 20 },
   content: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
   disabled: { opacity: 0.5 },
   hidden: { opacity: 0 },

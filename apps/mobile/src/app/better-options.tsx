@@ -158,7 +158,10 @@ function OptionCard({
       {top && (
         <View style={styles.ribbon}>
           <Icon name="star" size={12} color={colors.ink} />
-          <Text variant="label">Top pick</Text>
+          {/* Not shrunk: Android cut it to "Top" in this floating label. */}
+          <Text variant="label" numberOfLines={1} style={styles.ribbonText}>
+            Top pick
+          </Text>
         </View>
       )}
       <View style={styles.cardHead}>
@@ -195,6 +198,7 @@ function OptionCard({
               key={link.store}
               title={STORE_NAMES[link.store]}
               variant={i === 0 ? "primary" : "secondary"}
+              size="medium"
               onPress={() => void Linking.openURL(link.url)}
               style={styles.fill}
             />
@@ -310,6 +314,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.pill,
     backgroundColor: colors.mango,
   },
+  ribbonText: { flexShrink: 0 },
   cardHead: { flexDirection: "row", gap: spacing.sm },
   cardText: { flex: 1, minWidth: 0, gap: spacing.xxs },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 2 },
