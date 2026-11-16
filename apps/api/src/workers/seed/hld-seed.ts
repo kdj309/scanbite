@@ -1,8 +1,13 @@
-import { HLD_EXAMPLE_RULES } from "../../scoring/hld-example-rules";
+import {
+  HLD_EXAMPLE_RULES,
+  WHO_DESSERT_LIMITS,
+} from "../../scoring/hld-example-rules";
 
+// Version 2 (2026-11-16): adds the WHO dessert limits. A new version, not
+// an edit, so verdicts cached under version 1 aren't reused.
 export const HLD_RULE_SET_SEED = {
-  version: "1",
-  effective_from: new Date("2026-01-01T00:00:00.000Z"),
+  version: "2",
+  effective_from: new Date("2026-11-16T00:00:00.000Z"),
   effective_to: null as Date | null,
   rules: HLD_EXAMPLE_RULES,
 };
@@ -72,6 +77,15 @@ const ICMR_SALT_RULES = SALT_CONDITIONS.flatMap(
         threshold: 70,
         applies_to: "liquid" as const,
       },
+      // Desserts have their own form but are foods: the solid level, on
+      // their declared values.
+      ...WHO_DESSERT_LIMITS.map(({ form }) => ({
+        ...rule,
+        id: `${condition}_sodium_escalation_${form}`,
+        field: "sodium_per_100g",
+        threshold: 250,
+        applies_to: form,
+      })),
     ];
   }
 );
@@ -95,4 +109,12 @@ export const HLD_PERSONALIZATION_SEEDS = [
     applies_to: "liquid" as const,
   },
   ...ICMR_SALT_RULES,
+  // Ice cream and dairy desserts: over their WHO sugar limit.
+  ...WHO_DESSERT_LIMITS.map(({ form, sugar }) => ({
+    ...DIABETIC_SUGAR_RULE,
+    id: `diabetic_sugar_escalation_${form}`,
+    field: "sugar_per_100g",
+    threshold: sugar,
+    applies_to: form,
+  })),
 ];

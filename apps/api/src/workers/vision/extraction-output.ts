@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { shelfOf } from "../../product-versions/shelves";
+import { canonicalCategory } from "../../product-versions/shelves";
 
 type StoredUnit = "mg" | "g" | "kcal";
 
@@ -119,12 +119,13 @@ const nutritionSchema = z
 export const extractionOutputSchema = z.object({
   name: z.string().min(1),
   brand: z.string().min(1),
-  // A shelf name, as asked; anything else can't be compared, so it's stored
-  // as not known rather than as a category no other product has.
+  // A shelf name, or on the dessert shelf "Ice cream" / "Dairy desserts"
+  // (their WHO limits differ), as asked; anything else can't be compared,
+  // so it's stored as not known rather than as a category nobody else has.
   category: z
     .string()
     .min(1)
-    .transform((category): string => shelfOf(category) ?? "unknown"),
+    .transform((category): string => canonicalCategory(category) ?? "unknown"),
   ingredients: z.array(z.string()),
   nutrition: nutritionSchema,
   // The prompt allows null ("can't tell the processing level"): read it as

@@ -1,5 +1,7 @@
 import { Types } from "mongoose";
 import type { ProductVersion } from "../database/schemas/product-version.schema";
+import { shelfOf } from "../product-versions/shelves";
+import { dessertForm, type DessertForm } from "./dessert-groups";
 
 /**
  * OFF reports liquids per 100ml and solids per 100g — that reporting basis
@@ -25,21 +27,67 @@ export function productFormFilter(form: "solid" | "liquid") {
  *  check's (which has no version). */
 export type LabelFields = Pick<
   ProductVersion,
-  "ingredients" | "nutrition" | "nova_group" | "additive_count"
+  "ingredients" | "nutrition" | "nova_group" | "additive_count" | "category"
 >;
+
+/**
+ * Solid or liquid from how the label reports it (above); ice cream and
+ * dairy desserts are never drinks, though their labels are often per
+ * 100 ml. A dessert we can't place in a WHO group (a label read that only
+ * says "Desserts & ice cream") gets the general solid rules.
+ */
+function productForm(
+  category: string,
+  nutrition: Record<string, number | string | null>
+): "solid" | "liquid" | DessertForm {
+  const dessert = dessertForm(category);
+  if (dessert) {
+    return dessert;
+  }
+  if (onDessertShelf(category)) {
+    return "solid";
+  }
+  return productFormFromNutrition(nutrition);
+}
+
+function onDessertShelf(category: string): boolean {
+  return shelfOf(category) === "Desserts & ice cream";
+}
+
+/**
+ * Not a drink, but reported per 100 ml: those are the declared values the
+ * per-100 g rules read (WHO's dessert limits allow either basis).
+ */
+function per100mlAsDeclared(
+  nutrition: Record<string, number | string | null>
+): Record<string, number | string | null> {
+  return Object.fromEntries(
+    Object.entries(nutrition).flatMap(([key, value]) => {
+      const asGrams = key.replace(/_per_100ml$/, "_per_100g");
+      return key.endsWith("_per_100ml") && nutrition[asGrams] === undefined
+        ? [[asGrams, value]]
+        : [];
+    })
+  );
+}
 
 export function factsFromVersion(
   version: LabelFields,
   ingredientCategories: string[]
 ): Record<string, unknown> {
   const nutrition = version.nutrition ?? {};
-  return {
+  const form = productForm(version.category, nutrition);
+  const reported = {
     ...nutrition,
-    sugar_per_100g: nutrition.sugar_per_100g,
+    ...(onDessertShelf(version.category) ? per100mlAsDeclared(nutrition) : {}),
+  };
+  return {
+    ...reported,
+    sugar_per_100g: reported.sugar_per_100g,
     additive_count: version.additive_count ?? nutrition.additive_count,
     nova_group: version.nova_group ?? nutrition.nova_group,
     ingredient_category: ingredientCategories,
-    product_form: productFormFromNutrition(nutrition),
+    product_form: form,
   };
 }
 

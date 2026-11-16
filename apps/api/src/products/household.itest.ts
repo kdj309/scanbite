@@ -467,7 +467,7 @@ describe("household verdicts (integration)", () => {
     it("finds products on the same shelf Safe for everyone it isn't Safe for", async () => {
       const { user, ids } = await newHousehold();
       // A shelf no other test here uses; both categories sit on it.
-      const category = "Ice cream";
+      const category = "Sweets";
       const sweet = await liveProduct(
         { sugar_per_100g: 30 },
         { category, name: "Sweet" }
@@ -475,7 +475,7 @@ describe("household verdicts (integration)", () => {
       // Salt known and low, or it couldn't be Safe for Amma (BP).
       await liveProduct(
         { sugar_per_100g: 1, sodium_per_100g: 10 },
-        { category: "Dairy desserts", name: "Barely sweet" }
+        { category: "Chocolate products", name: "Barely sweet" }
       );
       await liveProduct(
         { sugar_per_100g: 10 },
@@ -504,6 +504,27 @@ describe("household verdicts (integration)", () => {
         [["Barely sweet", "97% less sugar"]]
       );
       assert.equal(result.alternatives[0].product.buy_links.length, 2);
+    });
+
+    it("finds a better ice cream whatever unit either label uses", async () => {
+      const { user, ids } = await newHousehold();
+      // Per 100 ml, as Indian ice cream labels usually are: never a drink.
+      const sweet = await liveProduct(
+        { sugar_per_100ml: 20, sodium_per_100ml: 40 },
+        { category: "Ice cream", name: "Butterscotch" }
+      );
+      // Per 100 g, under the WHO frozen-dessert limits (12 g sugar).
+      await liveProduct(
+        { sugar_per_100g: 9, sodium_per_100g: 40 },
+        { category: "Ice cream", name: "Less sweet" }
+      );
+      const result = await betterOptions.forProduct(sweet, user);
+      // High sugar for a frozen dessert; Avoid for Papa (diabetes).
+      assert.ok(result.for_member_ids.includes(ids.papa));
+      assert.deepEqual(
+        result.alternatives.map((a) => a.product.name),
+        ["Less sweet"]
+      );
     });
 
     it("uses the general verdict when nobody has a profile yet", async () => {

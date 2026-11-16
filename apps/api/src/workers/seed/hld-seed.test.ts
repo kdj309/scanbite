@@ -19,7 +19,7 @@ describe("HLD seed documents", () => {
     const byId = Object.fromEntries(
       HLD_RULE_SET_SEED.rules.map((rule) => [rule.id, rule])
     );
-    assert.equal(HLD_RULE_SET_SEED.version, "1");
+    assert.equal(HLD_RULE_SET_SEED.version, "2");
     assert.equal(byId.sugar_uk_fop?.operator, ">");
     assert.equal(byId.sugar_uk_fop?.threshold, 22.5);
     assert.equal(byId.sugar_uk_fop?.severity, "red");
@@ -82,8 +82,11 @@ describe("HLD seed documents", () => {
   });
 
   it("seeds the ICMR high-salt level for BP, heart and kidney disease", () => {
-    const salt = HLD_PERSONALIZATION_SEEDS.filter((rule) =>
-      rule.field.startsWith("sodium_")
+    // The dessert forms reuse the solid level (scoring/dessert-groups.test).
+    const salt = HLD_PERSONALIZATION_SEEDS.filter(
+      (rule) =>
+        rule.field.startsWith("sodium_") &&
+        (rule.applies_to === "solid" || rule.applies_to === "liquid")
     );
     // ICMR–NIN DGI 2024 Table 15.1: 625 / 175 mg salt, salt is 40% sodium.
     assert.deepEqual(

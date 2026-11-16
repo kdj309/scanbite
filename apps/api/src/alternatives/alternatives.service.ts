@@ -19,7 +19,8 @@ type Member = Pick<HouseholdMemberInput, "conditions" | "allergies">;
 import { PersonalizationService } from "../personalization/personalization.service";
 import { productContext } from "../personalization/product-context";
 import { ProductSummaryService } from "../product-versions/product-summary";
-import { categoriesOn, shelfOf } from "../product-versions/shelves";
+import { categoriesOn, shelfOf, type Shelf } from "../product-versions/shelves";
+import { dessertCategories, isDessertForm } from "../scoring/dessert-groups";
 import { productFormFilter } from "../scoring/facts";
 import { ScoringService } from "../scoring/scoring.service";
 import { rankAlternatives, type RuleFacts } from "./rank-alternatives";
@@ -87,13 +88,11 @@ export class AlternativesService {
     const candidates = await this.versions
       .find({
         status: "live",
-        category: { $in: categoriesOn(shelf) },
+        category: { $in: candidateCategories(originalContext.facts, shelf) },
         barcode: { $ne: barcode },
         // Can't show or link to a product we can't name.
         name: { $not: /^unknown$/i },
-        ...productFormFilter(
-          originalContext.facts.product_form === "liquid" ? "liquid" : "solid"
-        ),
+        ...formFilter(originalContext.facts.product_form),
       })
       .sort({ created_at: -1 })
       .limit(MAX_CANDIDATES)
@@ -117,6 +116,27 @@ export class AlternativesService {
     }));
     return response;
   }
+}
+
+/** The shelf, or for a dessert only its own WHO group (limits differ). */
+function candidateCategories(
+  facts: Record<string, unknown>,
+  shelf: Shelf
+): string[] {
+  const form = facts.product_form;
+  return isDessertForm(form) ? dessertCategories(form) : categoriesOn(shelf);
+}
+
+/**
+ * Drinks against drinks, solids against solids. Desserts are compared on
+ * their shelf whatever unit their label uses: their WHO limits read per
+ * 100 g or per 100 ml as declared.
+ */
+function formFilter(form: unknown) {
+  if (isDessertForm(form)) {
+    return {};
+  }
+  return productFormFilter(form === "liquid" ? "liquid" : "solid");
 }
 
 function ruleFacts(

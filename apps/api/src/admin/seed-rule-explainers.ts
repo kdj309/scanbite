@@ -2,7 +2,7 @@ import "reflect-metadata";
 /**
  * Seeds the rule_explainers collection (HLD §16, educational content
  * feature) — human-reviewed content for the example rules and the
- * condition salt rules, grouped into 6 topics since several rule_ids are
+ * condition salt rules and the WHO dessert limits, grouped into 7 topics since several rule_ids are
  * the same educational
  * concept at different solid/liquid thresholds, not separate things to
  * explain. AI-drafted, human-reviewed and edited before going in here —
@@ -83,6 +83,12 @@ const ENTRIES: SeedEntry[] = [
       "cardiovascular_sodium_escalation_liquid",
       "chronic_kidney_disease_sodium_escalation",
       "chronic_kidney_disease_sodium_escalation_liquid",
+      "hypertensive_sodium_escalation_frozen_dessert",
+      "hypertensive_sodium_escalation_curded_dessert",
+      "cardiovascular_sodium_escalation_frozen_dessert",
+      "cardiovascular_sodium_escalation_curded_dessert",
+      "chronic_kidney_disease_sodium_escalation_frozen_dessert",
+      "chronic_kidney_disease_sodium_escalation_curded_dessert",
     ],
     title: "High salt for your condition",
     explainer:
@@ -154,6 +160,26 @@ const ENTRIES: SeedEntry[] = [
       },
     ],
     citations: "NOVA classification system (Monteiro et al., 2016/2019).",
+  },
+  {
+    rule_ids: [
+      "who_frozen_dessert_sugar",
+      "who_frozen_dessert_sodium",
+      "who_curded_dessert_sugar",
+      "who_curded_dessert_sodium",
+    ],
+    title: "Over the limit for a dessert",
+    explainer:
+      "Ice cream and dairy desserts are checked against the WHO's own limits for desserts in South-East Asia, not the ones for snacks or drinks. Per 100 g (or 100 ml, as the label gives it), ice cream and frozen desserts go over at 12 g sugar or 100 mg sodium; shrikhand, flavoured yoghurt and puddings at 6 g sugar or 100 mg sodium. These limits were set to decide which desserts are fine to advertise to children, so they're a fair line for an everyday treat, not a personal limit.",
+    condition_variants: [
+      {
+        condition: "diabetic",
+        addendum:
+          "Over its sugar limit, a dessert can push your blood glucose up more than the general line accounts for. Worth talking to your doctor or dietitian about how often it fits in.",
+      },
+    ],
+    citations:
+      "WHO Nutrient Profile Model for the South-East Asia Region (2017), food categories 7 and 8.",
   },
 ];
 

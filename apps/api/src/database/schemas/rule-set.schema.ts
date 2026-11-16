@@ -9,8 +9,16 @@ export const SEVERITIES = severitySchema.options;
 export const RULE_OPERATORS = [">", ">=", "<", "<=", "==", "contains"] as const;
 export type RuleOperator = (typeof RULE_OPERATORS)[number];
 
-/** Which product form a rule applies to. "any" (default) = solids and liquids. */
-export const PRODUCT_FORMS = ["solid", "liquid", "any"] as const;
+/** Which product form a rule applies to. "any" (default) = every form.
+ *  The dessert forms have their own WHO limits (scoring/dessert-groups.ts),
+ *  so "solid" rules don't apply to them. */
+export const PRODUCT_FORMS = [
+  "solid",
+  "liquid",
+  "frozen_dessert",
+  "curded_dessert",
+  "any",
+] as const;
 export type ProductForm = (typeof PRODUCT_FORMS)[number];
 
 @Schema({ _id: false })

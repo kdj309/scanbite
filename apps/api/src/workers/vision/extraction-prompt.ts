@@ -36,4 +36,4 @@ Nutrition keys: use ONLY these names, each ending in _per_100g (or _per_100ml if
 - cholesterol
 - sodium
 For example: "sugar_per_100g": "12.5 g", "sodium_per_100g": "0.48 g". If the product name/brand isn't visible in these photos, use "unknown".
-Category: exactly one of ${SHELF_NAMES.map((shelf) => JSON.stringify(shelf)).join(", ")} — the one a shopper would find it on — or "unknown" if you can't tell.`;
+Category: exactly one of ${SHELF_NAMES.map((shelf) => JSON.stringify(shelf)).join(", ")} — the one a shopper would find it on — or "unknown" if you can't tell. On the dessert shelf, say which kind instead of the shelf name: "Ice cream" (ice cream, frozen desserts, kulfi, frozen yoghurt, ice lollies, sorbet) or "Dairy desserts" (shrikhand, flavoured yoghurt, puddings, mousse).`;

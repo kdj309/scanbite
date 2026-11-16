@@ -3,7 +3,8 @@
  * options" swaps stay on one shelf). The catalogue's categories come from
  * Open Food Facts, where volunteers file products unevenly (malt drinks
  * sit under three different ones), so each category is placed on a shelf
- * here. Products read from label photos are filed by shelf name directly.
+ * here. Products read from label photos are filed under a shelf name, or
+ * a catalogue category where it matters (dessert kind: "Ice cream").
  * Agreed with Kartik 2026-11-08; categories not listed have no shelf.
  */
 export const SHELVES = {
@@ -82,6 +83,23 @@ const SHELF_BY_CATEGORY = new Map<string, Shelf>(
 /** The shelf a stored category belongs on; null when it has none. */
 export function shelfOf(category: string): Shelf | null {
   return SHELF_BY_CATEGORY.get(category.trim().toLowerCase()) ?? null;
+}
+
+// Lower case to the catalogue's own spelling.
+const CANONICAL = new Map<string, string>(
+  SHELF_NAMES.flatMap((shelf) =>
+    categoriesOn(shelf).map(
+      (category) => [category.toLowerCase(), category] as const
+    )
+  )
+);
+
+/**
+ * A category as the catalogue spells it ("ice cream" → "Ice cream"), or a
+ * shelf name; null when it's on no shelf.
+ */
+export function canonicalCategory(category: string): string | null {
+  return CANONICAL.get(category.trim().toLowerCase()) ?? null;
 }
 
 /** Every stored category that sits on this shelf, the shelf name included. */
