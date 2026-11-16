@@ -1,7 +1,8 @@
 /**
  * Household verdicts against real Mongo + Redis: product lookup answers for
  * every member, and scans record each member's verdict for Home recents.
- * Uses the dev seed rules (HLD examples + diabetic solid/drink).
+ * Uses the dev seed rules (HLD examples, diabetic sugar and condition salt
+ * rules, solid/drink).
  *
  *   pnpm --filter api build && pnpm --filter api test:integration
  */
@@ -327,6 +328,62 @@ describe("household verdicts (integration)", () => {
       });
       assert.ok(result.members.every((m) => m.verdict.severity === "green"));
     });
+
+    it("escalates a very salty snack to Avoid for the BP member only", async () => {
+      // Ompudi (8908022078125): 1415 mg sodium/100 g.
+      const { user, ids } = await newHousehold();
+      const result = await lookup(
+        await liveProduct({ sugar_per_100g: 0, sodium_per_100g: 1415.2 }),
+        user
+      );
+      assert.deepEqual(result.overall, {
+        severity: "red",
+        member_id: ids.amma,
+      });
+      assert.deepEqual(
+        result.members.map((m) => [m.name, m.verdict.severity]),
+        [
+          ["You", "yellow"],
+          ["Amma", "red"],
+          ["Papa", "yellow"],
+        ]
+      );
+      const amma = result.members[1].verdict.reasons[0];
+      assert.equal(amma.rule_id, "hypertensive_sodium_escalation");
+      assert.equal(amma.label, "Too salty for BP");
+    });
+
+    it("says salt was checked for BP when it's low", async () => {
+      const { user } = await newHousehold();
+      const result = await lookup(
+        await liveProduct({ sugar_per_100g: 1, sodium_per_100g: 10 }),
+        user
+      );
+      const salt = result.members[1].verdict.checked.find(
+        (check) => check.label === "Salt"
+      );
+      assert.deepEqual(salt?.for, ["hypertension"]);
+    });
+
+    it("is never Safe for the BP member when salt is missing", async () => {
+      const { user } = await newHousehold();
+      const result = await lookup(
+        await liveProduct({ sugar_per_100g: 1 }),
+        user
+      );
+      const amma = result.members[1].verdict;
+      assert.equal(amma.severity, "yellow");
+      assert.deepEqual(
+        amma.reasons.map((r) => [r.kind, r.label, r.text]),
+        [
+          [
+            "unchecked",
+            "Salt not checked",
+            "Couldn't check salt for hypertension",
+          ],
+        ]
+      );
+    });
   });
 
   describe("what we checked", () => {
@@ -378,7 +435,10 @@ describe("household verdicts (integration)", () => {
     it("flags an allergen found in the ingredients, for that member only", async () => {
       const { user, ids } = await newHousehold();
       await members.updateOne({ _id: ids.you }, { allergies: ["peanuts"] });
-      const barcode = await liveProduct({ sugar_per_100g: 1 });
+      const barcode = await liveProduct({
+        sugar_per_100g: 1,
+        sodium_per_100g: 10,
+      });
       await versions.updateOne(
         { barcode },
         {
@@ -412,8 +472,9 @@ describe("household verdicts (integration)", () => {
         { sugar_per_100g: 30 },
         { category, name: "Sweet" }
       );
+      // Salt known and low, or it couldn't be Safe for Amma (BP).
       await liveProduct(
-        { sugar_per_100g: 1 },
+        { sugar_per_100g: 1, sodium_per_100g: 10 },
         { category: "Dairy desserts", name: "Barely sweet" }
       );
       await liveProduct(
@@ -477,7 +538,10 @@ describe("household verdicts (integration)", () => {
       const { user } = await newHousehold();
       // A real shelf, so it's the safety check that says no.
       const category = "Fats";
-      const plain = await liveProduct({ sugar_per_100g: 1 }, { category });
+      const plain = await liveProduct(
+        { sugar_per_100g: 1, sodium_per_100g: 10 },
+        { category }
+      );
       await liveProduct({ sugar_per_100g: 0 }, { category });
       const result = await betterOptions.forProduct(plain, user);
       assert.deepEqual([result.for_member_ids, result.alternatives], [[], []]);
@@ -571,7 +635,10 @@ describe("household verdicts (integration)", () => {
     it("splits into 'good for everyone' and 'not for everyone'", async () => {
       const { user } = await newHousehold();
       const category = newCategory();
-      await liveProduct({ sugar_per_100g: 1 }, { category, name: "Plain" });
+      await liveProduct(
+        { sugar_per_100g: 1, sodium_per_100g: 10 },
+        { category, name: "Plain" }
+      );
       await liveProduct({ sugar_per_100g: 18 }, { category, name: "Sweet" });
 
       const good = await products.catalog(user, {

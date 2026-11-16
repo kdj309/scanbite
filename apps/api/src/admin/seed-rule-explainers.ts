@@ -1,8 +1,9 @@
 import "reflect-metadata";
 /**
  * Seeds the rule_explainers collection (HLD §16, educational content
- * feature) — human-reviewed content for the current 9 example rules,
- * grouped into 5 topics since several rule_ids are the same educational
+ * feature) — human-reviewed content for the example rules and the
+ * condition salt rules, grouped into 6 topics since several rule_ids are
+ * the same educational
  * concept at different solid/liquid thresholds, not separate things to
  * explain. AI-drafted, human-reviewed and edited before going in here —
  * see the product-strategy conversation this came out of, not auto-
@@ -73,6 +74,38 @@ const ENTRIES: SeedEntry[] = [
     ],
     citations:
       "FSSAI Food Safety and Standards (Advertising & Claims) Regulations, 2018.",
+  },
+  {
+    rule_ids: [
+      "hypertensive_sodium_escalation",
+      "hypertensive_sodium_escalation_liquid",
+      "cardiovascular_sodium_escalation",
+      "cardiovascular_sodium_escalation_liquid",
+      "chronic_kidney_disease_sodium_escalation",
+      "chronic_kidney_disease_sodium_escalation_liquid",
+    ],
+    title: "High salt for your condition",
+    explainer:
+      "This product is above the level ICMR–NIN calls high in salt for packaged food: 625mg of salt per 100g (about 250mg sodium), or 175mg per 100ml for drinks (about 70mg sodium). India's dietary guidelines link high salt to high blood pressure, heart disease and extra strain on the kidneys, which is why we're stricter about it for you than for everyone else. It's a per-100g level, not a daily limit — how much of this you eat still matters most.",
+    condition_variants: [
+      {
+        condition: "hypertensive",
+        addendum:
+          "Cutting salt is one of the most direct ways to help keep blood pressure down. Check this against whatever limit your doctor's given you.",
+      },
+      {
+        condition: "cardiovascular",
+        addendum:
+          "Salt raises blood pressure, which puts more load on your heart. Check this against whatever limit your doctor's given you.",
+      },
+      {
+        condition: "chronic_kidney_disease",
+        addendum:
+          "Your kidneys are what clear extra sodium, so cutting salt is often part of managing kidney disease. Check this against whatever limit your doctor's given you.",
+      },
+    ],
+    citations:
+      "ICMR–NIN Dietary Guidelines for Indians, 2024 (Table 15.1, nutrients of concern threshold criteria).",
   },
   {
     rule_ids: ["palm_oil"],

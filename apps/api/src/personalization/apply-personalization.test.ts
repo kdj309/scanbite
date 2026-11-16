@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { HLD_PERSONALIZATION_SEEDS } from "../workers/seed/hld-seed";
 import { applyPersonalization } from "./apply-personalization";
 
 describe("applyPersonalization", () => {
@@ -168,6 +169,115 @@ describe("applyPersonalization", () => {
         result.flags.map((f) => f.rule_id),
         ["diabetic_sugar_escalation"]
       );
+      assert.deepEqual(result.unchecked, []);
+    });
+  });
+
+  describe("salt rules for BP, heart and kidney disease (seeded)", () => {
+    const rules = HLD_PERSONALIZATION_SEEDS;
+    const yellow = {
+      severity: "yellow" as const,
+      breakdown: [],
+      unevaluated: [],
+    };
+    const green = {
+      severity: "green" as const,
+      breakdown: [],
+      unevaluated: [],
+    };
+
+    it("escalates a very salty snack to Avoid for BP (Ompudi, 1415 mg/100 g)", () => {
+      const result = applyPersonalization({
+        base: yellow,
+        facts: { product_form: "solid", sodium_per_100g: 1415.2 },
+        memberConditions: ["hypertensive"],
+        rules,
+      });
+      assert.equal(result.severity, "red");
+      assert.deepEqual(
+        result.flags.map((f) => [f.rule_id, f.label]),
+        [["hypertensive_sodium_escalation", "Too salty for BP"]]
+      );
+      assert.deepEqual(result.flaggedTopics, ["Salt"]);
+      assert.deepEqual(result.checked, []);
+    });
+
+    it("leaves salt at or under the ICMR level alone, and says it checked", () => {
+      const result = applyPersonalization({
+        base: green,
+        facts: { product_form: "solid", sodium_per_100g: 250 },
+        memberConditions: ["hypertensive", "chronic_kidney_disease"],
+        rules,
+      });
+      assert.equal(result.severity, "green");
+      assert.deepEqual(result.flags, []);
+      assert.deepEqual(result.checked, [
+        { topic: "Salt", for: "hypertension" },
+        { topic: "Salt", for: "chronic kidney disease" },
+      ]);
+    });
+
+    it("uses the 70 mg/100 ml level for drinks", () => {
+      const result = applyPersonalization({
+        base: green,
+        facts: { product_form: "liquid", sodium_per_100ml: 80 },
+        memberConditions: ["cardiovascular"],
+        rules,
+      });
+      assert.equal(result.severity, "yellow");
+      assert.deepEqual(
+        result.flags.map((f) => f.rule_id),
+        ["cardiovascular_sodium_escalation_liquid"]
+      );
+    });
+
+    it("gives someone with BP and heart disease one salt flag, not two", () => {
+      const result = applyPersonalization({
+        base: yellow,
+        facts: { product_form: "solid", sodium_per_100g: 600 },
+        memberConditions: ["cardiovascular", "hypertensive"],
+        rules,
+      });
+      assert.equal(result.severity, "red");
+      assert.deepEqual(
+        result.flags.map((f) => f.rule_id),
+        ["hypertensive_sodium_escalation"]
+      );
+    });
+
+    it("is never Safe when salt is missing, with one gap naming every condition", () => {
+      const result = applyPersonalization({
+        base: green,
+        facts: { product_form: "solid", sugar_per_100g: 1 },
+        memberConditions: [
+          "cardiovascular",
+          "hypertensive",
+          "chronic_kidney_disease",
+        ],
+        rules,
+      });
+      assert.equal(result.severity, "yellow");
+      assert.deepEqual(
+        result.unchecked.map((u) => [u.label, u.text, u.rule_id]),
+        [
+          [
+            "Salt not checked",
+            "Couldn't check salt for hypertension, heart disease and chronic kidney disease",
+            "hypertensive_sodium_escalation",
+          ],
+        ]
+      );
+    });
+
+    it("doesn't touch members without these conditions", () => {
+      const result = applyPersonalization({
+        base: yellow,
+        facts: { product_form: "solid", sodium_per_100g: 1415 },
+        memberConditions: ["dyslipidemia"],
+        rules,
+      });
+      assert.equal(result.severity, "yellow");
+      assert.deepEqual(result.flags, []);
       assert.deepEqual(result.unchecked, []);
     });
   });

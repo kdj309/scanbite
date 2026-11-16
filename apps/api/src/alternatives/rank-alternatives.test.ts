@@ -9,7 +9,7 @@ import { HLD_PERSONALIZATION_SEEDS } from "../workers/seed/hld-seed";
 import { rankAlternatives, type RuleFacts } from "./rank-alternatives";
 
 // The real dev seed rules: FSSAI/UK sugar + salt, palm oil, additives,
-// NOVA, and the diabetic sugar escalation.
+// NOVA, the diabetic sugar escalation and the condition salt rules.
 const ruleLabels = Object.fromEntries(
   HLD_EXAMPLE_RULES.map((rule) => [rule.id, rule.label ?? ""])
 );
@@ -111,10 +111,18 @@ describe("rankAlternatives", () => {
     const ranked = rankAlternatives({
       original: context({
         sugar_per_100g: 2,
+        sodium_per_100g: 50,
         nova_group: 4,
         additive_count: 6,
       }),
-      candidates: [candidate("simple", { sugar_per_100g: 1, nova_group: 1 })],
+      // Salt known and low, or it couldn't be Safe for someone with BP.
+      candidates: [
+        candidate("simple", {
+          sugar_per_100g: 1,
+          sodium_per_100g: 50,
+          nova_group: 1,
+        }),
+      ],
       members: [member(["hypertensive"])],
       ruleFacts,
       limit: 5,
