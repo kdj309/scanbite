@@ -1,12 +1,7 @@
-import {
-  createContext,
-  useContext,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, useContext, useMemo, useState } from "react";
 import type { Relationship } from "@foodscanner/shared";
 import { newPerson, type DraftPerson } from "./model";
+import type { PersonDraftProviderProps } from "./add-person.types";
 
 type Draft = {
   /** The person being set up right now, if any. */
@@ -19,7 +14,7 @@ type Draft = {
 const DraftContext = createContext<Draft | null>(null);
 
 /** The one person being added, shared by their steps until it's saved. */
-export function PersonDraftProvider({ children }: { children: ReactNode }) {
+export function PersonDraftProvider({ children }: PersonDraftProviderProps) {
   const [person, setPerson] = useState<DraftPerson | null>(null);
 
   const value = useMemo<Draft>(

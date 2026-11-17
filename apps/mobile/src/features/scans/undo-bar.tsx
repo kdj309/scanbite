@@ -1,18 +1,10 @@
 import { Pressable, StyleSheet, View } from "react-native";
 import { Text } from "@/components";
 import { colors, radii, spacing } from "@/theme";
+import type { UndoBarProps } from "./scans.types";
 
 /** "Removed from recent scans · Undo" along the bottom (design 1d). */
-export function UndoBar({
-  text,
-  onUndo,
-  bottom,
-}: {
-  text: string;
-  onUndo: () => void;
-  /** Distance from the bottom of the screen, e.g. above the tab bar. */
-  bottom: number;
-}) {
+export function UndoBar({ text, onUndo, bottom }: UndoBarProps) {
   return (
     <View style={[styles.bar, { bottom }]} accessibilityLiveRegion="polite">
       <Text variant="label" color="onBrand" style={styles.text}>

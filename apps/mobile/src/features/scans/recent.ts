@@ -1,6 +1,7 @@
 import type { HouseholdMember, Scan, Severity } from "@foodscanner/shared";
 import { SEVERITY_WORDS } from "@/components";
 import { hasHealthProfile } from "@/features/household/members";
+import type { VerdictRings } from "./scans.types";
 
 const RANK: Record<Severity, number> = { green: 0, yellow: 1, red: 2 };
 
@@ -51,10 +52,7 @@ export function scanSeverity(
 const MAX_RINGS = 2;
 
 /** The worst verdicts as rings, and how many more people there are. */
-export function ringsFor(checked: readonly CheckedVerdict[]): {
-  shown: CheckedVerdict[];
-  more: number;
-} {
+export function ringsFor(checked: readonly CheckedVerdict[]): VerdictRings {
   const worstFirst = [...checked].sort(
     (a, b) => RANK[b.severity] - RANK[a.severity]
   );

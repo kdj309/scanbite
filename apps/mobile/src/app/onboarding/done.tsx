@@ -1,7 +1,4 @@
-import {
-  HEALTH_CONDITION_SHORT_LABELS,
-  type HouseholdMember,
-} from "@foodscanner/shared";
+import { HEALTH_CONDITION_SHORT_LABELS } from "@foodscanner/shared";
 import { router } from "expo-router";
 import { ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -11,6 +8,7 @@ import { useHousehold } from "@/features/household/api";
 import { MemberAvatar } from "@/features/household/member-avatar";
 import { hasDetails, listName } from "@/features/household/members";
 import { colors, radii, screenGutter, spacing } from "@/theme";
+import type { MemberRowProps } from "@/features/onboarding/onboarding.types";
 
 /** The family that was just set up. */
 export default function Done() {
@@ -68,13 +66,7 @@ export default function Done() {
   );
 }
 
-function MemberRow({
-  member,
-  last,
-}: {
-  member: HouseholdMember;
-  last: boolean;
-}) {
+function MemberRow({ member, last }: MemberRowProps) {
   const name = listName(member);
   return (
     <View style={[styles.row, !last && styles.divider]}>

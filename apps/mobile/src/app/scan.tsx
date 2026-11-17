@@ -1,10 +1,5 @@
-import type { CreateScanResponse } from "@foodscanner/shared";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  CameraView,
-  useCameraPermissions,
-  type PermissionResponse,
-} from "expo-camera";
+import { CameraView, useCameraPermissions } from "expo-camera";
 import { type Href, router, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -31,6 +26,15 @@ import { productQueryKey } from "@/features/verdict/api";
 import { useLoop } from "@/hooks/use-loop";
 import { colors, radii, screenGutter, spacing } from "@/theme";
 import { closeScreen } from "@/navigation/close-screen";
+import type {
+  CameraPermissionProps,
+  LookupQuery,
+  LookupSheetProps,
+  LookupState,
+  ScannerProps,
+  TypeBarcodeProps,
+  ViewfinderProps,
+} from "@/features/scanner/scanner.types";
 
 /** A label being sent and read: a new product's, or with no barcode, a
  *  label check's (design 2d). */
@@ -71,13 +75,7 @@ function Scanner({
   noBarcode,
   permission,
   onAllow,
-}: {
-  memberId: string | undefined;
-  label: string | undefined;
-  noBarcode: boolean;
-  permission: PermissionResponse;
-  onAllow: () => Promise<PermissionResponse>;
-}) {
+}: ScannerProps) {
   const queryClient = useQueryClient();
   const household = useHousehold();
   const [torch, setTorch] = useState(false);
@@ -342,7 +340,7 @@ function Scanner({
 }
 
 /** The frame with mango corners and a sweeping line (design S10). */
-function Viewfinder({ scanning }: { scanning: boolean }) {
+function Viewfinder({ scanning }: ViewfinderProps) {
   const progress = useLoop(1800);
   const translateY = progress.interpolate({
     inputRange: [0, 0.5, 1],
@@ -365,13 +363,7 @@ function Viewfinder({ scanning }: { scanning: boolean }) {
   );
 }
 
-function TypeBarcode({
-  onCancel,
-  onLookUp,
-}: {
-  onCancel: () => void;
-  onLookUp: (barcode: string) => void;
-}) {
+function TypeBarcode({ onCancel, onLookUp }: TypeBarcodeProps) {
   const [text, setText] = useState("");
   const barcode = parseBarcode(text);
   return (
@@ -399,17 +391,8 @@ function TypeBarcode({
   );
 }
 
-type LookupState =
-  | { kind: "looking" }
-  | { kind: "notFound" }
-  | { kind: "error"; message: string };
-
 /** "found" isn't a state here: the verdict screen replaces this one. */
-function lookupState(lookup: {
-  isError: boolean;
-  error: Error | null;
-  data: CreateScanResponse | undefined;
-}): LookupState {
+function lookupState(lookup: LookupQuery): LookupState {
   if (lookup.isError && lookup.error) {
     return { kind: "error", message: lookup.error.message };
   }
@@ -423,12 +406,7 @@ function LookupSheet({
   state,
   onRetry,
   onScanAnother,
-}: {
-  barcode: string;
-  state: LookupState;
-  onRetry: () => void;
-  onScanAnother: () => void;
-}) {
+}: LookupSheetProps) {
   return (
     <View style={styles.sheetHost}>
       <View style={styles.sheet} accessibilityLiveRegion="polite">
@@ -476,11 +454,7 @@ function CameraPermission({
   permission,
   onAllow,
   onType,
-}: {
-  permission: PermissionResponse;
-  onAllow: () => Promise<PermissionResponse>;
-  onType: () => void;
-}) {
+}: CameraPermissionProps) {
   return (
     <SafeAreaView style={styles.permission}>
       <IconButton icon="close" label="Close scanner" onPress={closeScreen} />

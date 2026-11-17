@@ -1,13 +1,7 @@
 import { StyleSheet, View } from "react-native";
-import {
-  Icon,
-  type IconName,
-  Text,
-  toneColors,
-  VERDICT_MARKS,
-  type VerdictTone,
-} from "@/components";
+import { Icon, Text, toneColors, VERDICT_MARKS } from "@/components";
 import { colors, fonts } from "@/theme";
+import type { VerdictRingProps } from "./scans.types";
 
 /**
  * Someone's initial (or an icon) ringed in their verdict's colour, with its
@@ -19,12 +13,7 @@ export function VerdictRing({
   icon,
   severity,
   size = 30,
-}: {
-  initials?: string;
-  icon?: IconName;
-  severity: VerdictTone;
-  size?: number;
-}) {
+}: VerdictRingProps) {
   const tone = toneColors(severity);
   const mark = Math.round(size * 0.55);
   return (

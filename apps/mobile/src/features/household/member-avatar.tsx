@@ -2,15 +2,10 @@ import type { HouseholdMember } from "@foodscanner/shared";
 import { Avatar } from "@/components";
 import { relationshipTints } from "@/theme";
 import { ownName } from "./members";
+import type { MemberAvatarProps } from "./household.types";
 
 /** A family member's circle: their initial ("You" while you're unnamed), in their relationship's tint. */
-export function MemberAvatar({
-  member,
-  size,
-}: {
-  member: Pick<HouseholdMember, "relationship" | "name">;
-  size?: number;
-}) {
+export function MemberAvatar({ member, size }: MemberAvatarProps) {
   const tint = relationshipTints[member.relationship];
   return (
     <Avatar

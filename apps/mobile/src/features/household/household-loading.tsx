@@ -1,14 +1,10 @@
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { Button, Text } from "@/components";
 import { spacing } from "@/theme";
-import type { useHousehold } from "./api";
+import type { HouseholdLoadingProps } from "./household.types";
 
 /** Until the family first loads: a spinner, or a retry if it couldn't. */
-export function HouseholdLoading({
-  household,
-}: {
-  household: ReturnType<typeof useHousehold>;
-}) {
+export function HouseholdLoading({ household }: HouseholdLoadingProps) {
   if (!household.isError) {
     return <ActivityIndicator style={styles.center} />;
   }

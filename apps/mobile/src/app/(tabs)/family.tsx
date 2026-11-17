@@ -22,6 +22,11 @@ import { HouseholdLoading } from "@/features/household/household-loading";
 import { MemberAvatar } from "@/features/household/member-avatar";
 import { familyProgress, listName } from "@/features/household/members";
 import { colors, radii, screenGutter, spacing } from "@/theme";
+import type {
+  AddConditionsChipProps,
+  MemberCardProps,
+  ProgressRingProps,
+} from "@/features/household/household.types";
 
 /** Everyone in the family, each with an edit button (design 8). */
 export default function Family() {
@@ -79,7 +84,7 @@ function progressMessage(next: HouseholdMember | undefined): string {
     : `Add ${next.name}'s conditions to finish your family profile.`;
 }
 
-function MemberCard({ member }: { member: HouseholdMember }) {
+function MemberCard({ member }: MemberCardProps) {
   return (
     <Card style={styles.card}>
       <MemberAvatar member={member} size={48} />
@@ -125,14 +130,7 @@ function FamilyFull() {
 }
 
 /** Dashed, so it reads as "nothing here yet — tap to add". */
-function AddConditionsChip({
-  label,
-  onPress,
-}: {
-  /** For screen readers: who it's for. */
-  label: string;
-  onPress: () => void;
-}) {
+function AddConditionsChip({ label, onPress }: AddConditionsChipProps) {
   return (
     <Pressable
       accessibilityRole="button"
@@ -150,7 +148,7 @@ function AddConditionsChip({
 }
 
 /** "2/3": people scans are personal for, out of everyone. */
-function ProgressRing({ done, total }: { done: number; total: number }) {
+function ProgressRing({ done, total }: ProgressRingProps) {
   const radius = 36;
   const length = 2 * Math.PI * radius;
   const filled = total === 0 ? 0 : (done / total) * length;

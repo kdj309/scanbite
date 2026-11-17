@@ -1,5 +1,4 @@
 import { useQuery } from "@tanstack/react-query";
-import type { ReactNode } from "react";
 import {
   ActivityIndicator,
   Button,
@@ -10,6 +9,7 @@ import {
 import { signInAnonymously } from "@/api/client";
 import { API_BASE_URL } from "@/api/config";
 import { readTokens } from "@/api/token-store";
+import type { SessionProviderProps } from "./session.types";
 
 /** The stored session, or a new anonymous account on first open. */
 async function ensureSession(): Promise<true> {
@@ -23,7 +23,7 @@ async function ensureSession(): Promise<true> {
  * Makes sure there is a session before any screen renders, so the
  * household is saved from the first scan (no sign-up before scanning).
  */
-export function SessionProvider({ children }: { children: ReactNode }) {
+export function SessionProvider({ children }: SessionProviderProps) {
   const session = useQuery({
     queryKey: ["session"],
     queryFn: ensureSession,

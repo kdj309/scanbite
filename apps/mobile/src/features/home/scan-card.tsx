@@ -10,18 +10,10 @@ import {
   shadows,
   spacing,
 } from "@/theme";
+import type { ScanCardProps } from "./home.types";
 
 /** Home's big scan button (design S1): who it checks, then "Open scanner". */
-export function ScanCard({
-  title,
-  subtitle,
-  memberId,
-}: {
-  title: string;
-  subtitle: string;
-  /** Scan for one person; undefined scans for everyone. */
-  memberId?: string;
-}) {
+export function ScanCard({ title, subtitle, memberId }: ScanCardProps) {
   return (
     <Pressable
       accessibilityRole="button"

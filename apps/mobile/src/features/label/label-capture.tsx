@@ -1,5 +1,5 @@
 import { CameraView } from "expo-camera";
-import { type RefObject, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -12,6 +12,12 @@ import Svg, { Circle } from "react-native-svg";
 import { Bitey, Icon, Text } from "@/components";
 import { colors, minTouchTarget, radii, spacing } from "@/theme";
 import { SIDE_SECONDS, inTurn, shrinkPhoto, videoFrames } from "./frames";
+import type {
+  LabelCaptureProps,
+  PhotoCaptureProps,
+  ProgressRingProps,
+  VideoCaptureProps,
+} from "./label.types";
 
 type Mode = "video" | "photos";
 
@@ -36,13 +42,7 @@ export function LabelCapture({
   cancelLabel,
   onDone,
   onCancel,
-}: {
-  title: string;
-  /** "Not now" when the app offered this; "Cancel" when it was asked for. */
-  cancelLabel: string;
-  onDone: (photoUris: string[]) => void;
-  onCancel: () => void;
-}) {
+}: LabelCaptureProps) {
   const camera = useRef<CameraView>(null);
   const [mode, setMode] = useState<Mode>("video");
   const [ready, setReady] = useState(false);
@@ -180,14 +180,7 @@ function VideoCapture({
   onRecordingChange,
   onRecorded,
   onFailed,
-}: {
-  camera: RefObject<CameraView | null>;
-  ready: boolean;
-  recording: boolean;
-  onRecordingChange: (recording: boolean) => void;
-  onRecorded: (uri: string, seconds: number) => void;
-  onFailed: () => void;
-}) {
+}: VideoCaptureProps) {
   const [seconds, setSeconds] = useState(0);
 
   useEffect(() => {
@@ -272,7 +265,7 @@ const RING = 84;
 const RING_RADIUS = 38;
 
 /** How much of the longest video is used up. */
-function ProgressRing({ progress }: { progress: number }) {
+function ProgressRing({ progress }: ProgressRingProps) {
   const length = 2 * Math.PI * RING_RADIUS;
   return (
     <Svg
@@ -307,15 +300,7 @@ function ProgressRing({ progress }: { progress: number }) {
   );
 }
 
-function PhotoCapture({
-  camera,
-  ready,
-  onSend,
-}: {
-  camera: RefObject<CameraView | null>;
-  ready: boolean;
-  onSend: (uris: string[]) => void;
-}) {
+function PhotoCapture({ camera, ready, onSend }: PhotoCaptureProps) {
   // A slot per side, so retaking one doesn't shift the others.
   const [photos, setPhotos] = useState<(string | undefined)[]>([]);
   const taken = photos.filter((uri): uri is string => uri !== undefined);

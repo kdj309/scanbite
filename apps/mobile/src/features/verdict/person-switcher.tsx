@@ -2,7 +2,8 @@ import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { SEVERITY_WORDS, Text, type VerdictTone } from "@/components";
 import { VerdictRing } from "@/features/scans/verdict-ring";
 import { colors, radii, spacing } from "@/theme";
-import { ALL, type PersonOption } from "./view";
+import { ALL } from "./view";
+import type { PersonSwitcherProps } from "./verdict.types";
 
 const WORDS: Record<VerdictTone, string> = {
   ...SEVERITY_WORDS,
@@ -14,11 +15,7 @@ export function PersonSwitcher({
   options,
   selected,
   onSelect,
-}: {
-  options: readonly PersonOption[];
-  selected: string;
-  onSelect: (id: string) => void;
-}) {
+}: PersonSwitcherProps) {
   // With All + 5 people the names stop fitting: fixed-width tiles scroll.
   const crowded = options.length >= 6;
   return (

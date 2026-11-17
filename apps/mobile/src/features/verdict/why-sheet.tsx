@@ -1,19 +1,10 @@
-import type { RuleExplainerItem } from "@foodscanner/shared";
 import { Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { Button, IconButton, Text } from "@/components";
 import { colors, radii, screenGutter, spacing } from "@/theme";
+import type { WhySheetProps } from "./verdict.types";
 
 /** "Why does this matter?" for one rule (design S3). */
-export function WhySheet({
-  explainer,
-  forWhom,
-  onClose,
-}: {
-  explainer: RuleExplainerItem | undefined;
-  /** "For Papa · Sugar": shown with the personal line, if there is one. */
-  forWhom: string | undefined;
-  onClose: () => void;
-}) {
+export function WhySheet({ explainer, forWhom, onClose }: WhySheetProps) {
   return (
     <Modal
       visible={explainer !== undefined}
