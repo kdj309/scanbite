@@ -10,8 +10,8 @@ import {
   samePack,
   shouldAutoPromote,
   versionsConflict,
-  type VersionSnapshot,
 } from "./conflict";
+import type { VersionSnapshot } from "./conflict.types";
 
 const live: VersionSnapshot = {
   name: "Fixture Oats",

@@ -1,3 +1,14 @@
+import type { Nutrition } from "@foodscanner/shared";
+import type {
+  AutoPromoteInput,
+  ExtractionPlan,
+  ExtractionPlanInput,
+  IncomingPackRead,
+  PackIdentity,
+  PackRead,
+  VersionSnapshot,
+} from "./conflict.types";
+
 export const AUTO_PROMOTE_CONFIDENCE = 0.9;
 
 /**
@@ -24,23 +35,12 @@ export const NUTRITION_RELATIVE_TOLERANCE = 0.07;
  *  collapse to ~0 and treat trace-level noise as a meaningful jump. */
 export const NUTRITION_ABS_FLOOR = 0.5;
 
-export type VersionSnapshot = {
-  name: string;
-  brand: string;
-  nutrition: Record<string, number | string | null>;
-  resolvedCanonicalIds: string[];
-  unresolvedRaw: string[];
-  extraction_confidence: number;
-};
-
-export type ExtractionPlan = { kind: "reuse_live" } | { kind: "pending" };
-
 function normalize(value: string): string {
   return value.trim().toLowerCase();
 }
 
 function nutritionNumber(
-  nutrition: Record<string, number | string | null>,
+  nutrition: Nutrition,
   key: string
 ): number | undefined {
   const raw = nutrition[key];
@@ -67,10 +67,7 @@ function withinTolerance(left: number, right: number): boolean {
   return Math.abs(left - right) <= allowed;
 }
 
-function nutritionConflicts(
-  live: Record<string, number | string | null>,
-  incoming: Record<string, number | string | null>
-): boolean {
+function nutritionConflicts(live: Nutrition, incoming: Nutrition): boolean {
   const keys = new Set([...Object.keys(live), ...Object.keys(incoming)]);
   for (const key of keys) {
     const left = nutritionNumber(live, key);
@@ -126,12 +123,7 @@ export function versionsConflict(
  * Live versions also have no confirmation count yet — every live row is
  * equally easy to supersede once confidence clears the threshold.
  */
-export function shouldAutoPromote(input: {
-  hasLiveVersion: boolean;
-  extractionConfidence: number;
-  /** See fillsNoResult: treated like a first read of the product. */
-  fillsNoResult?: boolean;
-}): boolean {
+export function shouldAutoPromote(input: AutoPromoteInput): boolean {
   if (!input.hasLiveVersion || input.fillsNoResult) {
     return true;
   }
@@ -170,10 +162,7 @@ export function sameBrand(left: string, right: string): boolean {
  * company on one ("Sunfeast") and its product line on the other ("Mom's
  * Magic"), where that line is part of the other read's product name.
  */
-export function samePack(
-  left: { brand: string; name: string },
-  right: { brand: string; name: string }
-): boolean {
+export function samePack(left: PackIdentity, right: PackIdentity): boolean {
   return (
     sameBrand(left.brand, right.brand) ||
     brandInName(left.brand, right.name) ||
@@ -216,13 +205,8 @@ function brandInName(brand: string, name: string): boolean {
  * it (merging two photo sets can mix two products or recipes).
  */
 export function fillsNoResult(
-  live: { ingredientCount: number; brand: string; name: string },
-  incoming: {
-    ingredientCount: number;
-    brand: string;
-    name: string;
-    extractionConfidence: number;
-  }
+  live: PackRead,
+  incoming: IncomingPackRead
 ): boolean {
   return (
     live.ingredientCount === 0 &&
@@ -232,10 +216,9 @@ export function fillsNoResult(
   );
 }
 
-export function planAfterExtraction(input: {
-  live: VersionSnapshot | null;
-  incoming: VersionSnapshot;
-}): ExtractionPlan {
+export function planAfterExtraction(
+  input: ExtractionPlanInput
+): ExtractionPlan {
   if (!input.live) {
     return { kind: "pending" };
   }

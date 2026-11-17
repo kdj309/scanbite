@@ -17,6 +17,7 @@ import {
 } from "../database/schemas/household-member.schema";
 import { User, UserDocument } from "../database/schemas/user.schema";
 import { isDuplicateKeyError } from "../common/mongo-errors";
+import type { MemberFields } from "./household.types";
 import { serializeHouseholdMember } from "./serialize-member";
 
 @Injectable()
@@ -43,34 +44,39 @@ export class HouseholdService {
    */
   async createForUser(userId: string, body: CreateHouseholdMemberRequest) {
     const owner = new Types.ObjectId(userId);
-    const fields = {
+    const fields: MemberFields = {
       name: body.name,
       relationship: body.relationship,
       age_band: body.age_band,
       conditions: body.conditions ?? [],
       allergies: body.allergies ?? [],
     };
-    // A retry of someone already saved is an update, so it's fine when full.
-    const retry =
-      body.client_id !== undefined &&
-      (await this.members.exists({
-        owner_user_id: owner,
-        client_id: body.client_id,
-      })) !== null;
-    if (!retry) {
-      await this.requireRoom(owner);
-    }
     if (body.client_id === undefined) {
+      await this.requireRoom(owner);
       const created = await this.members.create({
         owner_user_id: owner,
         ...fields,
       });
       return serializeHouseholdMember(created);
     }
+    return this.saveByClientId(owner, body.client_id, fields);
+  }
+
+  /** Create the person, or update them if this client_id saved them before. */
+  private async saveByClientId(
+    owner: Types.ObjectId,
+    clientId: string,
+    fields: MemberFields
+  ) {
+    // A retry of someone already saved is an update, so it's fine when full.
+    const saved = await this.isSaved(owner, clientId);
+    if (!saved) {
+      await this.requireRoom(owner);
+    }
     const upsert = () =>
       this.members
         .findOneAndUpdate(
-          { owner_user_id: owner, client_id: body.client_id },
+          { owner_user_id: owner, client_id: clientId },
           { $set: fields },
           { upsert: true, new: true, runValidators: true }
         )
@@ -86,6 +92,14 @@ export class HouseholdService {
       }
       return serializeHouseholdMember(await upsert());
     }
+  }
+
+  private async isSaved(owner: Types.ObjectId, clientId: string) {
+    const existing = await this.members.exists({
+      owner_user_id: owner,
+      client_id: clientId,
+    });
+    return existing !== null;
   }
 
   private async requireRoom(owner: Types.ObjectId) {

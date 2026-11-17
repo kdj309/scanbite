@@ -1,4 +1,4 @@
-import type { VersionSnapshot } from "../consensus/conflict";
+import type { VersionSnapshot } from "../consensus/conflict.types";
 import type { ProductVersionDocument } from "../database/schemas/product-version.schema";
 import type { ExtractionOutput } from "../workers/vision/extraction-output";
 import type { ResolvedIngredientRow } from "./product-version-ingestion.service";
