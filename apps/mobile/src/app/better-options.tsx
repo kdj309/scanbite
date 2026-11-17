@@ -1,8 +1,6 @@
 import type {
-  Alternative,
   AlternativesResponse,
   HouseholdMember,
-  ProductSummary,
 } from "@foodscanner/shared";
 import { useLocalSearchParams } from "expo-router";
 import {
@@ -16,23 +14,28 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   Bitey,
+  BrandScreen,
   Button,
-  DotPattern,
   Icon,
-  IconButton,
   SeverityBadge,
   Text,
 } from "@/components";
 import { useHousehold } from "@/features/household/api";
 import { joinNames, sentenceName } from "@/features/scans/recent";
 import { useBetterOptions, useProduct } from "@/features/verdict/api";
+import type {
+  BetterOptionsParams,
+  InsteadOfProps,
+  OptionCardProps,
+  ThumbProps,
+} from "@/features/verdict/better-options.types";
 import { STORE_NAMES } from "@/features/verdict/verdict-screen";
 import { closeScreen } from "@/navigation/close-screen";
 import { colors, radii, screenGutter, severityColors, spacing } from "@/theme";
 
 /** Healthier swaps for a flagged product, with where to buy (design S4). */
 export default function BetterOptions() {
-  const { barcode } = useLocalSearchParams<{ barcode: string }>();
+  const { barcode } = useLocalSearchParams<BetterOptionsParams>();
   const options = useBetterOptions(barcode);
   const product = useProduct(barcode);
   const household = useHousehold();
@@ -41,68 +44,58 @@ export default function BetterOptions() {
     product.data?.found === true ? product.data.overall.severity : undefined;
 
   return (
-    <View style={styles.fill}>
-      <View style={[styles.header, { paddingTop: insets.top }]}>
-        <DotPattern />
-        <View style={styles.bar}>
-          <IconButton
-            icon="chevronLeft"
-            label="Back"
-            color={colors.onBrand}
-            onPress={closeScreen}
-            style={styles.barButton}
-          />
-        </View>
+    <BrandScreen
+      onBack={closeScreen}
+      header={
         <Text variant="h1" color="onBrand" accessibilityRole="header">
           {title(options.data, household.data?.members ?? [])}
         </Text>
-      </View>
-      <View style={styles.sheet}>
-        {options.data === undefined ? (
-          options.isError ? (
-            <View style={styles.center}>
-              <Text>Can’t load better options right now.</Text>
-              <Button
-                title="Try again"
-                variant="secondary"
-                onPress={() => void options.refetch()}
-              />
-            </View>
-          ) : (
-            <ActivityIndicator style={styles.center} />
-          )
+      }
+    >
+      {options.data === undefined ? (
+        options.isError ? (
+          <View style={styles.center}>
+            <Text>Can’t load better options right now.</Text>
+            <Button
+              title="Try again"
+              variant="secondary"
+              onPress={() => void options.refetch()}
+            />
+          </View>
         ) : (
-          <ScrollView
-            contentContainerStyle={[
-              styles.list,
-              { paddingBottom: insets.bottom + spacing.lg },
-            ]}
-          >
-            <InsteadOf product={options.data.instead_of} severity={severity} />
-            {options.data.alternatives.length === 0 ? (
-              <NothingBetterYet />
-            ) : (
-              <>
-                {options.data.alternatives.map((alternative, i) => (
-                  <OptionCard
-                    key={alternative.product.product_version_id}
-                    alternative={alternative}
-                    top={i === 0}
-                  />
-                ))}
-                <Text variant="caption" style={styles.centered}>
-                  {options.data.alternatives.some((a) =>
-                    a.product.buy_links.some((link) => link.affiliate)
-                  )
-                    ? "Check the pack before buying · Links may earn us a commission"
-                    : "Check the pack before buying"}
-                </Text>
-              </>
-            )}
-          </ScrollView>
-        )}
-      </View>
-    </View>
+          <ActivityIndicator style={styles.center} />
+        )
+      ) : (
+        <ScrollView
+          contentContainerStyle={[
+            styles.list,
+            { paddingBottom: insets.bottom + spacing.lg },
+          ]}
+        >
+          <InsteadOf product={options.data.instead_of} severity={severity} />
+          {options.data.alternatives.length === 0 ? (
+            <NothingBetterYet />
+          ) : (
+            <>
+              {options.data.alternatives.map((alternative, i) => (
+                <OptionCard
+                  key={alternative.product.product_version_id}
+                  alternative={alternative}
+                  top={i === 0}
+                />
+              ))}
+              <Text variant="caption" style={styles.centered}>
+                {options.data.alternatives.some((a) =>
+                  a.product.buy_links.some((link) => link.affiliate)
+                )
+                  ? "Check the pack before buying · Links may earn us a commission"
+                  : "Check the pack before buying"}
+              </Text>
+            </>
+          )}
+        </ScrollView>
+      )}
+    </BrandScreen>
   );
 }
 
@@ -121,13 +114,7 @@ function title(
 }
 
 /** The scanned product these replace, with its verdict. */
-function InsteadOf({
-  product,
-  severity,
-}: {
-  product: ProductSummary;
-  severity: "green" | "yellow" | "red" | undefined;
-}) {
+function InsteadOf({ product, severity }: InsteadOfProps) {
   return (
     <View
       style={[
@@ -144,13 +131,7 @@ function InsteadOf({
   );
 }
 
-function OptionCard({
-  alternative,
-  top,
-}: {
-  alternative: Alternative;
-  top: boolean;
-}) {
+function OptionCard({ alternative, top }: OptionCardProps) {
   const { product, improvements } = alternative;
   const details = [product.brand, product.quantity].filter(Boolean).join(" · ");
   return (
@@ -209,15 +190,7 @@ function OptionCard({
   );
 }
 
-function Thumb({
-  product,
-  size,
-  tint = colors.surface,
-}: {
-  product: ProductSummary;
-  size: number;
-  tint?: string;
-}) {
+function Thumb({ product, size, tint = colors.surface }: ThumbProps) {
   return (
     <View
       style={[
@@ -255,23 +228,6 @@ function NothingBetterYet() {
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   centered: { textAlign: "center" },
-  header: {
-    gap: spacing.xs,
-    paddingHorizontal: screenGutter,
-    paddingBottom: 40,
-    overflow: "hidden",
-    backgroundColor: colors.brand,
-  },
-  bar: { flexDirection: "row", paddingVertical: spacing.xs },
-  barButton: { backgroundColor: "rgba(255,255,255,0.16)" },
-  sheet: {
-    flex: 1,
-    marginTop: -26,
-    borderTopLeftRadius: radii.sheet,
-    borderTopRightRadius: radii.sheet,
-    overflow: "hidden",
-    backgroundColor: colors.background,
-  },
   list: { gap: spacing.md, padding: screenGutter, paddingTop: spacing.md },
   center: {
     flex: 1,

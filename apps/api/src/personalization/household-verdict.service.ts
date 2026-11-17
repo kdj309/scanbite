@@ -12,6 +12,7 @@ import { ScoringService } from "../scoring/scoring.service";
 import { householdVerdict } from "./household-verdict";
 import { productContext } from "./product-context";
 import { PersonalizationService } from "./personalization.service";
+import type { ReadLabel } from "./personalization.types";
 
 export type HouseholdProductVerdict = {
   response: ProductFoundResponse;
@@ -44,6 +45,7 @@ export class HouseholdVerdictService {
         product: this.summaries.summarize(version),
         ...householdVerdict(productContext(version, objective, rules), members),
         ...coverage(objective),
+        ...whatWasRead(version),
       },
       ruleSetVersion: objective.rule_set_version,
     };
@@ -71,10 +73,18 @@ export class HouseholdVerdictService {
         product: labelCheckSummary(labelCheckId, label),
         ...householdVerdict(context, members),
         ...coverage(objective),
+        ...whatWasRead(label),
       },
       ruleSetVersion: objective.rule_set_version,
     };
   }
+}
+
+function whatWasRead(label: ReadLabel) {
+  return {
+    ingredients: label.ingredients.map((ingredient) => ingredient.raw),
+    nutrition: label.nutrition,
+  };
 }
 
 function coverage(objective: ObjectiveVerdict) {

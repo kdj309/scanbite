@@ -9,6 +9,7 @@ export { Text, type TextColor, type TextProps } from "./atoms/text";
 export { TextField, type TextFieldProps } from "./atoms/text-field";
 
 // Molecules: atoms combined into one meaningful piece of UI.
+export { BrandScreen, type BrandScreenProps } from "./molecules/brand-screen";
 export { ChoiceRow, type ChoiceRowProps } from "./molecules/choice-row";
 export { SelectPill, type SelectPillProps } from "./molecules/select-pill";
 export { SelectTile, type SelectTileProps } from "./molecules/select-tile";

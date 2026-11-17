@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { nutritionSchema } from "./nutrition";
 import { confidenceSchema, objectIdSchema, severitySchema } from "./primitives";
 
 // GTIN family: EAN-8, UPC-A (12), EAN-13, GTIN-14.
@@ -19,6 +20,9 @@ export const flagReasonSchema = z.object({
   kind: z.literal("flag"),
   severity: severitySchema,
   ...reasonFields,
+  // The fact the rule read ("sodium_per_100g", "nova_group"), so the app
+  // can mark a flagged nutrient.
+  field: z.string().optional(),
 });
 export type FlagReason = z.infer<typeof flagReasonSchema>;
 
@@ -137,6 +141,11 @@ export const productFoundResponseSchema = z.object({
   members: z.array(memberVerdictSchema),
   confidence: confidenceSchema,
   unresolved_ingredients: z.array(z.string()),
+  // What the verdict was decided from (How we decided, design 12a): the
+  // ingredients as read, and nutrition per 100 g or 100 ml as stored
+  // (keys like "sugar_per_100g"; text when the label's value wasn't a number).
+  ingredients: z.array(z.string()),
+  nutrition: nutritionSchema,
 });
 export type ProductFoundResponse = z.infer<typeof productFoundResponseSchema>;
 

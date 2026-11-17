@@ -20,6 +20,7 @@ export function useProduct(barcode: string) {
     // Just scanned: the scan's own result is current, no need to ask again.
     staleTime: 60_000,
     queryFn: () => api(`/products/${barcode}`, productLookupResponseSchema),
+    enabled: Boolean(barcode),
   });
 }
 

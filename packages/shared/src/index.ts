@@ -6,6 +6,7 @@ export * from "./conditions";
 export * from "./constants";
 export * from "./devices";
 export * from "./household";
+export * from "./nutrition";
 export * from "./primitives";
 export * from "./products";
 export * from "./rule-explainers";

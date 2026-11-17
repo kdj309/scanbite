@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import type { AllergenCode, HealthConditionCode } from "@foodscanner/shared";
 import type { AllergenEvidence } from "../allergens/allergen-evidence";
 import type { EvaluationResult } from "../scoring/evaluate-rules";
-import type { PersonalizationRuleInput } from "./apply-personalization";
+import type { PersonalizationRuleInput } from "./personalization.types";
 import {
   householdVerdict,
   type HouseholdMemberInput,

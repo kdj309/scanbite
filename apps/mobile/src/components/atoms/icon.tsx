@@ -40,6 +40,20 @@ const ICONS = {
       strokeWidth={1.8}
     />
   ),
+  /** "The rules we use" (design S12). */
+  scales: (
+    <Path
+      d="M10 2.5v15M4 6h12M5.5 6l-2.5 6a3 3 0 0 0 5 0zM14.5 6l-2.5 6a3 3 0 0 0 5 0zM7 17.5h6"
+      strokeWidth={1.7}
+    />
+  ),
+  /** "What we never do" (design S12). */
+  never: (
+    <>
+      <Circle cx={10} cy={10} r={7.5} strokeWidth={1.8} />
+      <Path d="M4.8 4.8l10.4 10.4" strokeWidth={1.8} />
+    </>
+  ),
   torch: <Path d="M11 2L4 11h5l-1 7 7-9h-5l1-7z" strokeWidth={1.9} />,
   /** "Scan the label again" (design 2c). */
   camera: (

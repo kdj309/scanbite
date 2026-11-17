@@ -1,20 +1,10 @@
-import type {
-  FlagReason,
-  HealthConditionCode,
-  UncheckedReason,
-} from "@foodscanner/shared";
-import type {
-  ProductForm,
-  RuleOperator,
-} from "../database/schemas/rule-set.schema";
-import type { PersonalizationEffect } from "../database/schemas/personalization-rule.schema";
+import type { FlagReason, UncheckedReason } from "@foodscanner/shared";
 import {
   checkOperator,
   escalateOneLevel,
   readFact,
   ruleAppliesToForm,
   worstSeverity,
-  type EvaluationResult,
 } from "../scoring/evaluate-rules";
 import {
   FALLBACK_LABEL,
@@ -25,35 +15,20 @@ import {
   type MemberOverlay,
   type TopicCheck,
 } from "./member-overlay";
+import type {
+  ApplyPersonalizationInput,
+  ConditionGap,
+} from "./personalization.types";
 
-export type PersonalizationRuleInput = {
-  id: string;
-  condition: HealthConditionCode;
-  field: string;
-  operator: RuleOperator;
-  threshold?: number;
-  value?: unknown;
-  effect: PersonalizationEffect;
-  message: string;
-  label?: string;
-  applies_to?: ProductForm;
-};
-
-export function applyPersonalization(input: {
-  base: EvaluationResult;
-  facts: Record<string, unknown>;
-  memberConditions: HealthConditionCode[];
-  rules: PersonalizationRuleInput[];
-}): MemberOverlay {
+export function applyPersonalization(
+  input: ApplyPersonalizationInput
+): MemberOverlay {
   const flags: FlagReason[] = [];
   const checked: TopicCheck[] = [];
   const flaggedTopics: string[] = [];
   // Several conditions can share a topic (salt for BP, heart and kidneys):
   // one "not checked" per topic naming all of them, and one flag per topic.
-  const gaps = new Map<
-    string,
-    { field: string; ruleId: string; conditions: string[] }
-  >();
+  const gaps = new Map<string, ConditionGap>();
   const productForm = readFact(input.facts, "product_form");
 
   for (const rule of input.rules) {
@@ -107,6 +82,7 @@ export function applyPersonalization(input: {
       label: rule.label?.trim() || FALLBACK_LABEL.flag,
       text: rule.message,
       rule_id: rule.id,
+      field: rule.field,
     });
   }
 

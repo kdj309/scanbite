@@ -5,7 +5,7 @@ import {
   PersonalizationRule,
   PersonalizationRuleDocument,
 } from "../database/schemas/personalization-rule.schema";
-import type { PersonalizationRuleInput } from "./apply-personalization";
+import type { PersonalizationRuleInput } from "./personalization.types";
 
 @Injectable()
 export class PersonalizationService {

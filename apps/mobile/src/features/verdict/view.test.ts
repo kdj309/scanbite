@@ -1,106 +1,20 @@
-import type {
-  HouseholdMember,
-  MemberVerdict,
-  ProductFoundResponse,
-  Severity,
-  VerdictReason,
-} from "@foodscanner/shared";
+import type { VerdictReason } from "@foodscanner/shared";
 import { ALL, defaultSelection, personOptions, verdictView } from "./view";
-
-const YOU = "6ab7d04ffb5027914b128aed";
-const AMMA = "6ab7d04ffb5027914b128aee";
-const PAPA = "6ab7d04ffb5027914b128aef";
-
-function member(id: string, fields: Partial<HouseholdMember>): HouseholdMember {
-  return {
-    id,
-    name: "Self",
-    relationship: "self",
-    conditions: [],
-    allergies: [],
-    created_at: "2026-10-17T00:00:00.000Z",
-    updated_at: "2026-10-17T00:00:00.000Z",
-    ...fields,
-  };
-}
-
-const you = member(YOU, {});
-const amma = member(AMMA, {
-  name: "Amma",
-  relationship: "parent",
-  conditions: ["hypertensive"],
-});
-const papa = member(PAPA, {
-  name: "Papa",
-  relationship: "parent",
-  conditions: ["diabetic", "hypertensive"],
-});
-
-const flag = (
-  rule: string,
-  label: string,
-  severity: Severity
-): VerdictReason => ({
-  kind: "flag",
-  severity,
-  label,
-  text: `${label} text`,
-  rule_id: rule,
-});
-const sugar = flag("diabetic_sugar", "Too sweet for diabetes", "red");
-const nova = flag("nova4", "Ultra-processed", "yellow");
-const palm = flag("palm_oil", "Palm oil", "yellow");
-
-function verdict(
-  m: HouseholdMember,
-  severity: Severity,
-  reasons: VerdictReason[],
-  hasProfile = true
-): MemberVerdict {
-  return {
-    member_id: m.id,
-    name: m.name,
-    has_health_profile: hasProfile,
-    verdict: {
-      severity,
-      reasons,
-      checked: [{ label: "Salt", for: [] }],
-    },
-  };
-}
-
-function result(
-  overall: ProductFoundResponse["overall"],
-  members: MemberVerdict[]
-): ProductFoundResponse {
-  return {
-    found: true,
-    product: {
-      name: "Chocolate malt drink",
-      brand: "Brand",
-      product_version_id: "6ab7d04ffb5027914b128af1",
-      source: "catalog",
-      verifying: false,
-      has_ingredients: true,
-      image_url: null,
-      shelf: "Biscuits & cakes",
-      quantity: "200 g",
-      veg: "veg",
-      buy_links: [],
-    },
-    overall,
-    members,
-    confidence: "full",
-    unresolved_ingredients: [],
-  };
-}
-
-const family = [you, amma, papa];
-const flagged = result({ severity: "red", member_id: PAPA }, [
-  verdict(you, "yellow", [nova], false),
-  verdict(amma, "yellow", [nova, palm]),
-  verdict(papa, "red", [sugar, nova, palm]),
-]);
+import {
+  YOU,
+  AMMA,
+  PAPA,
+  member,
+  you,
+  amma,
+  papa,
+  sugar,
+  nova,
+  verdict,
+  result,
+  family,
+  flagged,
+} from "./fixtures";
 
 describe("defaultSelection", () => {
   it("opens on whoever it was scanned for, else the person it's worst for", () => {

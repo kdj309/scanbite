@@ -43,6 +43,7 @@ describe("applyPersonalization", () => {
         label: "Too sweet for diabetes",
         text: "Escalated: high sugar flagged for diabetic profile",
         rule_id: "diabetic_sugar_escalation",
+        field: "sugar_per_100g",
       },
     ]);
   });

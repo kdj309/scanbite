@@ -1,8 +1,4 @@
-import type {
-  BuyLink,
-  HouseholdMember,
-  ProductFoundResponse,
-} from "@foodscanner/shared";
+import type { BuyLink } from "@foodscanner/shared";
 import { router } from "expo-router";
 import { useState } from "react";
 import {
@@ -27,14 +23,21 @@ import { healthChecks } from "@/features/household/members";
 import { useRuleExplainer } from "@/features/verdict/api";
 import { MoreList } from "@/features/verdict/more-list";
 import { PersonSwitcher } from "@/features/verdict/person-switcher";
+import { decidedParams } from "@/features/verdict/decided";
 import { DisclaimerTip } from "@/features/verdict/tip";
 import {
   defaultSelection,
   personOptions,
   verdictView,
-  type VerdictView,
 } from "@/features/verdict/view";
 import { WhySheet } from "@/features/verdict/why-sheet";
+import type {
+  ActionsProps,
+  HeroProps,
+  ReasonCardProps,
+  VegMarkProps,
+  VerdictProps,
+} from "@/features/verdict/verdict-screen.types";
 import { colors, fonts, radii, screenGutter, spacing } from "@/theme";
 import { closeScreen } from "@/navigation/close-screen";
 
@@ -44,13 +47,7 @@ export function Verdict({
   members,
   scannedFor,
   barcode,
-}: {
-  result: ProductFoundResponse;
-  members: readonly HouseholdMember[];
-  scannedFor: string | undefined;
-  /** A catalogue product's: what "See better options" looks up. */
-  barcode?: string;
-}) {
+}: VerdictProps) {
   const insets = useSafeAreaInsets();
   const [chosen, setChosen] = useState<string>();
   const [whyOpen, setWhyOpen] = useState(false);
@@ -58,6 +55,10 @@ export function Verdict({
   const view = verdictView(result, members, selected);
   const options = personOptions(result, members);
   const person = members.find((m) => m.id === selected);
+  const decided = decidedParams(result, barcode, selected);
+  const openDecided =
+    decided &&
+    (() => router.push({ pathname: "/how-we-decided", params: decided }));
 
   const explainer =
     useRuleExplainer(view.whyRuleId, person?.id).data ?? undefined;
@@ -70,6 +71,7 @@ export function Verdict({
           result={result}
           person={person}
           topInset={insets.top}
+          onInfo={openDecided}
         />
         <View style={styles.sheet}>
           <DisclaimerTip />
@@ -85,6 +87,14 @@ export function Verdict({
             hasWhy={explainer !== undefined}
             onWhy={() => setWhyOpen(true)}
           />
+          {openDecided && (
+            <Button
+              title="Ingredients & nutrition"
+              variant="link"
+              onPress={openDecided}
+              style={styles.detailsLink}
+            />
+          )}
           <MoreList key={selected} more={view.more} />
         </View>
       </ScrollView>
@@ -124,17 +134,7 @@ export function Verdict({
 }
 
 /** Product first, then the verdict and who it was checked for (design S2). */
-function Hero({
-  view,
-  result,
-  person,
-  topInset,
-}: {
-  view: VerdictView;
-  result: ProductFoundResponse;
-  person: HouseholdMember | undefined;
-  topInset: number;
-}) {
+function Hero({ view, result, person, topInset, onInfo }: HeroProps) {
   const addFor = view.addConditionsFor;
   const { product } = result;
   const labelCheck = product.source === "label_check";
@@ -240,8 +240,8 @@ function Hero({
           </View>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="How we decide"
-            onPress={() => router.push("/how-we-decide")}
+            accessibilityLabel={onInfo ? "How we decided" : "How we decide"}
+            onPress={onInfo ?? (() => router.push("/how-we-decide"))}
             hitSlop={7}
             style={styles.info}
           >
@@ -256,15 +256,7 @@ function Hero({
 }
 
 /** The main reason, below "See it for"; its only action is a link. */
-function ReasonCard({
-  view,
-  hasWhy,
-  onWhy,
-}: {
-  view: VerdictView;
-  hasWhy: boolean;
-  onWhy: () => void;
-}) {
+function ReasonCard({ view, hasWhy, onWhy }: ReasonCardProps) {
   return (
     <View style={styles.reason}>
       <Text variant="caption" style={styles.reasonLabel}>
@@ -291,7 +283,7 @@ function ReasonCard({
 }
 
 /** The FSSAI veg (green dot) or non-veg (brown triangle) mark. */
-function VegMark({ veg }: { veg: "veg" | "non_veg" }) {
+function VegMark({ veg }: VegMarkProps) {
   const color = veg === "veg" ? colors.veg : colors.nonVeg;
   return (
     <View
@@ -316,17 +308,7 @@ export const STORE_NAMES: Record<BuyLink["store"], string> = {
 };
 
 /** Flagged: better options. Safe: where to buy, with the disclosure. */
-function Actions({
-  view,
-  person,
-  buyLinks,
-  barcode,
-}: {
-  view: VerdictView;
-  person: HouseholdMember | undefined;
-  buyLinks: readonly BuyLink[];
-  barcode: string | undefined;
-}) {
+function Actions({ view, person, buyLinks, barcode }: ActionsProps) {
   if (view.flagged) {
     // Never where to buy something flagged; better options only when
     // there's a shelf to compare it on.
@@ -500,4 +482,5 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   buyRow: { flexDirection: "row", gap: spacing.xs },
+  detailsLink: { alignSelf: "flex-start" },
 });

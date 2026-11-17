@@ -58,5 +58,6 @@ export function useLabelCheck(id: string) {
     // Just read: the scan's own result is current, no need to ask again.
     staleTime: 60_000,
     queryFn: () => api(`/label-checks/${id}`, labelCheckResponseSchema),
+    enabled: Boolean(id),
   });
 }

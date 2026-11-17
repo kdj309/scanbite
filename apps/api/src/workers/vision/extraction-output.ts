@@ -1,24 +1,9 @@
+import {
+  LABEL_NUTRIENTS,
+  type NutrientUnit as StoredUnit,
+} from "@foodscanner/shared";
 import { z } from "zod";
 import { canonicalCategory } from "../../product-versions/shelves";
-
-type StoredUnit = "mg" | "g" | "kcal";
-
-/**
- * The nutrients FSSAI's Labelling and Display Regulations 2020 make
- * mandatory, with the unit each is stored in (`sugar` is total sugars).
- */
-const LABEL_NUTRIENTS = {
-  energy_kcal: "kcal",
-  protein: "g",
-  carbohydrate: "g",
-  sugar: "g",
-  added_sugar: "g",
-  total_fat: "g",
-  saturated_fat: "g",
-  trans_fat: "g",
-  cholesterol: "mg",
-  sodium: "mg",
-} as const satisfies Record<string, StoredUnit>;
 
 const nutrientValue = z.union([z.number(), z.string(), z.null()]).optional();
 

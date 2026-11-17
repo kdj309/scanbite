@@ -1,15 +1,12 @@
 import type { FlagReason, VerdictReason } from "@foodscanner/shared";
-import {
-  SEVERITY_RANK,
-  type EvaluationResult,
-} from "../scoring/evaluate-rules";
+import { SEVERITY_RANK } from "../scoring/evaluate-rules";
 import {
   FALLBACK_LABEL,
   checkTopic,
   factName,
   uncheckedReason,
-  type MemberOverlay,
 } from "./member-overlay";
+import type { VerdictReasonsInput } from "./personalization.types";
 
 /**
  * One ordered list for the app (contract: verdictReasonSchema):
@@ -22,12 +19,9 @@ import {
  * `ruleLabels` maps base rule id -> chip text from the active rule set.
  * Gap text is written at serve time, not stored, so it reads as plain words.
  */
-export function buildVerdictReasons(input: {
-  base: EvaluationResult;
-  /** Everything member-specific (conditions, allergies), combined. */
-  overlay: MemberOverlay;
-  ruleLabels: Record<string, string>;
-}): VerdictReason[] {
+export function buildVerdictReasons(
+  input: VerdictReasonsInput
+): VerdictReason[] {
   const { base, overlay, ruleLabels } = input;
 
   const generalFlags: FlagReason[] = base.breakdown.map((item) => ({
@@ -36,6 +30,7 @@ export function buildVerdictReasons(input: {
     label: ruleLabels[item.rule_id] ?? FALLBACK_LABEL.flag,
     text: item.reason,
     rule_id: item.rule_id,
+    field: item.field,
   }));
   const flags = [...overlay.flags, ...generalFlags].sort(
     (a, b) => SEVERITY_RANK[b.severity] - SEVERITY_RANK[a.severity]
