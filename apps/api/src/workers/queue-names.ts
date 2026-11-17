@@ -1,3 +1,5 @@
+import type { SentTicket } from "../push/push-results";
+
 export const QUEUE_EXTRACTION = "extraction";
 export const QUEUE_NOTIFICATION = "notification";
 export const QUEUE_PROMOTE = "promote";
@@ -28,5 +30,5 @@ export type NotifyJobData = {
 
 /** Tickets Expo accepted; their receipts are checked ~15 min later. */
 export type CheckPushReceiptsJobData = {
-  tickets: Array<{ id: string; token: string }>;
+  tickets: SentTicket[];
 };

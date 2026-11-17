@@ -6,6 +6,7 @@ import {
 } from "@foodscanner/shared";
 import type { Severity } from "../database/schemas/rule-set.schema";
 import { worstSeverity } from "../scoring/evaluate-rules";
+import type { NutritionFact } from "./member-overlay.types";
 
 /**
  * What one member-specific check (their conditions, their allergies) adds
@@ -74,10 +75,7 @@ export function uncheckedReason(
  * "What we checked", its name inside a sentence, and (for sugar and salt)
  * the unit better-options meters use.
  */
-export const NUTRITION_FACTS: Record<
-  string,
-  { topic: string; inText: string; unit?: "g" | "mg" }
-> = {
+export const NUTRITION_FACTS: Record<string, NutritionFact> = {
   sugar_per_100g: { topic: "Sugar", inText: "sugar", unit: "g" },
   sugar_per_100ml: { topic: "Sugar", inText: "sugar", unit: "g" },
   sodium_per_100g: { topic: "Salt", inText: "salt", unit: "mg" },

@@ -30,6 +30,7 @@ import { ProductVersionIngestionService } from "../product-versions/product-vers
 import { SEVERITY_RANK } from "../scoring/evaluate-rules";
 import { ScoringService } from "../scoring/scoring.service";
 import { catalogEntry } from "./catalog-entry";
+import type { CategoryCount } from "./products.types";
 
 @Injectable()
 export class ProductsService {
@@ -71,7 +72,7 @@ export class ProductsService {
    *  filter as catalog(), so a chip's count matches what tapping it shows. */
   async categories(): Promise<CategoriesResponse> {
     const groups = await this.versions
-      .aggregate<{ _id: string; count: number }>([
+      .aggregate<CategoryCount>([
         { $match: { status: "live", category: { $ne: "unknown" } } },
         { $group: { _id: "$category", count: { $sum: 1 } } },
         { $sort: { count: -1, _id: 1 } },

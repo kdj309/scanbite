@@ -11,6 +11,7 @@ import { NUTRITION_FACTS, factName } from "../personalization/member-overlay";
 import type {
   AlternativeMember,
   RankAlternativesInput,
+  RuleFact,
 } from "./rank-alternatives.types";
 
 /** Facts with a number we can compare and meter (sugar, salt). */
@@ -19,7 +20,7 @@ function meterUnit(field: string): "g" | "mg" | undefined {
 }
 
 /** What each scoring/condition rule checks, from the rule definitions. */
-export type RuleFacts = Record<string, { field: string; threshold?: number }>;
+export type RuleFacts = Record<string, RuleFact>;
 
 export type RankedAlternative<T> = { item: T; improvements: Improvement[] };
 

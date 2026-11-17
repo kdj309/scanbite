@@ -1,5 +1,6 @@
 import type { DeclaredVeg } from "@foodscanner/shared";
 import type { DeclaredAllergens } from "../allergens/allergen-evidence";
+import type { OffIngredient } from "./off-extraction.types";
 
 /** Subset of ExtractionOutput that OFF can actually supply — no photo_consistency, that's vision-specific. */
 export type OffExtraction = {
@@ -26,7 +27,7 @@ export type OffProductPayload = {
     categories_tags?: string[];
     pnns_groups_2?: string;
     ingredients_text?: string;
-    ingredients?: Array<{ text?: string }>;
+    ingredients?: OffIngredient[];
     nutriments?: Record<string, number | string | undefined>;
     nova_group?: number;
     additives_n?: number;

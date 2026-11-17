@@ -5,13 +5,10 @@ import type { Env } from "../../config/env";
 import type { ExtractionOutput } from "./extraction-output";
 import { callVisionApi } from "./vision-api-client";
 import type { ExtractionRequest, VisionPort } from "./vision.port";
+import type { OpenRouterResponse } from "./gemini-vision.types";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 const MAX_TOKENS = 1500;
-
-type OpenRouterResponse = {
-  choices?: Array<{ message?: { content?: string } }>;
-};
 
 /**
  * Primary tier of the vision pipeline (HLD §9 decision, 2026-09-30 eval):

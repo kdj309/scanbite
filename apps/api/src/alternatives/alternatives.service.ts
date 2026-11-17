@@ -24,6 +24,7 @@ import { dessertCategories, isDessertForm } from "../scoring/dessert-groups";
 import { productFormFilter } from "../scoring/facts";
 import { ScoringService } from "../scoring/scoring.service";
 import { rankAlternatives, type RuleFacts } from "./rank-alternatives";
+import type { RuleInput } from "../scoring/evaluate-rules";
 
 const MAX_ALTERNATIVES = 5;
 /** Enough of a shelf to find good options without scoring thousands. */
@@ -140,7 +141,7 @@ function formFilter(form: unknown) {
 }
 
 function ruleFacts(
-  ...ruleLists: Array<Array<{ id: string; field: string; threshold?: number }>>
+  ...ruleLists: Array<Array<Pick<RuleInput, "id" | "field" | "threshold">>>
 ): RuleFacts {
   return Object.fromEntries(
     ruleLists
