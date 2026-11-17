@@ -2,6 +2,7 @@ import { Types } from "mongoose";
 import type { ProductVersion } from "../database/schemas/product-version.schema";
 import { shelfOf } from "../product-versions/shelves";
 import { dessertForm, type DessertForm } from "./dessert-groups";
+import type { VersionConfidence } from "./facts.types";
 
 /**
  * OFF reports liquids per 100ml and solids per 100g — that reporting basis
@@ -120,10 +121,7 @@ export function confidenceFromUnresolved(
 
 export function confidenceForVersion(
   version: Pick<ProductVersion, "ingredients">
-): {
-  unresolved_ingredients: string[];
-  confidence: ExtractionConfidence;
-} {
+): VersionConfidence {
   const unresolved_ingredients = unresolvedIngredientNames(version);
   return {
     unresolved_ingredients,

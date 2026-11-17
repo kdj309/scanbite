@@ -14,13 +14,7 @@ export type DeadLetterPayload = {
   attemptsMade: number;
 };
 
-export function deadLetterPayload(input: {
-  sourceQueue: string;
-  jobName: string;
-  data: unknown;
-  failedReason: string;
-  attemptsMade: number;
-}): DeadLetterPayload {
+export function deadLetterPayload(input: DeadLetterPayload): DeadLetterPayload {
   return {
     sourceQueue: input.sourceQueue,
     jobName: input.jobName,

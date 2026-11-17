@@ -5,17 +5,18 @@ import {
 } from "@foodscanner/shared";
 import {
   verdictFor,
-  type HouseholdMemberInput,
   type ProductContext,
 } from "../personalization/household-verdict";
 import { NUTRITION_FACTS, factName } from "../personalization/member-overlay";
+import type {
+  AlternativeMember,
+  RankAlternativesInput,
+} from "./rank-alternatives.types";
 
 /** Facts with a number we can compare and meter (sugar, salt). */
 function meterUnit(field: string): "g" | "mg" | undefined {
   return NUTRITION_FACTS[field]?.unit;
 }
-
-type Member = Pick<HouseholdMemberInput, "conditions" | "allergies">;
 
 /** What each scoring/condition rule checks, from the rule definitions. */
 export type RuleFacts = Record<string, { field: string; threshold?: number }>;
@@ -39,13 +40,9 @@ type Meter = NumericProblem & { value: number; drop: number };
  * flagged the original; a candidate whose number is unknown can't claim to
  * be lower, so it's left out.
  */
-export function rankAlternatives<T>(input: {
-  original: ProductContext;
-  candidates: Array<{ item: T; context: ProductContext }>;
-  members: Member[];
-  ruleFacts: RuleFacts;
-  limit: number;
-}): RankedAlternative<T>[] {
+export function rankAlternatives<T>(
+  input: RankAlternativesInput<T>
+): RankedAlternative<T>[] {
   const { original, members, ruleFacts } = input;
   if (members.length === 0) {
     return [];
@@ -106,7 +103,7 @@ function lessImprovement(meter: Meter): Improvement {
 /** Every flag the original got for these members: rule id -> chip label. */
 function flaggedRules(
   original: ProductContext,
-  members: Member[]
+  members: AlternativeMember[]
 ): Map<string, string> {
   const flagged = new Map<string, string>();
   for (const member of members) {

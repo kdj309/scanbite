@@ -4,7 +4,7 @@ import { ObjectStorageService } from "../../common/object-storage.service";
 import type { Env } from "../../config/env";
 import type { ExtractionOutput } from "./extraction-output";
 import { callVisionApi } from "./vision-api-client";
-import type { VisionPort } from "./vision.port";
+import type { ExtractionRequest, VisionPort } from "./vision.port";
 
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 const ANTHROPIC_VERSION = "2023-06-01";
@@ -30,10 +30,7 @@ export class ClaudeVisionAdapter implements VisionPort {
     private readonly storage: ObjectStorageService
   ) {}
 
-  async extract(input: {
-    barcode: string;
-    photoKeys: string[];
-  }): Promise<ExtractionOutput> {
+  async extract(input: ExtractionRequest): Promise<ExtractionOutput> {
     const apiKey = this.config.get("ANTHROPIC_API_KEY", { infer: true });
     if (!apiKey) {
       throw new Error("ANTHROPIC_API_KEY is not configured");

@@ -26,6 +26,10 @@ import { ScoringService } from "../scoring/scoring.service";
 import { JobQueuesService } from "./job-queues.service";
 import type { ExtractionOutput } from "./vision/extraction-output";
 import { VISION_PORT, type VisionPort } from "./vision/vision.port";
+import type {
+  ApplyPromoteResultInput,
+  SubmissionOutcome,
+} from "./extraction.pipeline.types";
 
 @Injectable()
 export class ExtractionPipeline {
@@ -186,11 +190,7 @@ export class ExtractionPipeline {
 
   private async finishSubmission(
     submission: SubmissionDocument,
-    input: {
-      status: "ready" | "needs_review" | "failed";
-      productVersionId?: Types.ObjectId;
-      event: "ready" | "needs_review" | "failed";
-    }
+    input: SubmissionOutcome
   ): Promise<void> {
     submission.status = input.status;
     if (input.productVersionId) {
@@ -205,12 +205,9 @@ export class ExtractionPipeline {
   }
 }
 
-export async function applyPromoteResult(input: {
-  submissionId: string;
-  result: PromoteResult;
-  submissions: Model<SubmissionDocument>;
-  queues: JobQueuesService;
-}): Promise<void> {
+export async function applyPromoteResult(
+  input: ApplyPromoteResultInput
+): Promise<void> {
   const submission = await input.submissions
     .findById(input.submissionId)
     .exec();

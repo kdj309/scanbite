@@ -2,6 +2,7 @@ import type { VersionSnapshot } from "../consensus/conflict";
 import type { ProductVersionDocument } from "../database/schemas/product-version.schema";
 import type { ExtractionOutput } from "../workers/vision/extraction-output";
 import type { ResolvedIngredientRow } from "./product-version-ingestion.service";
+import type { IngredientSets } from "./product-version-snapshot.types";
 
 /**
  * Turns resolved ingredients into the two sets planAfterExtraction compares
@@ -9,10 +10,9 @@ import type { ResolvedIngredientRow } from "./product-version-ingestion.service"
  * about how a ProductVersion's data is represented/compared, the same
  * concern ProductVersionIngestionService owns for how one gets created.
  */
-function ingredientSetsFromRows(ingredients: ResolvedIngredientRow[]): {
-  resolvedCanonicalIds: string[];
-  unresolvedRaw: string[];
-} {
+function ingredientSetsFromRows(
+  ingredients: ResolvedIngredientRow[]
+): IngredientSets {
   const resolvedCanonicalIds: string[] = [];
   const unresolvedRaw: string[] = [];
   for (const ingredient of ingredients) {

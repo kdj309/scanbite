@@ -4,7 +4,7 @@ import { ObjectStorageService } from "../../common/object-storage.service";
 import type { Env } from "../../config/env";
 import type { ExtractionOutput } from "./extraction-output";
 import { callVisionApi } from "./vision-api-client";
-import type { VisionPort } from "./vision.port";
+import type { ExtractionRequest, VisionPort } from "./vision.port";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 const MAX_TOKENS = 1500;
@@ -27,10 +27,7 @@ export class GeminiVisionAdapter implements VisionPort {
     private readonly storage: ObjectStorageService
   ) {}
 
-  async extract(input: {
-    barcode: string;
-    photoKeys: string[];
-  }): Promise<ExtractionOutput> {
+  async extract(input: ExtractionRequest): Promise<ExtractionOutput> {
     const apiKey = this.config.get("OPENROUTER_API_KEY", { infer: true });
     if (!apiKey) {
       throw new Error("OPENROUTER_API_KEY is not configured");

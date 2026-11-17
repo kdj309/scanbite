@@ -21,6 +21,7 @@ import {
   type NotifyJobData,
   type PromoteJobData,
 } from "./queue-names";
+import type { FailedJob } from "./job-queues.types";
 
 /**
  * A deterministic job id, so the same work can't be queued twice at once.
@@ -122,15 +123,7 @@ export class JobQueuesService {
     await this.dlq.add(JOB_DEAD_LETTER, payload, { attempts: 1 });
   }
 
-  async moveToDeadLetterIfExhausted(input: {
-    sourceQueue: string;
-    jobName: string;
-    data: unknown;
-    attemptsMade: number;
-    attempts: number | undefined;
-    failedReason: string;
-    unrecoverable?: boolean;
-  }): Promise<boolean> {
+  async moveToDeadLetterIfExhausted(input: FailedJob): Promise<boolean> {
     if (
       !shouldMoveToDeadLetter(
         input.attemptsMade,
