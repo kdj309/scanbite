@@ -1,4 +1,4 @@
-import type { VersionSnapshot } from "../consensus/conflict";
+import type { VersionSnapshot } from "../consensus/conflict.types";
 
 /** A version's ingredients split into recognised ids and unrecognised text. */
 export type IngredientSets = Pick<
