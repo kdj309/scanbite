@@ -18,6 +18,7 @@ import {
   SubmissionDocument,
 } from "../database/schemas/submission.schema";
 import { JobQueuesService } from "../workers/job-queues.service";
+import type { UploadedPhoto } from "./submissions.types";
 
 @Injectable()
 export class SubmissionsService {
@@ -35,9 +36,7 @@ export class SubmissionsService {
   async create(
     barcode: string | null,
     userId: string,
-    files:
-      | Array<{ buffer: Buffer; mimetype: string; originalname: string }>
-      | undefined,
+    files: UploadedPhoto[] | undefined,
     forMemberId: string | null = null
   ): Promise<CreateSubmissionResponse> {
     if (!files?.length) {

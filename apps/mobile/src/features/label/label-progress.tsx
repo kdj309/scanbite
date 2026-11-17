@@ -1,7 +1,13 @@
-import { type ReactNode, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { Bitey, Button, Icon, Text } from "@/components";
 import { colors, radii, screenGutter, severityColors, spacing } from "@/theme";
+import type {
+  ChecklistProps,
+  LabelProgressProps,
+  ReadingProps,
+  SheetProps,
+} from "./label.types";
 
 /** What the sheet shows while and after the label is read (design S10, 10a, 10b). */
 export type LabelState = "sending" | "processing" | "needs_review" | "failed";
@@ -37,14 +43,7 @@ export function LabelProgress({
   onScanNext,
   onRetry,
   onHome,
-}: {
-  state: LabelState;
-  /** A pack with no barcode, checked for this person only (design 2d). */
-  labelCheck: boolean;
-  onScanNext: () => void;
-  onRetry: () => void;
-  onHome: () => void;
-}) {
+}: LabelProgressProps) {
   if (state === "needs_review") {
     return (
       <Sheet
@@ -111,15 +110,7 @@ export function LabelProgress({
 }
 
 /** "You added a new product!" while the label is read (design S10). */
-function Reading({
-  sending,
-  labelCheck,
-  onScanNext,
-}: {
-  sending: boolean;
-  labelCheck: boolean;
-  onScanNext: () => void;
-}) {
+function Reading({ sending, labelCheck, onScanNext }: ReadingProps) {
   const seconds = useSeconds(!sending);
   return (
     <Sheet
@@ -144,7 +135,7 @@ function Reading({
 }
 
 /** The three steps, ticking along while we wait. */
-function Checklist({ sending }: { sending: boolean }) {
+function Checklist({ sending }: ChecklistProps) {
   const seconds = useSeconds(!sending);
   const current = sending
     ? 0
@@ -180,19 +171,7 @@ function Checklist({ sending }: { sending: boolean }) {
   );
 }
 
-function Sheet({
-  tint,
-  title,
-  line,
-  jump = false,
-  children,
-}: {
-  tint: string;
-  title: string;
-  line: string;
-  jump?: boolean;
-  children: ReactNode;
-}) {
+function Sheet({ tint, title, line, jump = false, children }: SheetProps) {
   return (
     <View style={styles.host}>
       <View style={styles.sheet}>

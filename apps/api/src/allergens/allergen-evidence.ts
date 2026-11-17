@@ -2,6 +2,7 @@ import { ALLERGEN_CODES, type AllergenCode } from "@foodscanner/shared";
 import { namesAlias } from "../common/alias-match";
 import { splitCrossContact } from "../common/cross-contact";
 import { ALLERGEN_ALIASES } from "./allergen-aliases";
+import type { AllergenEvidenceInput } from "./allergen-evidence.types";
 
 /** What a product's pack declares (OFF allergen/trace tags today; the
  *  label's "Contains / May contain" lines once vision reads them). */
@@ -29,10 +30,9 @@ export type AllergenEvidence = {
  * either says an allergen is there, it's there. "Contains" beats "may
  * contain", and an ingredient we can point at beats a bare declaration.
  */
-export function allergenEvidence(input: {
-  ingredients: string[];
-  declared: DeclaredAllergens | null;
-}): AllergenEvidence {
+export function allergenEvidence(
+  input: AllergenEvidenceInput
+): AllergenEvidence {
   const { recipe, crossContact } = splitCrossContact(input.ingredients);
 
   // Strongest first — the first finding for an allergen wins.

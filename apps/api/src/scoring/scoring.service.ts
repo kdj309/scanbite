@@ -32,9 +32,9 @@ import {
   canonicalIdsFromVersion,
   confidenceForVersion,
   factsFromVersion,
-  type ExtractionConfidence,
   type LabelFields,
 } from "./facts";
+import type { ScoredVersion } from "./scoring.types";
 
 /** The cached verdict plus display labels read from the active rule set at
  *  serve time — labels are copy, so changing one never needs a re-score or
@@ -97,14 +97,7 @@ export class ScoringService {
   async ensureScoringRecord(
     version: ProductVersionDocument,
     preloadedRuleSet?: RuleSetDocument
-  ): Promise<{
-    facts: Record<string, unknown>;
-    record: ScoringRecordDocument;
-    evaluation: EvaluationResult;
-    ruleSetVersion: string;
-    unresolved_ingredients: string[];
-    confidence: ExtractionConfidence;
-  }> {
+  ): Promise<ScoredVersion> {
     const facts = await this.factsForVersion(version);
     const coverage = confidenceForVersion(version);
     const ruleSet = preloadedRuleSet ?? (await this.activeRuleSet());

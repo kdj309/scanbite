@@ -16,10 +16,7 @@ import {
 import { Scan, ScanDocument } from "../database/schemas/scan.schema";
 import { HouseholdService } from "../household/household.service";
 import type { Severity } from "../database/schemas/scoring-record.schema";
-import {
-  HouseholdVerdictService,
-  type HouseholdProductVerdict,
-} from "../personalization/household-verdict.service";
+import { HouseholdVerdictService } from "../personalization/household-verdict.service";
 import type {
   LabelFacts,
   SubmissionDocument,
@@ -28,6 +25,7 @@ import { ProductsService } from "../products/products.service";
 import { ProductSummaryService } from "../product-versions/product-summary";
 import { LabelChecksService } from "../submissions/label-checks.service";
 import { serializeScan } from "./serialize-scan";
+import type { ScanRecordInput } from "./scans.types";
 
 @Injectable()
 export class ScansService {
@@ -100,14 +98,7 @@ export class ScansService {
     });
   }
 
-  private record(input: {
-    userId: string;
-    forMemberId: string | undefined;
-    barcode: string | null;
-    labelCheckId: Types.ObjectId | null;
-    productVersionId: Types.ObjectId | null;
-    verdict: HouseholdProductVerdict | null;
-  }): Promise<ScanDocument> {
+  private record(input: ScanRecordInput): Promise<ScanDocument> {
     const { verdict } = input;
     return this.scans.create({
       user_id: new Types.ObjectId(input.userId),

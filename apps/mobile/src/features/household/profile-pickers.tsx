@@ -4,7 +4,6 @@ import {
   HEALTH_CONDITION_SHORT_LABELS,
   type AllergenCode,
   type HealthConditionCode,
-  type Relationship,
 } from "@foodscanner/shared";
 import { useState } from "react";
 import { StyleSheet, View } from "react-native";
@@ -23,8 +22,8 @@ import {
   MORE_ALLERGIES,
   MORE_CONDITIONS,
   toggled,
-  type AgeBand,
 } from "./profile-options";
+import type { AgePickerProps, NameFieldProps } from "./household.types";
 
 type PickerProps<T> = {
   value: readonly T[];
@@ -40,15 +39,7 @@ const NAME_PLACEHOLDERS = {
 } as const;
 
 /** What to call them; optional only for you. */
-export function NameField({
-  relationship,
-  value,
-  onChange,
-}: {
-  relationship: Relationship;
-  value: string;
-  onChange: (name: string) => void;
-}) {
+export function NameField({ relationship, value, onChange }: NameFieldProps) {
   const self = relationship === "self";
   return (
     <TextField
@@ -65,13 +56,7 @@ export function NameField({
 }
 
 /** The age bands in one row; "a ballpark is fine". */
-export function AgePicker({
-  value,
-  onChange,
-}: {
-  value: AgeBand | undefined;
-  onChange: (value: AgeBand) => void;
-}) {
+export function AgePicker({ value, onChange }: AgePickerProps) {
   return (
     <ChoiceRow
       label="Age in years"

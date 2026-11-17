@@ -8,6 +8,7 @@ import { ConfigService } from "@nestjs/config";
 import { fetchWithTimeout } from "../../common/fetch-with-timeout";
 import type { Env } from "../../config/env";
 import { buildAppleClientSecret } from "./apple-client-secret";
+import type { AppleTokenResponse } from "../auth.types";
 
 const APPLE_TOKEN_URL = "https://appleid.apple.com/auth/token";
 const APPLE_REVOKE_URL = "https://appleid.apple.com/auth/revoke";
@@ -34,7 +35,7 @@ export class HttpAppleTokenClient extends AppleTokenClient {
       grant_type: "authorization_code",
     });
     const body = response.ok
-      ? ((await response.json()) as { refresh_token?: string })
+      ? ((await response.json()) as AppleTokenResponse)
       : {};
     if (!body.refresh_token) {
       // e.g. 400 invalid_grant = expired/used/forged code. Don't echo Apple's body.

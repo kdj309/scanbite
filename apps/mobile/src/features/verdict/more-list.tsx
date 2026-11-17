@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { Icon, Text, toneColors, VERDICT_MARKS } from "@/components";
 import { colors, radii, spacing } from "@/theme";
-import type { MoreItem, VerdictView } from "./view";
+import type { MoreItem } from "./view";
+import type { MoreListProps } from "./verdict.types";
 
 /** "ok" (passed) looks like Safe. */
 function look(tone: MoreItem["tone"]) {
@@ -19,7 +20,7 @@ function look(tone: MoreItem["tone"]) {
  * "Also flagged (2)" / "What we checked": one card, header and rows
  * together. Starts open when it's short (design S2).
  */
-export function MoreList({ more }: { more: VerdictView["more"] }) {
+export function MoreList({ more }: MoreListProps) {
   const [open, setOpen] = useState(more.items.length <= 3);
   if (more.items.length === 0) {
     return null;

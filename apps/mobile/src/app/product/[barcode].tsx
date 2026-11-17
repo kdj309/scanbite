@@ -8,13 +8,11 @@ import { useProduct } from "@/features/verdict/api";
 import { UnreadLabel } from "@/features/verdict/unread-label";
 import { Verdict } from "@/features/verdict/verdict-screen";
 import { screenGutter, spacing } from "@/theme";
+import type { ProductParams } from "@/features/verdict/verdict.types";
 
 /** One product's verdict, for each person (design S2 Avoid, S5 Safe). */
 export default function Product() {
-  const { barcode, for: scannedFor } = useLocalSearchParams<{
-    barcode: string;
-    for?: string;
-  }>();
+  const { barcode, for: scannedFor } = useLocalSearchParams<ProductParams>();
   const product = useProduct(barcode);
   const household = useHousehold();
 

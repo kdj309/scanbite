@@ -6,6 +6,7 @@ import {
   saveTokens,
   type StoredTokens,
 } from "./token-store";
+import type { ErrorBody, RequestOptions } from "./client.types";
 
 /** Any shared zod schema; the app never needs zod itself. */
 type Parser<T> = { parse(data: unknown): T };
@@ -32,7 +33,7 @@ const UPLOAD_TIMEOUT_MS = 90_000;
 
 async function send(
   path: string,
-  init: { method?: string; body?: unknown },
+  init: RequestOptions,
   accessToken?: string
 ): Promise<Response> {
   const files = init.body instanceof FormData;
@@ -72,7 +73,7 @@ async function send(
  *  to it. */
 async function errorMessage(response: Response): Promise<string> {
   try {
-    const { message } = (await response.json()) as { message?: unknown };
+    const { message } = (await response.json()) as ErrorBody;
     if (typeof message === "string" && message) {
       return message;
     }
@@ -142,7 +143,7 @@ export const NO_CONTENT = { parse: (): void => undefined };
 export async function api<T>(
   path: string,
   schema: Parser<T>,
-  init: { method?: string; body?: unknown } = {}
+  init: RequestOptions = {}
 ): Promise<T> {
   const tokens = await validTokens();
   let response = await send(path, init, tokens.access_token);

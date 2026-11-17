@@ -3,9 +3,10 @@ import { StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Bitey, IconButton, Text } from "@/components";
 import { screenGutter, spacing } from "@/theme";
+import type { ComingNextProps } from "./placeholder.types";
 
 /** Stands in for a screen that isn't built yet (scanner, verdict). */
-export function ComingNext({ title }: { title: string }) {
+export function ComingNext({ title }: ComingNextProps) {
   return (
     <SafeAreaView style={styles.screen}>
       {router.canGoBack() && (

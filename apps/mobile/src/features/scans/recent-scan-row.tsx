@@ -1,4 +1,4 @@
-import type { HouseholdMember, Scan } from "@foodscanner/shared";
+import type { Scan } from "@foodscanner/shared";
 import { router } from "expo-router";
 import { Image, Pressable, StyleSheet, View } from "react-native";
 import { Icon, Text } from "@/components";
@@ -12,6 +12,7 @@ import {
 } from "./recent";
 import { memberInitials } from "@/features/household/member-avatar";
 import { VerdictRing } from "./verdict-ring";
+import type { MoreRingProps, RecentScanRowProps } from "./scans.types";
 
 /** One Home "Recent scans" row: product, who it's bad for, and when. */
 export function RecentScanRow({
@@ -19,14 +20,7 @@ export function RecentScanRow({
   members,
   onPress = () => openScan(scan),
   onRemove,
-}: {
-  scan: Scan;
-  members: readonly HouseholdMember[];
-  /** Default: open its result. */
-  onPress?: () => void;
-  /** Offered to screen readers, which can't swipe the row. */
-  onRemove?: () => void;
-}) {
+}: RecentScanRowProps) {
   const checked = checkedVerdicts(scan, members);
   const severity = scanSeverity(scan, checked);
   const tone = severity ? severityColors[severity] : undefined;
@@ -159,7 +153,7 @@ const styles = StyleSheet.create({
 });
 
 /** "+3": the people past the shown rings; the summary names them. */
-function MoreRing({ count }: { count: number }) {
+function MoreRing({ count }: MoreRingProps) {
   return (
     <View
       style={styles.more}

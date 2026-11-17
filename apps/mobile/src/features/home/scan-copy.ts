@@ -1,15 +1,15 @@
 import type { HouseholdMember } from "@foodscanner/shared";
 import { healthChecks } from "@/features/household/members";
 import { joinNames, sentenceName } from "@/features/scans/recent";
+import type { ScanCardCopy } from "./home.types";
 
 /**
  * The scan card's words for who scans are checked for (people with
  * conditions or allergies): nobody yet, one person, or the family.
  */
-export function scanCardCopy(checked: readonly HouseholdMember[]): {
-  title: string;
-  subtitle: string;
-} {
+export function scanCardCopy(
+  checked: readonly HouseholdMember[]
+): ScanCardCopy {
   if (checked.length === 0) {
     return { title: "Scan a product", subtitle: "Point at the barcode" };
   }

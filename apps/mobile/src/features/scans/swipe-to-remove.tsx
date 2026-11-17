@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Animated,
   PanResponder,
@@ -8,6 +8,7 @@ import {
 } from "react-native";
 import { Icon, Text } from "@/components";
 import { colors } from "@/theme";
+import type { SwipeToRemoveProps } from "./scans.types";
 
 const REMOVE_WIDTH = 96;
 
@@ -22,14 +23,7 @@ export function SwipeToRemove({
   onRemove,
   label,
   children,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onRemove: () => void;
-  /** Read out for the Remove button, e.g. "Remove Delhi mixture". */
-  label: string;
-  children: ReactNode;
-}) {
+}: SwipeToRemoveProps) {
   const [swipe] = useState(createSwipe);
   useEffect(() => swipe.onSettle(onOpenChange), [swipe, onOpenChange]);
   useEffect(() => swipe.settle(open), [swipe, open]);

@@ -57,19 +57,15 @@ export function Confetti() {
   );
 }
 
-function Piece({
-  left,
-  color,
-  delayMs,
-  fallMs,
-  distance,
-}: {
+export interface PieceProps {
   left: number;
   color: string;
   delayMs: number;
   fallMs: number;
   distance: number;
-}) {
+}
+
+function Piece({ left, color, delayMs, fallMs, distance }: PieceProps) {
   // Created once; state, not a ref, so render never reads a ref.
   const [progress] = useState(() => new Animated.Value(0));
 

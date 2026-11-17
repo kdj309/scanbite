@@ -1,3 +1,5 @@
+import type { CrossContactSplit } from "./cross-contact.types";
+
 // A cross-contact warning inside an ingredient list: "May contain(s) traces
 // of nuts", "Made on shared equipment with milk", "Manufactured in a
 // facility that also processes peanuts".
@@ -20,10 +22,7 @@ const CROSS_CONTACT = new RegExp(
  * nuts, milk" arrives as two "ingredients"), including when it's run into
  * an ingredient: "Egg. May contain nuts" keeps "Egg." in the recipe.
  */
-export function splitCrossContact(ingredients: string[]): {
-  recipe: string[];
-  crossContact: string[];
-} {
+export function splitCrossContact(ingredients: string[]): CrossContactSplit {
   const index = ingredients.findIndex((item) => CROSS_CONTACT.test(item));
   if (index === -1) {
     return { recipe: ingredients, crossContact: [] };

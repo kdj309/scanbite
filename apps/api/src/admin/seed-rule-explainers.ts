@@ -16,6 +16,7 @@ import "reflect-metadata";
  */
 import mongoose from "mongoose";
 import {
+  type ConditionVariant,
   RuleExplainer,
   RuleExplainerSchema,
 } from "../database/schemas/rule-explainer.schema";
@@ -27,7 +28,7 @@ type SeedEntry = {
   rule_ids: string[];
   title: string;
   explainer: string;
-  condition_variants: Array<{ condition: string; addendum: string }>;
+  condition_variants: ConditionVariant[];
   citations: string;
 };
 

@@ -1,4 +1,5 @@
 import type { AuthProvider } from "@foodscanner/shared";
+import type { LinkingIdentity } from "./auth.types";
 
 /** Providers you can sign in with — every auth provider except "anonymous". */
 export type SocialProvider = Exclude<AuthProvider, "anonymous">;
@@ -18,11 +19,7 @@ const GOOGLE_CONSUMER_DOMAINS = new Set(["gmail.com", "googlemail.com"]);
  */
 export function isEmailTrustedForLinking(
   provider: SocialProvider,
-  identity: {
-    email: string | null;
-    emailVerified: boolean;
-    hostedDomain: string | null;
-  }
+  identity: LinkingIdentity
 ): boolean {
   if (provider !== "google" || !identity.email || !identity.emailVerified) {
     return false;

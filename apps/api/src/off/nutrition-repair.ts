@@ -1,17 +1,10 @@
-import {
-  isLiquidQuantity,
-  isPlausibleGrams,
-  type Nutrient,
-  type NutritionBasis,
-} from "./off-mapper";
+import { isLiquidQuantity, isPlausibleGrams } from "./off-mapper";
+import type { NutritionField } from "./nutrition-repair.types";
 
 type Nutrition = Record<string, number | string | null>;
 
 /** Stored nutrition field -> what it measures. Sodium is stored in mg. */
-export const NUTRITION_FIELDS: Record<
-  string,
-  { nutrient: Nutrient; basis: NutritionBasis; toGrams: number }
-> = {
+export const NUTRITION_FIELDS: Record<string, NutritionField> = {
   sugar_per_100g: { nutrient: "sugar", basis: "solid", toGrams: 1 },
   sugar_per_100ml: { nutrient: "sugar", basis: "liquid", toGrams: 1 },
   sodium_per_100g: { nutrient: "sodium", basis: "solid", toGrams: 1 / 1000 },

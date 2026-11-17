@@ -3,6 +3,7 @@ import type {
   ProductForm,
   RuleOperator,
 } from "../database/schemas/rule-set.schema";
+import type { PassedRulesProduct } from "./evaluate-rules.types";
 
 export const SEVERITY_RANK: Record<Severity, number> = {
   green: 0,
@@ -30,7 +31,7 @@ export type RuleInput = {
  * must be skipped entirely, not reported as breakdown OR unevaluated.
  */
 export function ruleAppliesToForm(
-  rule: { applies_to?: ProductForm },
+  rule: Pick<RuleInput, "applies_to">,
   productForm: unknown
 ): boolean {
   if (!rule.applies_to || rule.applies_to === "any") {
@@ -225,13 +226,7 @@ export type PassedRule = { rule_id: string; field: string; label?: string };
 export function passedRules(
   rules: RuleInput[],
   evaluation: Pick<EvaluationResult, "breakdown" | "unevaluated">,
-  product: {
-    productForm: unknown;
-    /** There's an ingredient list and every item was recognised. If not,
-     *  an ingredient rule's "not found" (e.g. no palm oil) can't be
-     *  confirmed, so it hasn't passed. */
-    allIngredientsRecognised: boolean;
-  }
+  product: PassedRulesProduct
 ): PassedRule[] {
   const notPassed = new Set([
     ...evaluation.breakdown.map((item) => item.rule_id),

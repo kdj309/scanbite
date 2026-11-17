@@ -1,4 +1,5 @@
 import type { BuyLink } from "@foodscanner/shared";
+import type { StoreSearch } from "./buy-links.types";
 
 type ProductForSearch = {
   name: string;
@@ -38,13 +39,7 @@ export function buyLinks(
  * row here (plus its name in the shared buyLinkSchema). BigBasket becomes
  * an affiliate link once we join a network such as Cuelinks.
  */
-const STORES: Array<{
-  store: BuyLink["store"];
-  searchUrl: string;
-  queryParam: string;
-  /** Where the affiliate tag goes, for stores we have an account with. */
-  tagParam?: string;
-}> = [
+const STORES: StoreSearch[] = [
   {
     store: "amazon",
     searchUrl: "https://www.amazon.in/s",

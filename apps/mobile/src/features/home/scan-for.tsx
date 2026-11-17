@@ -1,23 +1,14 @@
-import type { HouseholdMember } from "@foodscanner/shared";
 import { Pressable, ScrollView, StyleSheet } from "react-native";
 import { Text } from "@/components";
 import { listName } from "@/features/household/members";
 import { colors, radii, spacing } from "@/theme";
+import type { ScanForProps } from "./home.types";
 
 /**
  * "Scan for Everyone · Amma · Papa" on Home's blue header (design S1).
  * Only shown when 2+ people have conditions: with one, there's no choice.
  */
-export function ScanFor({
-  checked,
-  selectedId,
-  onSelect,
-}: {
-  checked: readonly HouseholdMember[];
-  /** undefined: everyone. */
-  selectedId: string | undefined;
-  onSelect: (memberId: string | undefined) => void;
-}) {
+export function ScanFor({ checked, selectedId, onSelect }: ScanForProps) {
   const options = [
     { id: undefined, label: "Everyone" },
     ...checked.map((member) => ({ id: member.id, label: listName(member) })),

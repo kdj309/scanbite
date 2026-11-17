@@ -3,6 +3,7 @@ import {
   type HouseholdMember,
   type Relationship,
 } from "@foodscanner/shared";
+import type { FamilyProgress } from "./household.types";
 
 /** Every account starts with this member: the person using the app. */
 export function selfMember(
@@ -66,12 +67,9 @@ export function hasHealthProfile(
 }
 
 /** The Family header: how many people scans are personal for, and who's next. */
-export function familyProgress(members: readonly HouseholdMember[]): {
-  done: number;
-  total: number;
-  /** The first person with nothing to check yet, if any. */
-  next: HouseholdMember | undefined;
-} {
+export function familyProgress(
+  members: readonly HouseholdMember[]
+): FamilyProgress {
   return {
     done: members.filter(hasHealthProfile).length,
     total: members.length,

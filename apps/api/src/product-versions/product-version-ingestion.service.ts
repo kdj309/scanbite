@@ -1,17 +1,15 @@
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import type { DeclaredVeg } from "@foodscanner/shared";
 import { Model, Types } from "mongoose";
-import type { DeclaredAllergens } from "../allergens/allergen-evidence";
 import { AliasService } from "../alias/alias.service";
 import { isDuplicateKeyError } from "../common/mongo-errors";
 import { Product, ProductDocument } from "../database/schemas/product.schema";
 import {
   ProductVersion,
   ProductVersionDocument,
-  ProductVersionSource,
 } from "../database/schemas/product-version.schema";
 import { ScoringService } from "../scoring/scoring.service";
+import type { PendingVersionInput } from "./product-version-ingestion.types";
 
 export type ResolvedIngredientRow = {
   raw: string;
@@ -68,25 +66,9 @@ export class ProductVersionIngestionService {
     }
   }
 
-  async createPendingVersion(input: {
-    barcode: string;
-    name: string;
-    brand: string;
-    category: string;
-    ingredients: ResolvedIngredientRow[];
-    nutrition: Record<string, number | string | null>;
-    nova_group?: number;
-    additive_count?: number;
-    /** How sure the photo read was. Not set for catalog imports: a first
-     *  version goes live without it. */
-    extraction_confidence?: number;
-    source: ProductVersionSource;
-    image_url?: string | null;
-    quantity?: string | null;
-    declared_allergens?: DeclaredAllergens | null;
-    declared_veg?: DeclaredVeg | null;
-    submitted_by?: Types.ObjectId;
-  }): Promise<ProductVersionDocument> {
+  async createPendingVersion(
+    input: PendingVersionInput
+  ): Promise<ProductVersionDocument> {
     const product = await this.findOrCreateProduct(input.barcode);
     const pending = await this.versions.create({
       product_id: product._id,

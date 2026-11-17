@@ -1,4 +1,4 @@
-import type { PushResult } from "./push-sender";
+import type { PushAttempt } from "./push-results.types";
 
 export type SentTicket = { id: string; token: string };
 
@@ -18,9 +18,7 @@ export type PushOutcome = {
  * Sorts Expo's answers (tickets now, or receipts ~15 min later) into what
  * we do about them.
  */
-export function classifyPushResults(
-  results: Array<{ token: string; result: PushResult }>
-): PushOutcome {
+export function classifyPushResults(results: PushAttempt[]): PushOutcome {
   const outcome: PushOutcome = {
     sent: [],
     deadTokens: [],

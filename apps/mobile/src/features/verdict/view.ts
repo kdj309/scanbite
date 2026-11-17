@@ -8,6 +8,7 @@ import type {
 import { SEVERITY_WORDS, type VerdictTone } from "@/components";
 import { healthChecks } from "@/features/household/members";
 import { joinNames, sentenceName } from "@/features/scans/recent";
+import type { FlagGroup } from "./verdict.types";
 
 /** Everyone together, or one person's id. */
 export const ALL = "all";
@@ -323,10 +324,7 @@ function alsoFlagged(
   checked: readonly Person[],
   mainRuleId: string
 ): MoreItem[] {
-  const byRule = new Map<
-    string,
-    { label: string; worst: Severity; names: string[] }
-  >();
+  const byRule = new Map<string, FlagGroup>();
   for (const { member, verdict } of checked) {
     for (const reason of verdict.verdict.reasons) {
       if (reason.kind !== "flag" || reason.rule_id === mainRuleId) {

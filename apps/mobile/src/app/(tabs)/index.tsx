@@ -1,4 +1,3 @@
-import type { HouseholdMember, Scan } from "@foodscanner/shared";
 import { useQueryClient } from "@tanstack/react-query";
 import { Redirect, router } from "expo-router";
 import { useState } from "react";
@@ -34,6 +33,11 @@ import { SwipeToRemove } from "@/features/scans/swipe-to-remove";
 import { UndoBar } from "@/features/scans/undo-bar";
 import { useUndoableRemove } from "@/features/scans/use-undoable-remove";
 import { colors, radii, screenGutter, shadows, spacing } from "@/theme";
+import type {
+  FamilyNudgeProps,
+  Nudge,
+  RecentScansProps,
+} from "@/features/home/home.types";
 
 /** Scan, recent scans, and a nudge to finish the family (design S1). */
 export default function Home() {
@@ -119,13 +123,7 @@ function RecentScans({
   checked,
   hiddenId,
   onRemove,
-}: {
-  members: readonly HouseholdMember[];
-  checked: readonly HouseholdMember[];
-  /** Removed, waiting out its Undo. */
-  hiddenId: string | undefined;
-  onRemove: (scan: Scan) => void;
-}) {
+}: RecentScansProps) {
   const scans = useRecentScans();
   // One row swiped open at a time.
   const [openId, setOpenId] = useState<string>();
@@ -216,14 +214,8 @@ function NoScansYet() {
 }
 
 /** Points at whoever scans can't check yet: the whole family, or you. */
-function FamilyNudge({
-  self,
-  checked,
-}: {
-  self: HouseholdMember | undefined;
-  checked: readonly HouseholdMember[];
-}) {
-  let nudge: { text: string; action: string; onPress: () => void };
+function FamilyNudge({ self, checked }: FamilyNudgeProps) {
+  let nudge: Nudge;
   if (checked.length === 0) {
     nudge = {
       text: "Set up your family so every scan checks them",

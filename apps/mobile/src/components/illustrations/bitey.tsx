@@ -115,11 +115,16 @@ export function Bitey({ size = 64, motion = "bob", style }: BiteyProps) {
   );
 }
 
-/** The design's keyframes: when (0–1), how high, how tilted. */
-const KEYFRAMES: Record<
-  BiteyMotion,
-  { duration: number; at: number[]; lift: number[]; tilt: number[] }
-> = {
+/** One motion's keyframes: when (0–1), how high, how tilted. */
+interface BiteyKeyframes {
+  duration: number;
+  at: number[];
+  lift: number[];
+  tilt: number[];
+}
+
+/** The design's keyframes for each motion. */
+const KEYFRAMES: Record<BiteyMotion, BiteyKeyframes> = {
   bob: { duration: 2600, at: [0, 0.5, 1], lift: [0, -7, 0], tilt: [0, 0, 0] },
   jump: {
     duration: 1400,

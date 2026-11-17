@@ -1,4 +1,3 @@
-import type { HouseholdMember } from "@foodscanner/shared";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
@@ -32,10 +31,14 @@ import {
   NameField,
 } from "@/features/household/profile-pickers";
 import { colors, screenGutter, spacing } from "@/theme";
+import type {
+  EditFormProps,
+  EditMemberParams,
+} from "@/features/household/household.types";
 
 /** Edit one person: name, age, conditions, allergies; or remove them. */
 export default function EditMember() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id } = useLocalSearchParams<EditMemberParams>();
   const household = useHousehold();
   const member = household.data?.members.find((m) => m.id === id);
 
@@ -59,7 +62,7 @@ export default function EditMember() {
   return <EditForm key={member.id} member={member} />;
 }
 
-function EditForm({ member }: { member: HouseholdMember }) {
+function EditForm({ member }: EditFormProps) {
   const queryClient = useQueryClient();
   const [form, setForm] = useState<MemberForm>(() => formFromMember(member));
   const [scrolled, setScrolled] = useState(false);

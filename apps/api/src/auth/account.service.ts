@@ -24,6 +24,7 @@ import { HouseholdService } from "../household/household.service";
 import { AppleCredentials } from "./apple/apple-credentials";
 import { serializeUser } from "./serialize-user";
 import { SessionService } from "./session.service";
+import type { DeleteAccountOptions } from "./auth.types";
 
 export type NewAccountFields = {
   google_sub?: string;
@@ -82,7 +83,7 @@ export class AccountService {
    */
   async delete(
     userId: string | Types.ObjectId,
-    options: { revokeApple?: boolean } = {}
+    options: DeleteAccountOptions = {}
   ): Promise<void> {
     const user = await this.users.findById(userId).exec();
     if (!user) {

@@ -1,10 +1,10 @@
-import type { ProductFoundResponse } from "@foodscanner/shared";
 import { router } from "expo-router";
 import { ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Bitey, Button, Icon, IconButton, Text } from "@/components";
 import { colors, fonts, radii, screenGutter, spacing } from "@/theme";
 import { closeScreen } from "@/navigation/close-screen";
+import type { UnreadLabelProps } from "./verdict.types";
 
 /**
  * A product whose label was read but whose ingredients weren't (design
@@ -12,16 +12,7 @@ import { closeScreen } from "@/navigation/close-screen";
  * Scanning the label again replaces it whole once the ingredients read
  * (a label check starts a new check instead).
  */
-export function UnreadLabel({
-  barcode,
-  result,
-  scannedFor,
-}: {
-  /** null = a label check (a pack with no barcode, design 2d). */
-  barcode: string | null;
-  result: ProductFoundResponse;
-  scannedFor: string | undefined;
-}) {
+export function UnreadLabel({ barcode, result, scannedFor }: UnreadLabelProps) {
   const insets = useSafeAreaInsets();
   const { product } = result;
   const details = [product.brand, product.quantity].filter(Boolean).join(" · ");

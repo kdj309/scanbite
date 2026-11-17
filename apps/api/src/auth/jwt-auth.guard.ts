@@ -2,6 +2,7 @@ import { ExecutionContext, Injectable } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 import { AuthGuard } from "@nestjs/passport";
 import { IS_OPTIONAL_AUTH_KEY, IS_PUBLIC_KEY } from "./public.decorator";
+import type { RequestWithHeaders } from "./auth.types";
 
 @Injectable()
 export class JwtAuthGuard extends AuthGuard("jwt") {
@@ -14,9 +15,7 @@ export class JwtAuthGuard extends AuthGuard("jwt") {
       return true;
     }
     if (this.flag(IS_OPTIONAL_AUTH_KEY, context)) {
-      const request = context
-        .switchToHttp()
-        .getRequest<{ headers: Record<string, string | undefined> }>();
+      const request = context.switchToHttp().getRequest<RequestWithHeaders>();
       if (!request.headers.authorization) {
         return true;
       }

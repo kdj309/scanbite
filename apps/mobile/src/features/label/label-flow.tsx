@@ -8,6 +8,7 @@ import { colors, radii, spacing } from "@/theme";
 import { uploadLabel, useSubmission } from "./api";
 import { LabelCapture } from "./label-capture";
 import { LabelProgress } from "./label-progress";
+import type { BannerProps, LabelFlowProps, WaitingProps } from "./label.types";
 
 /**
  * Adding one new product from its label (design S10, 10a, 10b), or with
@@ -24,21 +25,7 @@ export function LabelFlow({
   onFront,
   onDone,
   onReady,
-}: {
-  /** null = a label check: a pack with no barcode. */
-  barcode: string | null;
-  /** Who it's scanned for; omitted = everyone. */
-  memberId?: string;
-  inFront: boolean;
-  /** Keep checking, but let the person scan the next product. */
-  onBack: () => void;
-  /** Back in front, e.g. to try the label again. */
-  onFront: () => void;
-  /** Nothing more to do here. */
-  onDone: () => void;
-  /** Read and ready: open its verdict. */
-  onReady: (submissionId: string) => void;
-}) {
+}: LabelFlowProps) {
   const labelCheck = barcode === null;
   const [submissionId, setSubmissionId] = useState<string>();
   const upload = useMutation({
@@ -116,15 +103,7 @@ function Waiting({
   onDone,
   onReady,
   onRetry,
-}: {
-  submissionId: string;
-  labelCheck: boolean;
-  inFront: boolean;
-  onBack: () => void;
-  onDone: () => void;
-  onReady: (submissionId: string) => void;
-  onRetry: () => void;
-}) {
+}: WaitingProps) {
   const submission = useSubmission(submissionId);
   const status = submission.data?.status ?? "processing";
 
@@ -173,15 +152,7 @@ function Waiting({
 }
 
 /** Over the scanner, like a notification (design S10, "ready"). */
-function Banner({
-  text,
-  action,
-  onPress,
-}: {
-  text: string;
-  action: string;
-  onPress: () => void;
-}) {
+function Banner({ text, action, onPress }: BannerProps) {
   return (
     <SafeAreaView style={styles.bannerHost} pointerEvents="box-none">
       <Pressable

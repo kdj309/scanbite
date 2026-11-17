@@ -7,13 +7,11 @@ import { useLabelCheck } from "@/features/label/api";
 import { UnreadLabel } from "@/features/verdict/unread-label";
 import { Verdict } from "@/features/verdict/verdict-screen";
 import { screenGutter, spacing } from "@/theme";
+import type { LabelCheckParams } from "@/features/verdict/verdict.types";
 
 /** A pack with no barcode, checked from its label for the family (design 2d). */
 export default function LabelCheck() {
-  const { id, for: scannedFor } = useLocalSearchParams<{
-    id: string;
-    for?: string;
-  }>();
+  const { id, for: scannedFor } = useLocalSearchParams<LabelCheckParams>();
   const check = useLabelCheck(id);
   const household = useHousehold();
 
