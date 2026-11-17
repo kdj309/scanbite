@@ -9,18 +9,13 @@ import type {
   Relationship,
   UpdateHouseholdMemberRequest,
 } from "@foodscanner/shared";
+import type { WhoOption } from "./add-person.types";
 
 /**
  * "Who do you shop for?" tiles. One tile is one person; anyone else (a
  * second parent, a second child) is added later from the Family screen.
  */
-export const WHO_OPTIONS: ReadonlyArray<{
-  relationship: Relationship;
-  title: string;
-  subtitle: string;
-  initials?: string;
-  icon?: "heart";
-}> = [
+export const WHO_OPTIONS: readonly WhoOption[] = [
   { relationship: "self", title: "Me", subtitle: "Just me", initials: "Me" },
   {
     relationship: "spouse",

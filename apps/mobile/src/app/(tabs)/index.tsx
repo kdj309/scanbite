@@ -35,6 +35,7 @@ import { useUndoableRemove } from "@/features/scans/use-undoable-remove";
 import { colors, radii, screenGutter, shadows, spacing } from "@/theme";
 import type {
   FamilyNudgeProps,
+  Nudge,
   RecentScansProps,
 } from "@/features/home/home.types";
 
@@ -214,7 +215,7 @@ function NoScansYet() {
 
 /** Points at whoever scans can't check yet: the whole family, or you. */
 function FamilyNudge({ self, checked }: FamilyNudgeProps) {
-  let nudge: { text: string; action: string; onPress: () => void };
+  let nudge: Nudge;
   if (checked.length === 0) {
     nudge = {
       text: "Set up your family so every scan checks them",

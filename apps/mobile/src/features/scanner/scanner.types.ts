@@ -41,3 +41,12 @@ export interface CameraPermissionProps {
   onAllow: () => Promise<PermissionResponse>;
   onType: () => void;
 }
+
+/** Route params for /scan; `for` is who to scan for. */
+export type ScanParams = {
+  for?: string;
+  /** A known product whose label couldn't be read (design 2c). */
+  label?: string;
+  /** Check a pack with no barcode by its label (design 2d). */
+  noBarcode?: string;
+};

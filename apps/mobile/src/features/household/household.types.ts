@@ -44,3 +44,8 @@ export interface AgePickerProps {
   value: AgeBand | undefined;
   onChange: (value: AgeBand) => void;
 }
+
+/** Route params for /family/[id]. */
+export type EditMemberParams = {
+  id: string;
+};

@@ -2,11 +2,12 @@ import { router } from "expo-router";
 import type { BottomTabBarProps } from "expo-router/tabs";
 import { Pressable, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Icon, type IconName, Text } from "@/components";
+import { Icon, Text } from "@/components";
 import { colors, minTouchTarget, radii, shadows, spacing } from "@/theme";
+import type { TabMeta } from "./navigation.types";
 
 /** Each tab route's label and icon, by route name. */
-const TABS: Record<string, { label: string; icon: IconName }> = {
+const TABS: Record<string, TabMeta> = {
   index: { label: "Home", icon: "home" },
   family: { label: "Family", icon: "family" },
 };

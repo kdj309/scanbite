@@ -1,4 +1,5 @@
 import type { Relationship, Severity } from "@foodscanner/shared";
+import type { Tint } from "./colors.types";
 
 /** From the design canvas (Colors board, accessibility pass 2026-10-07). */
 export const colors = {
@@ -57,10 +58,7 @@ type SeverityColors = {
  * One tint per relationship, so people are easy to tell apart in avatars
  * (onboarding tiles, family summary). Not verdict colours.
  */
-export const relationshipTints: Record<
-  Relationship,
-  { background: string; text: string }
-> = {
+export const relationshipTints: Record<Relationship, Tint> = {
   self: { background: "#EAF0FA", text: "#2D5BA8" },
   spouse: { background: "#FFE7F0", text: "#A0285C" },
   parent: { background: "#FFE0DB", text: "#8E1010" },

@@ -31,6 +31,7 @@ import type {
   LookupQuery,
   LookupSheetProps,
   LookupState,
+  ScanParams,
   ScannerProps,
   TypeBarcodeProps,
   ViewfinderProps,
@@ -46,13 +47,7 @@ export default function Scan() {
     for: memberId,
     label,
     noBarcode,
-  } = useLocalSearchParams<{
-    for?: string;
-    /** A known product whose label couldn't be read (design 2c). */
-    label?: string;
-    /** Check a pack with no barcode by its label (design 2d). */
-    noBarcode?: string;
-  }>();
+  } = useLocalSearchParams<ScanParams>();
   const [permission, requestPermission] = useCameraPermissions();
 
   if (!permission) {

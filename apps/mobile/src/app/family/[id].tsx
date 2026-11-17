@@ -31,11 +31,14 @@ import {
   NameField,
 } from "@/features/household/profile-pickers";
 import { colors, screenGutter, spacing } from "@/theme";
-import type { EditFormProps } from "@/features/household/household.types";
+import type {
+  EditFormProps,
+  EditMemberParams,
+} from "@/features/household/household.types";
 
 /** Edit one person: name, age, conditions, allergies; or remove them. */
 export default function EditMember() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id } = useLocalSearchParams<EditMemberParams>();
   const household = useHousehold();
   const member = household.data?.members.find((m) => m.id === id);
 

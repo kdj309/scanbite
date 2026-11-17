@@ -6,7 +6,7 @@ import {
   saveTokens,
   type StoredTokens,
 } from "./token-store";
-import type { RequestOptions } from "./client.types";
+import type { ErrorBody, RequestOptions } from "./client.types";
 
 /** Any shared zod schema; the app never needs zod itself. */
 type Parser<T> = { parse(data: unknown): T };
@@ -73,7 +73,7 @@ async function send(
  *  to it. */
 async function errorMessage(response: Response): Promise<string> {
   try {
-    const { message } = (await response.json()) as { message?: unknown };
+    const { message } = (await response.json()) as ErrorBody;
     if (typeof message === "string" && message) {
       return message;
     }

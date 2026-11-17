@@ -29,3 +29,10 @@ export interface FamilyNudgeProps {
   self: HouseholdMember | undefined;
   checked: readonly HouseholdMember[];
 }
+
+/** A line pointing at what's left to set up, and the button that does it. */
+export interface Nudge {
+  text: string;
+  action: string;
+  onPress: () => void;
+}
