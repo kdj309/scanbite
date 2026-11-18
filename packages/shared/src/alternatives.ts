@@ -33,6 +33,13 @@ export const alternativeSchema = z.object({
 });
 export type Alternative = z.infer<typeof alternativeSchema>;
 
+/** "Better, not perfect" (design 4a): better on what flagged it, still Caution. */
+export const cautionAlternativeSchema = alternativeSchema.extend({
+  // Chip labels it's still flagged for, worst first ("High salt").
+  still_flagged: z.array(z.string()),
+});
+export type CautionAlternative = z.infer<typeof cautionAlternativeSchema>;
+
 export const alternativesResponseSchema = z.object({
   instead_of: productSummarySchema,
   // Who these are Safe for: everyone the scanned product isn't Safe for.
@@ -41,5 +48,9 @@ export const alternativesResponseSchema = z.object({
   // (biggest improvement on what flagged the scanned product). Empty when
   // there's nothing better in our list yet.
   alternatives: z.array(alternativeSchema),
+  // Only when the scanned product is Avoid for someone: Caution for some of
+  // them, Avoid for none, best first. The app shows them below the Safe
+  // ones, never as the top pick; their buy links are plain, never affiliate.
+  better_not_perfect: z.array(cautionAlternativeSchema),
 });
 export type AlternativesResponse = z.infer<typeof alternativesResponseSchema>;

@@ -1,5 +1,8 @@
 import type {
   Alternative,
+  AlternativesResponse,
+  CautionAlternative,
+  Improvement,
   ProductSummary,
   Severity,
 } from "@foodscanner/shared";
@@ -8,6 +11,16 @@ import type {
 export type BetterOptionsParams = {
   barcode: string;
 };
+
+export interface BetterOptionsScreenProps {
+  barcode: string;
+}
+
+export interface BetterOptionsListProps {
+  options: AlternativesResponse;
+  /** The scanned product's overall verdict, once it has loaded. */
+  severity: Severity | undefined;
+}
 
 export interface InsteadOfProps {
   product: ProductSummary;
@@ -19,6 +32,14 @@ export interface OptionCardProps {
   alternative: Alternative;
   /** The first option, shown as the top pick. */
   top: boolean;
+}
+
+export interface CautionCardProps {
+  alternative: CautionAlternative;
+}
+
+export interface ImprovementChipsProps {
+  improvements: readonly Improvement[];
 }
 
 export interface ThumbProps {
