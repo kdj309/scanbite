@@ -5,7 +5,8 @@
  * sit under three different ones), so each category is placed on a shelf
  * here. Products read from label photos are filed under a shelf name, or
  * a catalogue category where it matters (dessert kind: "Ice cream").
- * Agreed with Kartik 2026-11-08; categories not listed have no shelf.
+ * Agreed with Kartik 2026-11-08; oils split from sauces 2026-11-17.
+ * Categories not listed have no shelf.
  */
 export const SHELVES = {
   "Biscuits & cakes": ["Biscuits and cakes", "Snacks", "Pastries"],
@@ -46,12 +47,13 @@ export const SHELVES = {
     "Eggs",
   ],
   "Dals, nuts & dry fruit": ["Legumes", "Nuts", "Dried fruits"],
-  "Pickles, sauces & oils": [
+  // Apart from oils: ghee is never a swap for ketchup, whatever its numbers.
+  "Sauces & pickles": [
     "Dressings and sauces",
     "Salty and fatty products",
     "Pickle",
-    "Fats",
   ],
+  "Oils & ghee": ["Fats"],
   "Meals, meat & other": [
     "One-dish meals",
     "Soups",

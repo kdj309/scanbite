@@ -10,6 +10,13 @@ describe("shelves", () => {
     assert.equal(shelfOf("Potatoes"), "Salty snacks");
   });
 
+  it("keeps oils and ghee off the sauces shelf", () => {
+    // Ketchup was offered ghee and sunflower oil as better options.
+    assert.equal(shelfOf("Dressings and sauces"), "Sauces & pickles");
+    assert.equal(shelfOf("Salty and fatty products"), "Sauces & pickles");
+    assert.equal(shelfOf("Fats"), "Oils & ghee");
+  });
+
   it("reads a shelf name however a label read capitalises it", () => {
     assert.equal(shelfOf("salty Snacks "), "Salty snacks");
   });
