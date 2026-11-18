@@ -10,6 +10,7 @@ import {
   papa,
   sugar,
   nova,
+  palm,
   verdict,
   result,
   family,
@@ -182,6 +183,45 @@ describe("verdictView", () => {
       reasonLabel: "Biggest concern",
       title: "Ultra-processed",
     });
+  });
+
+  it("lists what couldn't be checked under a Safe, never as flagged", () => {
+    // A real label check: Safe in general, two things the label didn't say.
+    const gap = (label: string): VerdictReason => ({
+      kind: "unchecked",
+      label: `${label} not checked`,
+      text: `Couldn’t check ${label.toLowerCase()}`,
+      rule_id: label,
+    });
+    const safe = result({ severity: "green", member_id: null }, [
+      verdict(you, "green", [gap("Processing"), gap("Additives")], false),
+    ]);
+    const view = verdictView(safe, [you], ALL);
+    expect(view.title).toBe("Nothing flagged");
+    expect(view.more).toEqual({
+      title: "Couldn’t check",
+      items: [
+        expect.objectContaining({ title: "Processing not checked" }),
+        expect.objectContaining({ title: "Additives not checked" }),
+      ],
+    });
+  });
+
+  it("calls the rest 'Also flagged' only when one of them is a flag", () => {
+    const gapOnly: VerdictReason = {
+      kind: "unchecked",
+      label: "Sugar not checked",
+      text: "Couldn’t check sugar",
+      rule_id: "sugar",
+    };
+    const flagged = result({ severity: "yellow", member_id: null }, [
+      verdict(you, "yellow", [nova, gapOnly], false),
+    ]);
+    expect(verdictView(flagged, [you], ALL).more.title).toBe("Couldn’t check");
+    const twoFlags = result({ severity: "yellow", member_id: null }, [
+      verdict(you, "yellow", [nova, palm], false),
+    ]);
+    expect(verdictView(twoFlags, [you], ALL).more.title).toBe("Also flagged");
   });
 
   it("gives the general verdict while nobody has conditions", () => {

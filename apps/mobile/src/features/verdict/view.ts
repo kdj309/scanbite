@@ -104,6 +104,15 @@ export function verdictView(
 
 const isFlag = (reason: VerdictReason) => reason.kind === "flag";
 
+/**
+ * The heading for the reasons after the main one: "Also flagged" only when
+ * one of them is a flag. Things we couldn't check aren't flags, so on their
+ * own they read "Couldn't check" (never "Also flagged" under a Safe).
+ */
+function moreTitle(rest: readonly VerdictReason[]): string {
+  return rest.some(isFlag) ? "Also flagged" : "Couldn’t check";
+}
+
 /** A flag keeps its severity; a gap we couldn't check reads as caution. */
 function asItem(reason: VerdictReason): MoreItem {
   return {
@@ -130,7 +139,7 @@ function personView({ member, verdict }: Person): VerdictView {
       title: main.label,
       line: main.text,
       whyRuleId: main.rule_id,
-      more: { title: "Also flagged", items: rest.map(asItem).filter(once) },
+      more: { title: moreTitle(rest), items: rest.map(asItem).filter(once) },
       flagged: true,
     };
   }
@@ -240,15 +249,19 @@ function generalView(
       flagged: true,
     };
   }
+  // The main reason only when it's a flag; with nothing flagged, every
+  // reason (things we couldn't check) belongs in the list below.
+  const lead = main && isFlag(main) ? main : undefined;
+  const others = lead ? rest : reasons;
   return {
     severity,
     badge: `${SEVERITY_WORDS[severity]} in general`,
     checkedFor: "Not checked for your family yet",
     reasonLabel: "General check",
-    title: main && isFlag(main) ? main.label : "Nothing flagged",
-    line: main && isFlag(main) ? main.text : "Nothing of general concern.",
-    whyRuleId: main && isFlag(main) ? main.rule_id : undefined,
-    more: { title: "Also flagged", items: rest.map(asItem).filter(once) },
+    title: lead?.label ?? "Nothing flagged",
+    line: lead?.text ?? "Nothing of general concern.",
+    whyRuleId: lead?.rule_id,
+    more: { title: moreTitle(others), items: others.map(asItem).filter(once) },
     addConditionsFor: self?.member,
     flagged: severity !== "green",
   };
