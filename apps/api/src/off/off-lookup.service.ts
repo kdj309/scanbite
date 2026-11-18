@@ -1,8 +1,9 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { fetchWithTimeout } from "../common/fetch-with-timeout";
 import { RedisCacheService } from "../common/redis-cache.service";
+import type { OffExtraction } from "./off-extraction";
+import { fetchOffProduct } from "./off-fetch";
+import type { CachedLookup, OffLookupResult } from "./off-lookup.types";
 import { mapOffProduct } from "./off-mapper";
-import type { OffExtraction, OffProductPayload } from "./off-extraction";
 
 const OFF_FIELDS = [
   "product_name",
@@ -23,29 +24,10 @@ const OFF_FIELDS = [
   "labels_tags",
 ].join(",");
 
-/** Identifies the app to OFF per their API usage guidelines, not an auth credential. */
-export const OFF_USER_AGENT =
-  "ScanBite/1.0 (+https://github.com/kdj309/scanbite)";
-
-const CACHE_PREFIX = "off:product";
+/** Redis key prefix for cached lookups ("off:product:<barcode>"). */
+export const OFF_LOOKUP_CACHE_PREFIX = "off:product";
 const FOUND_TTL_SECONDS = 24 * 60 * 60;
 const NOT_FOUND_TTL_SECONDS = 6 * 60 * 60;
-
-type CachedLookup =
-  { found: true; extraction: OffExtraction } | { found: false };
-
-/**
- * Three distinct outcomes, not a binary found/not-found — a transient
- * failure (OFF down, network blip, timeout) must never be cached the same
- * way as OFF genuinely not having the barcode. Caching a transient failure
- * as "not found" for NOT_FOUND_TTL_SECONDS would make a brand-new barcode
- * look permanently unknown for hours after a blip that OFF itself recovers
- * from in seconds.
- */
-type OffFetchResult =
-  | { kind: "found"; extraction: OffExtraction }
-  | { kind: "not_found" }
-  | { kind: "error" };
 
 @Injectable()
 export class OffLookupService {
@@ -54,7 +36,7 @@ export class OffLookupService {
   constructor(private readonly cache: RedisCacheService) {}
 
   async lookup(barcode: string): Promise<OffExtraction | null> {
-    const cacheKey = `${CACHE_PREFIX}:${barcode}`;
+    const cacheKey = `${OFF_LOOKUP_CACHE_PREFIX}:${barcode}`;
     const cached = await this.cache.getJson<CachedLookup>(cacheKey);
     if (cached) {
       return cached.found ? cached.extraction : null;
@@ -79,35 +61,15 @@ export class OffLookupService {
     return result.kind === "found" ? result.extraction : null;
   }
 
-  private async fetchFromOff(barcode: string): Promise<OffFetchResult> {
-    const url = `https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(
-      barcode
-    )}.json?fields=${OFF_FIELDS}`;
-
-    let payload: OffProductPayload;
-    try {
-      const response = await fetchWithTimeout(url, {
-        headers: { "User-Agent": OFF_USER_AGENT },
-      });
-      if (!response.ok) {
-        this.logger.warn(
-          `OFF lookup for ${barcode} returned HTTP ${response.status}`
-        );
-        return { kind: "error" };
-      }
-      payload = (await response.json()) as OffProductPayload;
-    } catch (error) {
-      this.logger.warn(
-        `OFF lookup for ${barcode} failed: ${(error as Error).message}`
-      );
+  /** OFF's product mapped to an extraction; null when OFF can't give one. */
+  private async fetchFromOff(barcode: string): Promise<OffLookupResult> {
+    const result = await fetchOffProduct(barcode, OFF_FIELDS);
+    if (result.kind === "failed") {
+      this.logger.warn(`OFF lookup for ${barcode} failed: ${result.reason}`);
       return { kind: "error" };
     }
-
-    if (payload.status !== 1 || !payload.product) {
-      return { kind: "not_found" };
-    }
-
-    const extraction = mapOffProduct(payload.product);
+    const extraction =
+      result.kind === "found" ? mapOffProduct(result.product) : null;
     return extraction ? { kind: "found", extraction } : { kind: "not_found" };
   }
 }

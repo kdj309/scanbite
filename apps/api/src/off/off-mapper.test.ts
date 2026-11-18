@@ -63,6 +63,72 @@ describe("isLiquidProduct", () => {
     assert.equal(isLiquidProduct({ categories_tags: ["en:snacks"] }), false);
   });
 
+  it("trusts a weight pack size over a drinks category", () => {
+    assert.equal(
+      isLiquidProduct({
+        quantity: "250 g",
+        categories_tags: ["en:beverages", "en:hot-beverages", "en:teas"],
+      }),
+      false
+    );
+  });
+
+  it("leaves a pack giving volume and weight to the drinks tags", () => {
+    assert.equal(
+      isLiquidProduct({
+        quantity: "1 L (1.04 kg)",
+        categories_tags: ["en:beverages", "en:juices"],
+      }),
+      true
+    );
+  });
+
+  it("doesn't take a drink powder for a drink (real OFF tags)", () => {
+    // OFF 8901207017056 Glucose-D and 8904011316001 skimmed milk powder.
+    assert.equal(
+      isLiquidProduct({
+        categories_tags: [
+          "en:beverages-and-beverages-preparations",
+          "en:beverages",
+          "en:beverage-preparations",
+          "en:energy-drinks",
+        ],
+      }),
+      false
+    );
+    assert.equal(
+      isLiquidProduct({
+        categories_tags: [
+          "en:beverages",
+          "en:dairies",
+          "en:dried-products-to-be-rehydrated",
+          "en:dehydrated-beverages",
+          "en:milk-powders",
+        ],
+      }),
+      false
+    );
+  });
+
+  it("doesn't take a plant food for a drink (real OFF tags)", () => {
+    // OFF 0028400034227 Cashews and 8908019757675 Madagascar chocobar.
+    assert.equal(
+      isLiquidProduct({
+        categories_tags: ["en:plant-based-foods-and-beverages"],
+      }),
+      false
+    );
+    assert.equal(
+      isLiquidProduct({
+        categories_tags: [
+          "en:plant-based-foods-and-beverages",
+          "en:fruit-based-foods-and-beverages",
+        ],
+      }),
+      false
+    );
+  });
+
   it("defaults to solid when nothing indicates liquid", () => {
     assert.equal(isLiquidProduct({}), false);
   });
@@ -126,6 +192,62 @@ describe("nutritionFromProduct", () => {
       nutritionFromProduct({ nutriments: { sodium_100g: 45 } }).sodium_per_100g,
       undefined
     );
+  });
+
+  it("maps every FSSAI label nutrient OFF has (real OFF record)", () => {
+    // OFF 8906009532813 "Max Protein Snack", as OFF returns it.
+    const result = nutritionFromProduct({
+      nutriments: {
+        "energy-kcal_100g": 476.67,
+        proteins_100g: 16.67,
+        carbohydrates_100g: 49.83,
+        sugars_100g: 3,
+        fat_100g: 22.67,
+        "saturated-fat_100g": 4.5,
+        "trans-fat_100g": 0,
+        cholesterol_100g: 0,
+        sodium_100g: 0.00083,
+        fiber_100g: 6.67,
+      },
+    });
+    assert.deepEqual(result, {
+      energy_kcal_per_100g: 476.67,
+      protein_per_100g: 16.67,
+      carbohydrate_per_100g: 49.83,
+      sugar_per_100g: 3,
+      total_fat_per_100g: 22.67,
+      saturated_fat_per_100g: 4.5,
+      trans_fat_per_100g: 0,
+      cholesterol_per_100g: 0,
+      sodium_per_100g: 0.83,
+    });
+  });
+
+  it("stores cholesterol and sodium in mg, without float noise", () => {
+    const result = nutritionFromProduct({
+      nutriments: {
+        cholesterol_100g: 0.012,
+        sodium_100g: 0.11,
+        "added-sugars_100g": 4.2,
+      },
+    });
+    assert.equal(result.cholesterol_per_100g, 12);
+    assert.equal(result.sodium_per_100g, 110);
+    assert.equal(result.added_sugar_per_100g, 4.2);
+  });
+
+  it("treats energy, fat and cholesterol beyond what food can hold as missing", () => {
+    const result = nutritionFromProduct({
+      nutriments: {
+        // kJ typed as kcal: 2000 kcal is more than pure fat (900).
+        "energy-kcal_100g": 2000,
+        fat_100g: 130,
+        // mg typed as grams: 30 g of cholesterol in 100 g.
+        cholesterol_100g: 30,
+        proteins_100g: 12,
+      },
+    });
+    assert.deepEqual(result, { protein_per_100g: 12 });
   });
 
   it("treats an out-of-range per-100g value as missing rather than using it", () => {

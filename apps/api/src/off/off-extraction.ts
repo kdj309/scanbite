@@ -39,3 +39,6 @@ export type OffProductPayload = {
     labels_tags?: string[];
   };
 };
+
+/** One product as OFF returns it, with the fields we request. */
+export type OffProduct = NonNullable<OffProductPayload["product"]>;

@@ -39,6 +39,20 @@ describe("repairNutrition", () => {
     );
   });
 
+  it("checks every label nutrient, not just sugar and salt", () => {
+    assert.deepEqual(
+      repairNutrition(
+        {
+          energy_kcal_per_100g: 2100,
+          total_fat_per_100g: 34,
+          cholesterol_per_100g: 30000,
+        },
+        "200 g"
+      ),
+      { total_fat_per_100g: 34 }
+    );
+  });
+
   it("returns normal data unchanged", () => {
     const biscuits = { sugar_per_100g: 30, sodium_per_100g: 400 };
     assert.deepEqual(repairNutrition(biscuits, "250 g"), biscuits);
