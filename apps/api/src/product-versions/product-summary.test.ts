@@ -1,7 +1,13 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { Types } from "mongoose";
-import { confirmsVersion, productSummary } from "./product-summary";
+import { ConfigService } from "@nestjs/config";
+import {
+  confirmsVersion,
+  labelCheckSummary,
+  productSummary,
+  ProductSummaryService,
+} from "./product-summary";
 
 const sender = new Types.ObjectId();
 const someoneElse = new Types.ObjectId();
@@ -108,5 +114,55 @@ describe("productSummary.has_ingredients", () => {
       productSummary({ ...aiVersion, ingredients: [] }).has_ingredients,
       false
     );
+  });
+});
+
+describe("ProductSummaryService buy links", () => {
+  const service = new ProductSummaryService(
+    new ConfigService({ AMAZON_ASSOCIATE_TAG: "scanbite-21" }) as never
+  );
+
+  it("tags Amazon links with our affiliate tag", () => {
+    const amazon = service
+      .summarize(aiVersion)
+      .buy_links.find((link) => link.store === "amazon");
+    assert.equal(amazon?.affiliate, true);
+    assert.match(amazon?.url ?? "", /tag=scanbite-21/);
+  });
+
+  it("gives plain links for a product we still flag", () => {
+    const links = service.summarizeWithoutAffiliate(aiVersion).buy_links;
+    assert.ok(links.length > 0);
+    assert.ok(links.every((link) => !link.affiliate));
+    assert.ok(links.every((link) => !link.url.includes("tag=")));
+  });
+});
+
+describe("labelCheckSummary", () => {
+  it("searches the stores by brand and name, as label checks have no pack size", () => {
+    // A real label check: Mahalakshmi EXTRA Puliyogare (no barcode).
+    const links = labelCheckSummary("6ab7d04ffb5027914b128aed", {
+      name: "PULIYOGARE TAMARIND RICH MIX",
+      brand: "Mahalakshmi EXTRA",
+      ingredients: [],
+    }).buy_links;
+    assert.deepEqual(
+      links.map((link) => link.store),
+      ["amazon", "bigbasket"]
+    );
+    const amazon = new URL(links[0].url);
+    assert.equal(
+      amazon.searchParams.get("k"),
+      "Mahalakshmi EXTRA PULIYOGARE TAMARIND RICH MIX"
+    );
+  });
+
+  it("has no links when the label gave no name", () => {
+    const summary = labelCheckSummary("6ab7d04ffb5027914b128aed", {
+      name: "unknown",
+      brand: "unknown",
+      ingredients: [],
+    });
+    assert.deepEqual(summary.buy_links, []);
   });
 });

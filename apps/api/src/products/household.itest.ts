@@ -160,7 +160,8 @@ describe("household verdicts (integration)", () => {
       deleteLabelPhoto: async (key: string) => {
         deletedPhotos.push(key);
       },
-    } as never
+    } as never,
+    summaries
   );
   const scans = new ScansService(
     scanModel as never,
@@ -906,9 +907,13 @@ describe("household verdicts (integration)", () => {
           result.product.source,
           result.product.product_version_id,
           result.product.verifying,
-          result.product.buy_links,
         ],
-        ["label_check", id, false, []]
+        ["label_check", id, false]
+      );
+      // Store searches by brand and name; the app shows them only when Safe.
+      assert.deepEqual(
+        result.product.buy_links.map((link) => link.store),
+        ["amazon", "bigbasket"]
       );
     });
 

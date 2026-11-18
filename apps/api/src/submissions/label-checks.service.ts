@@ -10,7 +10,7 @@ import {
   SubmissionDocument,
 } from "../database/schemas/submission.schema";
 import { HouseholdVerdictService } from "../personalization/household-verdict.service";
-import { labelCheckSummary } from "../product-versions/product-summary";
+import { ProductSummaryService } from "../product-versions/product-summary";
 
 type ReadyLabelCheck = SubmissionDocument & { label_facts: LabelFacts };
 
@@ -27,7 +27,8 @@ export class LabelChecksService {
     private readonly submissions: Model<SubmissionDocument>,
     @InjectModel(Scan.name) private readonly scans: Model<ScanDocument>,
     private readonly householdVerdicts: HouseholdVerdictService,
-    private readonly storage: ObjectStorageService
+    private readonly storage: ObjectStorageService,
+    private readonly productSummaries: ProductSummaryService
   ) {}
 
   /**
@@ -85,7 +86,10 @@ export class LabelChecksService {
     return new Map(
       checks.map((check) => [
         check.id as string,
-        labelCheckSummary(check.id as string, check.label_facts!),
+        this.productSummaries.summarizeLabelCheck(
+          check.id as string,
+          check.label_facts!
+        ),
       ])
     );
   }

@@ -3,10 +3,7 @@ import type { ProductFoundResponse } from "@foodscanner/shared";
 import type { ProductVersionDocument } from "../database/schemas/product-version.schema";
 import { HouseholdService } from "../household/household.service";
 import type { LabelFacts } from "../database/schemas/submission.schema";
-import {
-  ProductSummaryService,
-  labelCheckSummary,
-} from "../product-versions/product-summary";
+import { ProductSummaryService } from "../product-versions/product-summary";
 import type { ObjectiveVerdict } from "../scoring/scoring.service";
 import { ScoringService } from "../scoring/scoring.service";
 import { householdVerdict } from "./household-verdict";
@@ -70,7 +67,7 @@ export class HouseholdVerdictService {
     return {
       response: {
         found: true,
-        product: labelCheckSummary(labelCheckId, label),
+        product: this.summaries.summarizeLabelCheck(labelCheckId, label),
         ...householdVerdict(context, members),
         ...coverage(objective),
         ...whatWasRead(label),

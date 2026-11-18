@@ -99,8 +99,9 @@ export function Verdict({
         </View>
       </ScrollView>
       <View style={[styles.footer, { paddingBottom: insets.bottom + 12 }]}>
-        {result.product.source === "label_check" ? (
-          // Not a catalog product: no better options or places to buy.
+        {result.product.source === "label_check" && view.flagged ? (
+          // Not a catalog product: nothing to compare it with. Safe, it
+          // gets places to buy below, like any product.
           <Button
             title="Scan another"
             onPress={() =>

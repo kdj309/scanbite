@@ -5,6 +5,7 @@
  *   pnpm --filter api build && pnpm --filter api test:integration
  */
 import "reflect-metadata";
+import { ConfigService } from "@nestjs/config";
 import assert from "node:assert/strict";
 import { after, before, describe, it } from "node:test";
 import mongoose, { Types } from "mongoose";
@@ -18,6 +19,7 @@ import {
   Submission,
   SubmissionSchema,
 } from "../database/schemas/submission.schema";
+import { ProductSummaryService } from "../product-versions/product-summary";
 import { LabelChecksService } from "../submissions/label-checks.service";
 import { ScansService } from "./scans.service";
 
@@ -37,7 +39,8 @@ describe("recent scans (integration)", () => {
       submissions as never,
       scans as never,
       null as never,
-      null as never
+      null as never,
+      new ProductSummaryService(new ConfigService({}) as never)
     )
   );
 

@@ -45,11 +45,16 @@ export function productSummary(
   };
 }
 
-/** A label check shown like a product (design 2d): read from this
- *  person's own photos, so nothing to confirm and nowhere to buy it. */
+/**
+ * A label check shown like a product (design 2d): read from this person's
+ * own photos, so nothing to confirm. Store search links by brand and name,
+ * like a photo-read catalogue product's; the app shows them only when it's
+ * Safe. No pack size is kept for label checks, so the search is broader.
+ */
 export function labelCheckSummary(
   labelCheckId: string,
-  label: Pick<LabelFacts, "name" | "brand" | "ingredients">
+  label: Pick<LabelFacts, "name" | "brand" | "ingredients">,
+  tags: AffiliateTags = {}
 ): ProductSummary {
   return {
     name: label.name,
@@ -63,7 +68,12 @@ export function labelCheckSummary(
     // Not a catalogue product: nothing to compare it with.
     shelf: null,
     veg: "unknown",
-    buy_links: [],
+    // Fields named, not spread: `label` is often a Mongoose subdocument,
+    // whose spread holds its internals instead of name and brand.
+    buy_links: buyLinks(
+      { name: label.name, brand: label.brand, quantity: null },
+      tags
+    ),
   };
 }
 
@@ -101,5 +111,20 @@ export class ProductSummaryService {
 
   summarize(version: VersionFields): ProductSummary {
     return productSummary(version, this.tags);
+  }
+
+  /**
+   * With plain store links: for products we still flag ("Better, not
+   * perfect"), so we never earn from sending people to them.
+   */
+  summarizeWithoutAffiliate(version: VersionFields): ProductSummary {
+    return productSummary(version);
+  }
+
+  summarizeLabelCheck(
+    labelCheckId: string,
+    label: Pick<LabelFacts, "name" | "brand" | "ingredients">
+  ): ProductSummary {
+    return labelCheckSummary(labelCheckId, label, this.tags);
   }
 }
