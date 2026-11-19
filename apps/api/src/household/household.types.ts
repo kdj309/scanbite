@@ -3,5 +3,5 @@ import type { HouseholdMember } from "../database/schemas/household-member.schem
 /** What a create request sets on a member, with lists defaulted to empty. */
 export type MemberFields = Pick<
   HouseholdMember,
-  "name" | "relationship" | "age_band" | "conditions" | "allergies"
+  "name" | "relationship" | "age_band" | "conditions" | "allergies" | "consent"
 >;

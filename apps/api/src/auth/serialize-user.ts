@@ -12,5 +12,11 @@ export function serializeUser(user: UserDocument): User {
       ? String(user.default_member_id)
       : "",
     created_at: toIso(user.created_at),
+    health_consent: user.health_consent
+      ? {
+          notice_version: user.health_consent.notice_version,
+          agreed_at: toIso(user.health_consent.agreed_at),
+        }
+      : null,
   };
 }

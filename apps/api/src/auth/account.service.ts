@@ -75,6 +75,28 @@ export class AccountService {
     return { user: serializeUser(user), household_members: members };
   }
 
+  /** Records "I agree" on this version of the health-info notice. */
+  async recordHealthConsent(userId: string, noticeVersion: string) {
+    const user = await this.users
+      .findByIdAndUpdate(
+        userId,
+        {
+          $set: {
+            health_consent: {
+              notice_version: noticeVersion,
+              agreed_at: new Date(),
+            },
+          },
+        },
+        { new: true }
+      )
+      .exec();
+    if (!user) {
+      throw new UnauthorizedException();
+    }
+    return { user: serializeUser(user) };
+  }
+
   /**
    * Deletes the account and everything tied to it: Apple token (revoked at
    * Apple first), submissions and their label photos, scans, sessions,

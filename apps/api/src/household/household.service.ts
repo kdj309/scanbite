@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
@@ -6,6 +7,7 @@ import {
 } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import {
+  HEALTH_CONSENT_NOTICE_VERSION,
   MAX_HOUSEHOLD_MEMBERS,
   type CreateHouseholdMemberRequest,
   type UpdateHouseholdMemberRequest,
@@ -44,12 +46,16 @@ export class HouseholdService {
    */
   async createForUser(userId: string, body: CreateHouseholdMemberRequest) {
     const owner = new Types.ObjectId(userId);
+    await this.requireConsentToAdd(owner, body);
     const fields: MemberFields = {
       name: body.name,
       relationship: body.relationship,
       age_band: body.age_band,
       conditions: body.conditions ?? [],
       allergies: body.allergies ?? [],
+      consent: body.consent_basis
+        ? { basis: body.consent_basis, given_at: new Date() }
+        : null,
     };
     if (body.client_id === undefined) {
       await this.requireRoom(owner);
@@ -73,11 +79,14 @@ export class HouseholdService {
     if (!saved) {
       await this.requireRoom(owner);
     }
+    // Consent is recorded once, when they're first added: a retry later
+    // mustn't move its time forward.
+    const { consent, ...rest } = fields;
     const upsert = () =>
       this.members
         .findOneAndUpdate(
           { owner_user_id: owner, client_id: clientId },
-          { $set: fields },
+          { $set: rest, $setOnInsert: { consent } },
           { upsert: true, new: true, runValidators: true }
         )
         .orFail()
@@ -102,6 +111,52 @@ export class HouseholdService {
     return existing !== null;
   }
 
+  /**
+   * Anyone but yourself needs your consent and a reason we may hold their
+   * details (design 8c: parent or guardian, or the adult agreed); your own
+   * conditions or allergies need your consent.
+   */
+  private async requireConsentToAdd(
+    owner: Types.ObjectId,
+    body: CreateHouseholdMemberRequest
+  ) {
+    if (body.relationship === "self") {
+      // Every account starts with you in it (updated, never re-created): a
+      // second "self" would be someone else added without their consent.
+      const exists = await this.members.exists({
+        owner_user_id: owner,
+        relationship: "self",
+      });
+      if (exists) {
+        throw new BadRequestException("You're already in the family.");
+      }
+      if (hasHealthInfo(body)) await this.requireHealthConsent(owner);
+      return;
+    }
+    await this.requireHealthConsent(owner);
+    if (!body.consent_basis) {
+      throw new BadRequestException(
+        "Confirm you may add this person's details (consent_basis)."
+      );
+    }
+  }
+
+  /** "I agree" on the current health-info notice (design 0b). */
+  private async requireHealthConsent(owner: Types.ObjectId) {
+    const user = await this.users
+      .findById(owner, { health_consent: 1 })
+      .lean()
+      .exec();
+    if (
+      user?.health_consent?.notice_version !== HEALTH_CONSENT_NOTICE_VERSION
+    ) {
+      throw new ForbiddenException({
+        code: "health_consent_required",
+        message: "Agree to how we use health info before adding it.",
+      });
+    }
+  }
+
   private async requireRoom(owner: Types.ObjectId) {
     const count = await this.members.countDocuments({ owner_user_id: owner });
     if (count >= MAX_HOUSEHOLD_MEMBERS) {
@@ -117,6 +172,9 @@ export class HouseholdService {
     body: UpdateHouseholdMemberRequest
   ) {
     const member = await this.requireOwnedMember(userId, memberId);
+    if (hasHealthInfo(body)) {
+      await this.requireHealthConsent(member.owner_user_id);
+    }
     if (body.name !== undefined) {
       member.name = body.name;
     }
@@ -177,4 +235,13 @@ export class HouseholdService {
     }
     return this.requireOwnedMember(userId, memberId);
   }
+}
+
+/** Whether a request sets any conditions or allergies (clearing them doesn't count). */
+function hasHealthInfo(
+  body: Pick<CreateHouseholdMemberRequest, "conditions" | "allergies">
+): boolean {
+  return (
+    (body.conditions?.length ?? 0) > 0 || (body.allergies?.length ?? 0) > 0
+  );
 }

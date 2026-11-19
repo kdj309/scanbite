@@ -48,6 +48,17 @@ export class User {
   @Prop({ type: SchemaTypes.ObjectId, ref: "HouseholdMember" })
   default_member_id?: Types.ObjectId;
 
+  /**
+   * "I agree" on the health-info notice (design 0b, DPDP Act 2023): which
+   * version and when. Needed before anyone's health info is saved.
+   */
+  @Prop({
+    type: { notice_version: String, agreed_at: Date },
+    _id: false,
+    default: null,
+  })
+  health_consent!: { notice_version: string; agreed_at: Date } | null;
+
   created_at!: Date;
 }
 

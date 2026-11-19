@@ -13,6 +13,7 @@ import { after, before, describe, it } from "node:test";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import type { JWTPayload } from "jose";
+import { HEALTH_CONSENT_NOTICE_VERSION } from "@foodscanner/shared";
 import mongoose, { Types } from "mongoose";
 import {
   TEST_REDIS_URL,
@@ -153,15 +154,21 @@ describe("auth (integration)", () => {
     appleCredentials
   );
 
-  const setSelf = (
+  // Health info needs "I agree" first (design 0b).
+  const setSelf = async (
     account: { user: { id: string; default_member_id: string } },
     patch: object
-  ) =>
-    household.updateForUser(
+  ) => {
+    await accounts.recordHealthConsent(
+      account.user.id,
+      HEALTH_CONSENT_NOTICE_VERSION
+    );
+    return household.updateForUser(
       account.user.id,
       account.user.default_member_id,
       patch as never
     );
+  };
 
   before(() => connectTestDb("foodscanner_test_auth"));
 

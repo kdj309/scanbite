@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { allergenListSchema } from "./allergens";
 import { healthConditionListSchema } from "./conditions";
+import { memberConsentBasisSchema } from "./consent";
 import {
   isoDateTimeSchema,
   objectIdSchema,
@@ -34,6 +35,12 @@ export const createHouseholdMemberRequestSchema = z.object({
   age_band: z.string().min(1).optional(),
   conditions: healthConditionListSchema.optional(),
   allergies: allergenListSchema.optional(),
+  /**
+   * Required for anyone but yourself (design 8c): the person adding them
+   * confirms they're the child's parent or guardian, or that the adult
+   * agreed. Kept with the member as a record of that consent.
+   */
+  consent_basis: memberConsentBasisSchema.optional(),
 });
 export type CreateHouseholdMemberRequest = z.infer<
   typeof createHouseholdMemberRequestSchema
