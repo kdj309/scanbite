@@ -202,6 +202,9 @@ async function refresh(redis: RedisCacheService | undefined) {
     if (result.kind === "failed") {
       console.warn(`${barcode}: failed (${result.reason}) — left for a re-run`);
     }
+    if (result.kind === "not_on_off") {
+      console.warn(`${barcode}: no longer on Open Food Facts — left as it was`);
+    }
     if (result.kind === "found") {
       const after = nutritionFromProduct(result.product);
       const stored = await versions
