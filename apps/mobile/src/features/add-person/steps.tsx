@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Redirect, router } from "expo-router";
+import { useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { Button, Text } from "@/components";
 import {
@@ -17,7 +18,15 @@ import {
 } from "@/features/household/profile-pickers";
 import { usePersonDraft } from "./draft";
 import type { PersonFlow } from "./flows";
-import { saveRequest, stepCopy, type DraftPerson } from "./model";
+import {
+  consentBasis,
+  hasPermission,
+  permissionText,
+  saveRequest,
+  stepCopy,
+  type DraftPerson,
+} from "./model";
+import { PermissionTick } from "./permission-tick";
 import { StepScreen } from "./step-screen";
 
 type StepProps = { flow: PersonFlow };
@@ -72,14 +81,26 @@ export function AboutStep({ flow }: StepProps) {
   );
 }
 
-/** Step 3: their conditions. */
+/**
+ * Step 3: their conditions. For anyone but you, a tick first confirms you
+ * may add their details (design 8c), even with nothing picked.
+ */
 export function ConditionsStep({ flow }: StepProps) {
   const { person, update } = usePersonDraft();
+  const [asked, setAsked] = useState(false);
   if (!person) {
     return <Redirect href={flow.start} />;
   }
   const copy = stepCopy(person);
   const count = person.conditions.length;
+  const needsPermission = person.relationship !== "self";
+  const onNext = () => {
+    if (needsPermission && !hasPermission(person)) {
+      setAsked(true);
+      return;
+    }
+    router.push(flow.allergies);
+  };
 
   return (
     <StepScreen
@@ -87,7 +108,7 @@ export function ConditionsStep({ flow }: StepProps) {
       say={copy.conditionsSay}
       title={copy.conditionsTitle}
       nextLabel="Continue"
-      onNext={() => router.push(flow.allergies)}
+      onNext={onNext}
     >
       <Text variant="caption" style={styles.count}>
         {count === 0 ? "None selected" : `${count} selected`}
@@ -96,6 +117,20 @@ export function ConditionsStep({ flow }: StepProps) {
         value={person.conditions}
         onChange={(conditions) => update({ conditions })}
       />
+      {needsPermission && (
+        <PermissionTick
+          label={permissionText(person)}
+          checked={hasPermission(person)}
+          onToggle={() =>
+            update({
+              permissionFor: hasPermission(person)
+                ? null
+                : consentBasis(person),
+            })
+          }
+          asked={asked}
+        />
+      )}
     </StepScreen>
   );
 }

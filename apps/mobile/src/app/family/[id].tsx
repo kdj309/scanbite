@@ -22,6 +22,8 @@ import {
   formFromMember,
   type MemberForm,
 } from "@/features/household/edit-member";
+import { hasHealthConsent, useMe } from "@/features/consent/api";
+import { askHealthConsent } from "@/features/consent/ask";
 import { HouseholdLoading } from "@/features/household/household-loading";
 import { nameMissing } from "@/features/household/members";
 import {
@@ -70,6 +72,7 @@ function EditForm({ member }: EditFormProps) {
   const update = (patch: Partial<MemberForm>) =>
     setForm((current) => ({ ...current, ...patch }));
 
+  const me = useMe();
   const save = useMutation({
     mutationFn: () => updateMember(member.id, editRequest(member, form)),
     onSuccess: (saved) => {
@@ -161,7 +164,17 @@ function EditForm({ member }: EditFormProps) {
           )}
           <Button
             title="Save changes"
-            onPress={() => save.mutate()}
+            onPress={() => {
+              // Health info needs "I agree" first (design 0b); renaming or
+              // removing someone never does. Back here after, edits kept.
+              const healthInfo =
+                form.conditions.length > 0 || form.allergies.length > 0;
+              if (healthInfo && !hasHealthConsent(me.data)) {
+                askHealthConsent();
+                return;
+              }
+              save.mutate();
+            }}
             loading={save.isPending}
             disabled={busy || nameMissing(member.relationship, form.name)}
           />

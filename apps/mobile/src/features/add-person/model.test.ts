@@ -1,5 +1,8 @@
 import type { HouseholdMember } from "@foodscanner/shared";
 import {
+  consentBasis,
+  hasPermission,
+  permissionText,
   addedPeople,
   addOptions,
   newPerson,
@@ -101,6 +104,7 @@ describe("saveRequest", () => {
       ...newPerson("parent"),
       name: "  Papa ",
       allergies: ["peanuts"],
+      permissionFor: "member_agreed",
     };
 
     expect(saveRequest(papa, SELF_ID)).toEqual({
@@ -112,8 +116,63 @@ describe("saveRequest", () => {
         conditions: [],
         allergies: ["peanuts"],
         client_id: "6f1c2b9e-4d3a-4c55-9b7e-2a8f0c1d3e4f",
+        consent_basis: "member_agreed",
       },
     });
+  });
+});
+
+describe("consent for someone else's details (design 8c)", () => {
+  it("asks a child's parent or guardian, by age or as a Child with no age", () => {
+    const aarav: DraftPerson = {
+      ...newPerson("child"),
+      name: "Aarav",
+      ageBand: "0–12",
+    };
+    expect(consentBasis(aarav)).toBe("guardian");
+    expect(permissionText(aarav)).toBe("I'm Aarav's parent or guardian");
+    expect(consentBasis({ ...newPerson("child"), name: "Riya" })).toBe(
+      "guardian"
+    );
+  });
+
+  it("asks an adult to have agreed, an adult child included", () => {
+    const amma: DraftPerson = {
+      ...newPerson("parent"),
+      name: "Amma",
+      ageBand: "60+",
+    };
+    expect(consentBasis(amma)).toBe("member_agreed");
+    expect(permissionText(amma)).toBe(
+      "Amma has agreed to me adding their health info"
+    );
+    const grown: DraftPerson = {
+      ...newPerson("child"),
+      name: "Dev",
+      ageBand: "18–39",
+    };
+    expect(consentBasis(grown)).toBe("member_agreed");
+  });
+
+  it("starts unticked", () => {
+    expect(hasPermission(newPerson("parent"))).toBe(false);
+  });
+
+  it("drops the tick when a new age changes what's being confirmed", () => {
+    const dev: DraftPerson = {
+      ...newPerson("child"),
+      name: "Dev",
+      ageBand: "18–39",
+      permissionFor: "member_agreed",
+    };
+    expect(hasPermission(dev)).toBe(true);
+    const nowAChild = { ...dev, ageBand: "0–12" as const };
+    expect(hasPermission(nowAChild)).toBe(false);
+    // So the save sends no basis they never confirmed.
+    const request = saveRequest(nowAChild, SELF_ID);
+    expect(
+      request.kind === "create" && request.body.consent_basis
+    ).toBeUndefined();
   });
 });
 

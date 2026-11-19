@@ -55,6 +55,13 @@ const ICONS = {
     </>
   ),
   torch: <Path d="M11 2L4 11h5l-1 7 7-9h-5l1-7z" strokeWidth={1.9} />,
+  /** Health info kept private (design 0b). */
+  lock: (
+    <>
+      <Path d="M5 9.5h10v7H5z" strokeWidth={1.8} />
+      <Path d="M7 9.5V7a3 3 0 0 1 6 0v2.5" strokeWidth={1.8} />
+    </>
+  ),
   /** "Scan the label again" (design 2c). */
   camera: (
     <>

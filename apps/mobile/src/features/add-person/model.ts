@@ -6,6 +6,7 @@ import type {
   HouseholdMember,
   CreateHouseholdMemberRequest,
   HealthConditionCode,
+  MemberConsentBasis,
   Relationship,
   UpdateHouseholdMemberRequest,
 } from "@foodscanner/shared";
@@ -49,6 +50,12 @@ export type DraftPerson = {
   /** Made once when drafted and sent with the create, so a retried save
    *  (its response lost) updates this person instead of adding them twice. */
   clientId: string;
+  /**
+   * The statement ticked on their conditions step (design 8c), not just
+   * yes/no: if the age later changes what's being confirmed (guardian vs
+   * agreed), the old tick no longer counts. Not asked for "Me".
+   */
+  permissionFor: MemberConsentBasis | null;
 };
 
 export function newPerson(relationship: Relationship): DraftPerson {
@@ -58,7 +65,41 @@ export function newPerson(relationship: Relationship): DraftPerson {
     conditions: [],
     allergies: [],
     clientId: randomUUID(),
+    permissionFor: null,
   };
+}
+
+/** Under 18: a parent's or guardian's consent (DPDP Act 2023). */
+const CHILD_AGE_BANDS: ReadonlySet<AgeBand> = new Set(["0–12", "13–17"]);
+
+/**
+ * Why we may hold this person's details (design 8c): a child needs their
+ * parent or guardian; an adult needs to have agreed. A "Child" with no age
+ * given counts as a child: the stricter reading.
+ */
+export function consentBasis(person: DraftPerson): MemberConsentBasis {
+  if (person.ageBand) {
+    return CHILD_AGE_BANDS.has(person.ageBand) ? "guardian" : "member_agreed";
+  }
+  return person.relationship === "child" ? "guardian" : "member_agreed";
+}
+
+/** Ticked for what's being confirmed now (it changes with their age). */
+export function hasPermission(person: DraftPerson): boolean {
+  return person.permissionFor === consentBasis(person);
+}
+
+/** The tick's words: "I'm Aarav's parent or guardian". */
+export function permissionText(person: DraftPerson): string {
+  const name = person.name.trim();
+  if (consentBasis(person) === "guardian") {
+    return name
+      ? `I'm ${name}'s parent or guardian`
+      : "I'm their parent or guardian";
+  }
+  return name
+    ? `${name} has agreed to me adding their health info`
+    : "They've agreed to me adding their health info";
 }
 
 /** Relationships that are one person: never offered twice. */
@@ -150,6 +191,8 @@ export function saveRequest(person: DraftPerson, selfId: string): SaveRequest {
       name: person.name.trim(),
       relationship: person.relationship,
       client_id: person.clientId,
+      // Only what they confirmed; without it the server refuses the save.
+      consent_basis: hasPermission(person) ? consentBasis(person) : undefined,
     },
   };
 }

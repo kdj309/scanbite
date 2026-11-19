@@ -8,11 +8,21 @@ import { SETUP_FLOW } from "@/features/add-person/flows";
 import { addedPeople, WHO_OPTIONS } from "@/features/add-person/model";
 import { OptionAvatar } from "@/features/add-person/option-avatar";
 import { PersonTile, tileGrid } from "@/features/add-person/person-tile";
+import { RequireHealthConsent } from "@/features/consent/require-health-consent";
 import { useFinishSetup } from "@/features/onboarding/setup-seen";
 import { StepScreen } from "@/features/add-person/step-screen";
 
+/** Family setup asks for consent first (design 0b), before any health info. */
+export default function WhoRoute() {
+  return (
+    <RequireHealthConsent setup>
+      <Who />
+    </RequireHealthConsent>
+  );
+}
+
 /** Pick one person to set up; come back here to add the next, or finish. */
-export default function Who() {
+function Who() {
   const { start } = usePersonDraft();
   const household = useHousehold();
   const finishSetup = useFinishSetup();
