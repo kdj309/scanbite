@@ -8,9 +8,11 @@
     "scheme": "scanbite",
     "userInterfaceStyle": "light",
     "ios": {
+      "bundleIdentifier": "in.scanbite.app",
       "icon": "./assets/expo.icon"
     },
     "android": {
+      "package": "in.scanbite.app",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
