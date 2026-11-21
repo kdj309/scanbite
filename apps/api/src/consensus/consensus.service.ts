@@ -8,7 +8,8 @@ import {
   ProductVersion,
   ProductVersionDocument,
 } from "../database/schemas/product-version.schema";
-import { shouldAutoPromote } from "./conflict";
+import { fillsNoResult, shouldAutoPromote } from "./conflict";
+import type { IncomingPackRead, PackRead } from "./conflict.types";
 
 export type PromoteResult =
   | { promoted: true; productVersionId: string }
@@ -17,6 +18,32 @@ export type PromoteResult =
       productVersionId: string;
       reason: "needs_review" | "superseded";
     };
+
+/** How sure the label read was; a version with no score counts as unsure. */
+function confidenceOf(version: ProductVersion): number {
+  return version.extraction_confidence ?? 0;
+}
+
+function packRead(version: ProductVersion): PackRead {
+  return {
+    ingredientCount: version.ingredients.length,
+    brand: version.brand,
+    name: version.name,
+  };
+}
+
+/** See fillsNoResult: new photos of a live product that had no ingredients. */
+function replacesNoResult(
+  live: ProductVersion | null,
+  incoming: ProductVersion
+): boolean {
+  if (live === null) return false;
+  const read: IncomingPackRead = {
+    ...packRead(incoming),
+    extractionConfidence: confidenceOf(incoming),
+  };
+  return fillsNoResult(packRead(live), read);
+}
 
 @Injectable()
 export class ConsensusService {
@@ -54,8 +81,9 @@ export class ConsensusService {
     // v1: this submission's vision confidence only — not corroboration count
     // or independent submitters (HLD §6c). See shouldAutoPromote.
     const eligible = shouldAutoPromote({
-      hasLiveVersion: Boolean(live),
-      extractionConfidence: version.extraction_confidence ?? 0,
+      hasLiveVersion: live !== null,
+      extractionConfidence: confidenceOf(version),
+      fillsNoResult: replacesNoResult(live, version),
     });
     if (!eligible) {
       this.logger.log(`Leaving version ${productVersionId} pending for review`);

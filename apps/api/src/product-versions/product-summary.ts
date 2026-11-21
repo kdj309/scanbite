@@ -5,6 +5,8 @@ import type { Env } from "../config/env";
 import { buyLinks, type AffiliateTags } from "./buy-links";
 import type { Types } from "mongoose";
 import type { ProductVersionDocument } from "../database/schemas/product-version.schema";
+import type { LabelFacts } from "../database/schemas/submission.schema";
+import { shelfOf } from "./shelves";
 
 type VersionFields = Pick<
   ProductVersionDocument,
@@ -17,6 +19,8 @@ type VersionFields = Pick<
   | "submitted_by"
   | "confirmed_at"
   | "declared_veg"
+  | "ingredients"
+  | "category"
 >;
 
 /** What the app shows about a product. Built per request, never cached:
@@ -32,10 +36,44 @@ export function productSummary(
     product_version_id: version.id as string,
     source: aiPhotos ? "ai_photos" : "catalog",
     verifying: aiPhotos && !version.confirmed_at,
+    has_ingredients: version.ingredients.length > 0,
     image_url: version.image_url ?? null,
     quantity: version.quantity ?? null,
+    shelf: shelfOf(version.category),
     veg: version.declared_veg ?? "unknown",
     buy_links: buyLinks(version, tags),
+  };
+}
+
+/**
+ * A label check shown like a product (design 2d): read from this person's
+ * own photos, so nothing to confirm. Store search links by brand and name,
+ * like a photo-read catalogue product's; the app shows them only when it's
+ * Safe. No pack size is kept for label checks, so the search is broader.
+ */
+export function labelCheckSummary(
+  labelCheckId: string,
+  label: Pick<LabelFacts, "name" | "brand" | "ingredients">,
+  tags: AffiliateTags = {}
+): ProductSummary {
+  return {
+    name: label.name,
+    brand: label.brand,
+    product_version_id: labelCheckId,
+    source: "label_check",
+    verifying: false,
+    has_ingredients: label.ingredients.length > 0,
+    image_url: null,
+    quantity: null,
+    // Not a catalogue product: nothing to compare it with.
+    shelf: null,
+    veg: "unknown",
+    // Fields named, not spread: `label` is often a Mongoose subdocument,
+    // whose spread holds its internals instead of name and brand.
+    buy_links: buyLinks(
+      { name: label.name, brand: label.brand, quantity: null },
+      tags
+    ),
   };
 }
 
@@ -73,5 +111,20 @@ export class ProductSummaryService {
 
   summarize(version: VersionFields): ProductSummary {
     return productSummary(version, this.tags);
+  }
+
+  /**
+   * With plain store links: for products we still flag ("Better, not
+   * perfect"), so we never earn from sending people to them.
+   */
+  summarizeWithoutAffiliate(version: VersionFields): ProductSummary {
+    return productSummary(version);
+  }
+
+  summarizeLabelCheck(
+    labelCheckId: string,
+    label: Pick<LabelFacts, "name" | "brand" | "ingredients">
+  ): ProductSummary {
+    return labelCheckSummary(labelCheckId, label, this.tags);
   }
 }

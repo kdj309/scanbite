@@ -9,6 +9,7 @@ export function serializeScan(
   return {
     id: scan.id as string,
     barcode: scan.barcode,
+    label_check_id: scan.label_check_id ? String(scan.label_check_id) : null,
     member_id: scan.member_id ? String(scan.member_id) : null,
     product_version_id: scan.product_version_id
       ? String(scan.product_version_id)

@@ -13,6 +13,7 @@ import {
 import type { Env } from "../config/env";
 import { assertNonceMatches } from "./nonce";
 import type { SocialProvider } from "./social-sign-in";
+import type { IdTokenOptions, SignedJwtOptions } from "./auth.types";
 
 export type VerifiedIdentity = {
   sub: string;
@@ -79,7 +80,7 @@ export function toVerifiedIdentity(payload: JWTPayload): VerifiedIdentity {
 export async function verifySignedJwt(
   token: string,
   keys: JWTVerifyGetKey,
-  options: { issuers: readonly string[]; audience: string[] },
+  options: SignedJwtOptions,
   invalidMessage: string
 ): Promise<JWTPayload> {
   try {
@@ -97,7 +98,7 @@ export async function verifySignedJwt(
 export async function verifyIdToken(
   idToken: string,
   keys: JWTVerifyGetKey,
-  options: { issuers: readonly string[]; audience: string[]; rawNonce: string }
+  options: IdTokenOptions
 ): Promise<VerifiedIdentity> {
   const payload = await verifySignedJwt(
     idToken,

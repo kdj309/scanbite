@@ -4,7 +4,8 @@ import { ObjectStorageService } from "../../common/object-storage.service";
 import type { Env } from "../../config/env";
 import type { ExtractionOutput } from "./extraction-output";
 import { callVisionApi } from "./vision-api-client";
-import type { VisionPort } from "./vision.port";
+import type { ExtractionRequest, VisionPort } from "./vision.port";
+import type { AnthropicResponse } from "./claude-vision.types";
 
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 const ANTHROPIC_VERSION = "2023-06-01";
@@ -13,10 +14,6 @@ const MAX_TOKENS = 1500;
 // Pinned to the exact model the eval validated (docs/research/vision-eval) —
 // bumping this needs a re-run of the eval, not just a version swap.
 const CLAUDE_MODEL = "claude-sonnet-4-5";
-
-type AnthropicResponse = {
-  content?: Array<{ type: string; text?: string }>;
-};
 
 /**
  * Escalation tier of the vision pipeline (HLD §9 decision, 2026-09-30 eval):
@@ -30,10 +27,7 @@ export class ClaudeVisionAdapter implements VisionPort {
     private readonly storage: ObjectStorageService
   ) {}
 
-  async extract(input: {
-    barcode: string;
-    photoKeys: string[];
-  }): Promise<ExtractionOutput> {
+  async extract(input: ExtractionRequest): Promise<ExtractionOutput> {
     const apiKey = this.config.get("ANTHROPIC_API_KEY", { infer: true });
     if (!apiKey) {
       throw new Error("ANTHROPIC_API_KEY is not configured");

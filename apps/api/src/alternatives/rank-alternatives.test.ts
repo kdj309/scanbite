@@ -6,10 +6,14 @@ import type { ProductContext } from "../personalization/household-verdict";
 import { evaluateRules, passedRules } from "../scoring/evaluate-rules";
 import { HLD_EXAMPLE_RULES } from "../scoring/hld-example-rules";
 import { HLD_PERSONALIZATION_SEEDS } from "../workers/seed/hld-seed";
-import { rankAlternatives, type RuleFacts } from "./rank-alternatives";
+import {
+  rankAlternatives,
+  rankCautionAlternatives,
+  type RuleFacts,
+} from "./rank-alternatives";
 
 // The real dev seed rules: FSSAI/UK sugar + salt, palm oil, additives,
-// NOVA, and the diabetic sugar escalation.
+// NOVA, the diabetic sugar escalation and the condition salt rules.
 const ruleLabels = Object.fromEntries(
   HLD_EXAMPLE_RULES.map((rule) => [rule.id, rule.label ?? ""])
 );
@@ -111,10 +115,18 @@ describe("rankAlternatives", () => {
     const ranked = rankAlternatives({
       original: context({
         sugar_per_100g: 2,
+        sodium_per_100g: 50,
         nova_group: 4,
         additive_count: 6,
       }),
-      candidates: [candidate("simple", { sugar_per_100g: 1, nova_group: 1 })],
+      // Salt known and low, or it couldn't be Safe for someone with BP.
+      candidates: [
+        candidate("simple", {
+          sugar_per_100g: 1,
+          sodium_per_100g: 50,
+          nova_group: 1,
+        }),
+      ],
       members: [member(["hypertensive"])],
       ruleFacts,
       limit: 5,
@@ -153,5 +165,107 @@ describe("rankAlternatives", () => {
       ranked.map((r) => r.item),
       ["s1", "s2"]
     );
+  });
+});
+
+describe("rankCautionAlternatives", () => {
+  const everyone = member([]);
+  // Kissan ketchup: 29.8 g sugar is Avoid (UK red line, 22.5 g).
+  const ketchup = context({ sugar_per_100g: 29.8 });
+
+  it("offers Caution swaps that are better on what flagged it (real case)", () => {
+    const ranked = rankCautionAlternatives({
+      original: ketchup,
+      candidates: [
+        // Sugar-free ketchup: 3 g sugar but 1,120 mg sodium.
+        candidate("sugar free", { sugar_per_100g: 3, sodium_per_100g: 1120 }),
+        candidate("still Avoid", { sugar_per_100g: 25, sodium_per_100g: 50 }),
+        candidate("already Safe", { sugar_per_100g: 1, sodium_per_100g: 50 }),
+        candidate("sugar unknown", { sodium_per_100g: 1120 }),
+      ],
+      members: [everyone],
+      ruleFacts,
+      limit: 3,
+    });
+    assert.deepEqual(
+      ranked.map((r) => r.item),
+      ["sugar free"]
+    );
+    assert.deepEqual(
+      ranked[0].improvements.map((i) => i.label),
+      ["90% less sugar"]
+    );
+    assert.deepEqual(ranked[0].stillFlagged, [
+      ruleLabels.fssai_cannot_claim_low_sodium,
+    ]);
+  });
+
+  it("must be lower on every number that flagged the original", () => {
+    const ranked = rankCautionAlternatives({
+      original: context({ sugar_per_100g: 30, sodium_per_100g: 500 }),
+      candidates: [
+        candidate("less sugar, more salt", {
+          sugar_per_100g: 10,
+          sodium_per_100g: 600,
+        }),
+        candidate("less of both", { sugar_per_100g: 10, sodium_per_100g: 300 }),
+      ],
+      members: [everyone],
+      ruleFacts,
+      limit: 3,
+    });
+    assert.deepEqual(
+      ranked.map((r) => r.item),
+      ["less of both"]
+    );
+  });
+
+  it("offers nothing when the original is only Caution", () => {
+    assert.deepEqual(
+      rankCautionAlternatives({
+        original: context({ sugar_per_100g: 10 }),
+        candidates: [candidate("less sugar", { sugar_per_100g: 6 })],
+        members: [everyone],
+        ruleFacts,
+        limit: 3,
+      }),
+      []
+    );
+  });
+
+  it("never claims free of something it couldn't check", () => {
+    // Avoid for Amma (peanuts) and for everyone (sugar). The candidate has
+    // no ingredient list, so its peanut check is a gap, not a pass.
+    const amma = member([], ["peanuts"]);
+    const ranked = rankCautionAlternatives({
+      original: context({ sugar_per_100g: 29.8 }, ["Groundnut Oil"]),
+      candidates: [candidate("ingredients unread", { sugar_per_100g: 3 }, [])],
+      members: [everyone, amma],
+      ruleFacts,
+      limit: 3,
+    });
+    // Offered for its lower sugar, but with no allergy claim.
+    assert.deepEqual(
+      ranked.map((r) => r.improvements.map((i) => i.label)),
+      [["90% less sugar"]]
+    );
+  });
+
+  it("never offers something Avoid for any of them", () => {
+    const amma = member([], ["peanuts"]);
+    const ranked = rankCautionAlternatives({
+      original: ketchup,
+      candidates: [
+        candidate(
+          "sugar free, peanuts",
+          { sugar_per_100g: 3, sodium_per_100g: 1120 },
+          ["Groundnut Oil"]
+        ),
+      ],
+      members: [everyone, amma],
+      ruleFacts,
+      limit: 3,
+    });
+    assert.deepEqual(ranked, []);
   });
 });

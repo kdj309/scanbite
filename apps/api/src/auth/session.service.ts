@@ -12,7 +12,7 @@ import {
   type RefreshRevokedReason,
 } from "../database/schemas/refresh-token.schema";
 import { User, UserDocument } from "../database/schemas/user.schema";
-import type { JwtPayload } from "./auth.types";
+import type { JwtPayload, TokenTimes } from "./auth.types";
 import { serializeUser } from "./serialize-user";
 
 // A just-rotated refresh token presented again within this window is a
@@ -44,9 +44,7 @@ export class SessionService {
   ): Promise<AuthTokenResponse> {
     const payload: JwtPayload = { sub: user.id as string, role: user.role };
     const access_token = await this.jwt.signAsync(payload);
-    const { exp, iat } = this.jwt.decode<{ exp: number; iat: number }>(
-      access_token
-    );
+    const { exp, iat } = this.jwt.decode<TokenTimes>(access_token);
     return {
       access_token,
       token_type: "Bearer",

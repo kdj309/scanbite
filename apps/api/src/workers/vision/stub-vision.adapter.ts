@@ -7,7 +7,7 @@ import {
   extractionOutputSchema,
   type ExtractionOutput,
 } from "./extraction-output";
-import type { VisionPort } from "./vision.port";
+import type { ExtractionRequest, VisionPort } from "./vision.port";
 
 /** Canned label that exercises the HLD §6b example rules (sugar, palm oil, additives, NOVA 4). */
 export const STUB_LABEL_EXTRACTION: ExtractionOutput =
@@ -33,10 +33,7 @@ export const STUB_LABEL_EXTRACTION: ExtractionOutput =
 
 @Injectable()
 export class StubVisionAdapter implements VisionPort {
-  async extract(input: {
-    barcode: string;
-    photoKeys: string[];
-  }): Promise<ExtractionOutput> {
+  async extract(input: ExtractionRequest): Promise<ExtractionOutput> {
     void input.photoKeys;
     if (input.barcode === DEV_FIXTURE_BARCODE) {
       return DEV_FIXTURE_EXTRACTION;

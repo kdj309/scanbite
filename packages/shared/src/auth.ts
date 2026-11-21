@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { healthConsentSchema } from "./consent";
 import { householdMemberSchema } from "./household";
 import {
   authProviderSchema,
@@ -13,6 +14,9 @@ export const userSchema = z.object({
   auth_provider: authProviderSchema,
   default_member_id: objectIdSchema,
   created_at: isoDateTimeSchema,
+  // null until they agree to the health-info notice; an older version
+  // than HEALTH_CONSENT_NOTICE_VERSION means asking again.
+  health_consent: healthConsentSchema.nullable(),
 });
 export type User = z.infer<typeof userSchema>;
 

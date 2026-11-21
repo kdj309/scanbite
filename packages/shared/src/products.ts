@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { nutritionSchema } from "./nutrition";
 import { confidenceSchema, objectIdSchema, severitySchema } from "./primitives";
 
 // GTIN family: EAN-8, UPC-A (12), EAN-13, GTIN-14.
@@ -19,6 +20,9 @@ export const flagReasonSchema = z.object({
   kind: z.literal("flag"),
   severity: severitySchema,
   ...reasonFields,
+  // The fact the rule read ("sodium_per_100g", "nova_group"), so the app
+  // can mark a flagged nutrient.
+  field: z.string().optional(),
 });
 export type FlagReason = z.infer<typeof flagReasonSchema>;
 
@@ -78,15 +82,25 @@ export const productSummarySchema = z.object({
   brand: z.string(),
   product_version_id: objectIdSchema,
   // "catalog": Open Food Facts or our curated seed. "ai_photos": read by the
-  // vision model from a user's label photos.
-  source: z.enum(["catalog", "ai_photos"]),
+  // vision model from a user's label photos. "label_check": a pack with no
+  // barcode, read from one person's photos for them alone — never a catalog
+  // product, so product_version_id is the label check's id and there are no
+  // buy links (design 2d).
+  source: z.enum(["catalog", "ai_photos", "label_check"]),
   // ai_photos only: true until a different person's photos match it
-  // ("Read by AI · verifying").
+  // (shown as "Read by AI from the label").
   verifying: z.boolean(),
+  // false = no ingredients list was read, so there's no verdict to show:
+  // the app shows "Couldn't read the label" (design 2c) and offers to scan
+  // the label again.
+  has_ingredients: z.boolean(),
   // Open Food Facts front photo (CC BY-SA — credit it); null otherwise.
   image_url: z.string().nullable(),
   // Pack size as printed, e.g. "1.25 l".
   quantity: z.string().nullable(),
+  // Where it's compared for better options ("Salty snacks"); null when we
+  // can't tell, so the app doesn't offer better options.
+  shelf: z.string().nullable(),
   veg: vegStatusSchema,
   buy_links: z.array(buyLinkSchema),
 });
@@ -127,6 +141,11 @@ export const productFoundResponseSchema = z.object({
   members: z.array(memberVerdictSchema),
   confidence: confidenceSchema,
   unresolved_ingredients: z.array(z.string()),
+  // What the verdict was decided from (How we decided, design 12a): the
+  // ingredients as read, and nutrition per 100 g or 100 ml as stored
+  // (keys like "sugar_per_100g"; text when the label's value wasn't a number).
+  ingredients: z.array(z.string()),
+  nutrition: nutritionSchema,
 });
 export type ProductFoundResponse = z.infer<typeof productFoundResponseSchema>;
 

@@ -1,5 +1,6 @@
 import type { DeclaredVeg } from "@foodscanner/shared";
 import type { DeclaredAllergens } from "../allergens/allergen-evidence";
+import type { OffIngredient } from "./off-extraction.types";
 
 /** Subset of ExtractionOutput that OFF can actually supply — no photo_consistency, that's vision-specific. */
 export type OffExtraction = {
@@ -24,8 +25,9 @@ export type OffProductPayload = {
     brands?: string;
     categories?: string;
     categories_tags?: string[];
+    pnns_groups_2?: string;
     ingredients_text?: string;
-    ingredients?: Array<{ text?: string }>;
+    ingredients?: OffIngredient[];
     nutriments?: Record<string, number | string | undefined>;
     nova_group?: number;
     additives_n?: number;
@@ -37,3 +39,6 @@ export type OffProductPayload = {
     labels_tags?: string[];
   };
 };
+
+/** One product as OFF returns it, with the fields we request. */
+export type OffProduct = NonNullable<OffProductPayload["product"]>;

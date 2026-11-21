@@ -19,7 +19,7 @@ describe("HLD seed documents", () => {
     const byId = Object.fromEntries(
       HLD_RULE_SET_SEED.rules.map((rule) => [rule.id, rule])
     );
-    assert.equal(HLD_RULE_SET_SEED.version, "1");
+    assert.equal(HLD_RULE_SET_SEED.version, "2");
     assert.equal(byId.sugar_uk_fop?.operator, ">");
     assert.equal(byId.sugar_uk_fop?.threshold, 22.5);
     assert.equal(byId.sugar_uk_fop?.severity, "red");
@@ -69,16 +69,90 @@ describe("HLD seed documents", () => {
   it("seeds the HLD §7 diabetic example for solids and drinks", () => {
     const [solid, liquid] = HLD_PERSONALIZATION_SEEDS;
     assert.deepEqual(
-      [solid.field, solid.threshold, solid.applies_to],
-      ["sugar_per_100g", 15, "solid"]
+      [solid.condition, solid.field, solid.threshold, solid.applies_to],
+      ["diabetic", "sugar_per_100g", 15, "solid"]
     );
     assert.deepEqual(
-      [liquid.field, liquid.threshold, liquid.applies_to],
-      ["sugar_per_100ml", 7.5, "liquid"]
+      [liquid.condition, liquid.field, liquid.threshold, liquid.applies_to],
+      ["diabetic", "sugar_per_100ml", 7.5, "liquid"]
     );
     for (const rule of HLD_PERSONALIZATION_SEEDS) {
-      assert.equal(rule.condition, "diabetic");
       assert.equal(rule.effect, "escalate one level");
     }
+  });
+
+  it("seeds the ICMR high-salt level for BP, heart and kidney disease", () => {
+    // The dessert forms reuse the solid level (scoring/dessert-groups.test).
+    const salt = HLD_PERSONALIZATION_SEEDS.filter(
+      (rule) =>
+        rule.field.startsWith("sodium_") &&
+        (rule.applies_to === "solid" || rule.applies_to === "liquid")
+    );
+    // ICMR–NIN DGI 2024 Table 15.1: 625 / 175 mg salt, salt is 40% sodium.
+    assert.deepEqual(
+      salt.map((rule) => [
+        rule.id,
+        rule.condition,
+        rule.field,
+        rule.operator,
+        rule.threshold,
+        rule.applies_to,
+      ]),
+      [
+        [
+          "hypertensive_sodium_escalation",
+          "hypertensive",
+          "sodium_per_100g",
+          ">",
+          250,
+          "solid",
+        ],
+        [
+          "hypertensive_sodium_escalation_liquid",
+          "hypertensive",
+          "sodium_per_100ml",
+          ">",
+          70,
+          "liquid",
+        ],
+        [
+          "cardiovascular_sodium_escalation",
+          "cardiovascular",
+          "sodium_per_100g",
+          ">",
+          250,
+          "solid",
+        ],
+        [
+          "cardiovascular_sodium_escalation_liquid",
+          "cardiovascular",
+          "sodium_per_100ml",
+          ">",
+          70,
+          "liquid",
+        ],
+        [
+          "chronic_kidney_disease_sodium_escalation",
+          "chronic_kidney_disease",
+          "sodium_per_100g",
+          ">",
+          250,
+          "solid",
+        ],
+        [
+          "chronic_kidney_disease_sodium_escalation_liquid",
+          "chronic_kidney_disease",
+          "sodium_per_100ml",
+          ">",
+          70,
+          "liquid",
+        ],
+      ]
+    );
+  });
+
+  it("never seeds two personal rules with the same id", () => {
+    const ids = HLD_PERSONALIZATION_SEEDS.map((rule) => rule.id);
+    assert.equal(new Set(ids).size, ids.length);
   });
 });

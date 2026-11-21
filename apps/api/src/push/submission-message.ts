@@ -40,10 +40,13 @@ export function submissionMessage(
       body: "We're taking a closer look at the label and will let you know.",
     };
   }
-  return {
-    title: `${shorten(result.product.name, MAX_PRODUCT_NAME)} is ready`,
-    body: householdSummary(result.members),
-  };
+  const title = `${shorten(result.product.name, MAX_PRODUCT_NAME)} is ready`;
+  if (!result.product.has_ingredients) {
+    // No ingredients read means no verdict (design 2c); an empty list
+    // would otherwise read "Safe for everyone".
+    return { title, body: "Couldn't read the label. Tap to try again." };
+  }
+  return { title, body: householdSummary(result.members) };
 }
 
 function householdSummary(members: MemberVerdict[]): string {

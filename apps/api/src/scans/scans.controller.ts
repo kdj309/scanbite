@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Param, Post, Query } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  Post,
+  Query,
+} from "@nestjs/common";
 import {
   createScanRequestSchema,
   listScansQuerySchema,
@@ -21,6 +30,13 @@ export class ScansController {
     body: CreateScanRequest
   ) {
     return this.scans.create(user, body);
+  }
+
+  /** Removes a Recent scans row for good (the product stays in the catalog). */
+  @Delete("scans/:id")
+  @HttpCode(204)
+  remove(@CurrentUser() user: RequestUser, @Param("id") id: string) {
+    return this.scans.remove(user, id);
   }
 
   /** Household recents (Home). */

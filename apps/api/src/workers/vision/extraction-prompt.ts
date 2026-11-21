@@ -1,4 +1,5 @@
 import { MAX_SUBMISSION_PHOTOS } from "@foodscanner/shared";
+import { SHELF_NAMES } from "../../product-versions/shelves";
 
 /**
  * Shared across every real VisionPort adapter so Gemini and Claude are
@@ -27,4 +28,12 @@ Return ONLY valid JSON matching this exact shape (no markdown fences, no comment
   "photo_consistency": "consistent" | "inconsistent"
 }
 
-Use nutrition keys like sugar_per_100g, sodium_per_100g, energy_kcal_per_100g (or the _per_100ml variants if this is a liquid product) based on what the labels actually show. If the product name/brand isn't visible in these photos, use "unknown".`;
+Nutrition keys: use ONLY these names, each ending in _per_100g (or _per_100ml if the label gives values per 100 ml), with the per-100 value, not per serving. Leave out any nutrient not in this list. Give each value as a string copied exactly as printed, with its unit and any "<" — "17.47 g", "<0.1 g", "480 mg", "574.78 kcal" — and don't convert it yourself. If the unit is printed only in the row or column heading ("Sodium (mg)"), add it to the value. The letter after a number is its unit, not a digit: "0.1g" is "0.1 g", never "0.19".
+- energy_kcal
+- protein, carbohydrate, total_fat, saturated_fat, trans_fat
+- sugar — the label's total sugars
+- added_sugar
+- cholesterol
+- sodium
+For example: "sugar_per_100g": "12.5 g", "sodium_per_100g": "0.48 g". If the product name/brand isn't visible in these photos, use "unknown".
+Category: exactly one of ${SHELF_NAMES.map((shelf) => JSON.stringify(shelf)).join(", ")} — the one a shopper would find it on — or "unknown" if you can't tell. On the dessert shelf, say which kind instead of the shelf name: "Ice cream" (ice cream, frozen desserts, kulfi, frozen yoghurt, ice lollies, sorbet) or "Dairy desserts" (shrikhand, flavoured yoghurt, puddings, mousse).`;

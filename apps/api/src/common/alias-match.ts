@@ -1,3 +1,5 @@
+import type { AliasPatterns } from "./alias-match.types";
+
 /** Names that mean something in an ingredient list, minus look-alikes. */
 export type AliasList = {
   include: RegExp[];
@@ -9,10 +11,7 @@ export type AliasList = {
  * Compiles an alias list once. Every pattern is made case-insensitive here,
  * so "INS 120" and "ins 120" both work however a pattern is written.
  */
-export function aliasList(patterns: {
-  include: RegExp[];
-  exclude?: RegExp[];
-}): AliasList {
+export function aliasList(patterns: AliasPatterns): AliasList {
   const exclude = patterns.exclude ?? [];
   return {
     include: patterns.include.map((pattern) => new RegExp(pattern.source, "i")),

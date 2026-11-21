@@ -1,4 +1,25 @@
+import type { Nutrition } from "@foodscanner/shared";
+import type {
+  AutoPromoteInput,
+  ExtractionPlan,
+  ExtractionPlanInput,
+  IncomingPackRead,
+  PackIdentity,
+  PackRead,
+  VersionSnapshot,
+} from "./conflict.types";
+
 export const AUTO_PROMOTE_CONFIDENCE = 0.9;
+
+/**
+ * "Scan the label again" goes live from this confidence; below it, review.
+ * Clear reads have scored 0.8-0.9 and blurry ones 0.5, and a wrong "Safe"
+ * is worse than "No result".
+ */
+export const FILL_NO_RESULT_CONFIDENCE = 0.7;
+
+/** The fewest letters a partly read brand needs to match a fuller one. */
+const MIN_BRAND_PREFIX = 3;
 
 /**
  * Vision-LLM re-reads of the same label are noisy — tolerate that noise as
@@ -14,23 +35,12 @@ export const NUTRITION_RELATIVE_TOLERANCE = 0.07;
  *  collapse to ~0 and treat trace-level noise as a meaningful jump. */
 export const NUTRITION_ABS_FLOOR = 0.5;
 
-export type VersionSnapshot = {
-  name: string;
-  brand: string;
-  nutrition: Record<string, number | string | null>;
-  resolvedCanonicalIds: string[];
-  unresolvedRaw: string[];
-  extraction_confidence: number;
-};
-
-export type ExtractionPlan = { kind: "reuse_live" } | { kind: "pending" };
-
 function normalize(value: string): string {
   return value.trim().toLowerCase();
 }
 
 function nutritionNumber(
-  nutrition: Record<string, number | string | null>,
+  nutrition: Nutrition,
   key: string
 ): number | undefined {
   const raw = nutrition[key];
@@ -57,10 +67,7 @@ function withinTolerance(left: number, right: number): boolean {
   return Math.abs(left - right) <= allowed;
 }
 
-function nutritionConflicts(
-  live: Record<string, number | string | null>,
-  incoming: Record<string, number | string | null>
-): boolean {
+function nutritionConflicts(live: Nutrition, incoming: Nutrition): boolean {
   const keys = new Set([...Object.keys(live), ...Object.keys(incoming)]);
   for (const key of keys) {
     const left = nutritionNumber(live, key);
@@ -116,20 +123,102 @@ export function versionsConflict(
  * Live versions also have no confirmation count yet — every live row is
  * equally easy to supersede once confidence clears the threshold.
  */
-export function shouldAutoPromote(input: {
-  hasLiveVersion: boolean;
-  extractionConfidence: number;
-}): boolean {
-  if (!input.hasLiveVersion) {
+export function shouldAutoPromote(input: AutoPromoteInput): boolean {
+  if (!input.hasLiveVersion || input.fillsNoResult) {
     return true;
   }
   return input.extractionConfidence >= AUTO_PROMOTE_CONFIDENCE;
 }
 
-export function planAfterExtraction(input: {
-  live: VersionSnapshot | null;
-  incoming: VersionSnapshot;
-}): ExtractionPlan {
+function brandKey(brand: string): string {
+  return brand.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+/**
+ * Same brand, allowing for a read that caught only part of it ("SWAS" on
+ * a blurry pack, "SWASTIKS" on a clear one) if at least 3 letters were
+ * read. "unknown" (not visible on the photos) can't rule anything out.
+ */
+export function sameBrand(left: string, right: string): boolean {
+  const a = brandKey(left);
+  const b = brandKey(right);
+  if (a === "unknown" || b === "unknown") {
+    return true;
+  }
+  if (a === "" || b === "") {
+    return false;
+  }
+  if (a === b) {
+    return true;
+  }
+  return (
+    Math.min(a.length, b.length) >= MIN_BRAND_PREFIX &&
+    (a.startsWith(b) || b.startsWith(a))
+  );
+}
+
+/**
+ * The same pack even when the two reads name the brand differently: a
+ * company on one ("Sunfeast") and its product line on the other ("Mom's
+ * Magic"), where that line is part of the other read's product name.
+ */
+export function samePack(left: PackIdentity, right: PackIdentity): boolean {
+  return (
+    sameBrand(left.brand, right.brand) ||
+    brandInName(left.brand, right.name) ||
+    brandInName(right.brand, left.name)
+  );
+}
+
+function words(text: string): string[] {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, "")
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
+/**
+ * The brand's whole words, in order, inside the name ("Mom's Magic" in
+ * "Mom's Magic Ghee Roasted…"), never letters inside another word ("Real"
+ * in "Corn Flakes Cereal"). "unknown" (not read) names nothing.
+ */
+function brandInName(brand: string, name: string): boolean {
+  const brandWords = words(brand);
+  const nameWords = words(name);
+  if (
+    brandWords.join("").length < MIN_BRAND_PREFIX ||
+    brandKey(brand) === "unknown" ||
+    brandKey(name) === "unknown"
+  ) {
+    return false;
+  }
+  return nameWords.some((_, start) =>
+    brandWords.every((word, i) => nameWords[start + i] === word)
+  );
+}
+
+/**
+ * "Scan the label again" (design 2c): the live version has no ingredients,
+ * so there was no verdict, and these photos read some from what looks like
+ * the same product. The new version replaces it whole, never merged into
+ * it (merging two photo sets can mix two products or recipes).
+ */
+export function fillsNoResult(
+  live: PackRead,
+  incoming: IncomingPackRead
+): boolean {
+  return (
+    live.ingredientCount === 0 &&
+    incoming.ingredientCount > 0 &&
+    incoming.extractionConfidence >= FILL_NO_RESULT_CONFIDENCE &&
+    samePack(live, incoming)
+  );
+}
+
+export function planAfterExtraction(
+  input: ExtractionPlanInput
+): ExtractionPlan {
   if (!input.live) {
     return { kind: "pending" };
   }

@@ -57,6 +57,10 @@ export class PushNotifier {
       event: job.event,
       submission_id: job.submissionId,
       barcode: submission?.barcode ?? "",
+      // A label check (no barcode) opens with GET /label-checks/:id.
+      ...(submission && submission.barcode === null
+        ? { label_check_id: job.submissionId }
+        : {}),
     };
 
     const results = await this.sender.send(
@@ -105,11 +109,23 @@ export class PushNotifier {
     submission: SubmissionDocument | null,
     userId: string
   ): Promise<ProductFoundResponse | null> {
-    const version = submission
-      ? await this.versions
-          .findOne({ barcode: submission.barcode, status: "live" })
-          .exec()
-      : null;
+    if (!submission) {
+      return null;
+    }
+    if (submission.barcode === null) {
+      return submission.label_facts
+        ? (
+            await this.householdVerdicts.forLabelCheck(
+              submission.id as string,
+              submission.label_facts,
+              userId
+            )
+          ).response
+        : null;
+    }
+    const version = await this.versions
+      .findOne({ barcode: submission.barcode, status: "live" })
+      .exec();
     return version
       ? (await this.householdVerdicts.forVersion(version, userId)).response
       : null;

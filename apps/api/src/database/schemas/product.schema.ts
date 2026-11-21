@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { HydratedDocument, Types } from "mongoose";
+import { HydratedDocument, SchemaTypes, Types } from "mongoose";
 
 @Schema({
   collection: "products",
@@ -9,7 +9,7 @@ export class Product {
   @Prop({ required: true, trim: true })
   barcode!: string;
 
-  @Prop({ type: Types.ObjectId, ref: "ProductVersion" })
+  @Prop({ type: SchemaTypes.ObjectId, ref: "ProductVersion" })
   current_version_id?: Types.ObjectId;
 
   created_at!: Date;

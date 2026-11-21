@@ -1,10 +1,6 @@
-export function bullmqConnection(redisUrl: string): {
-  host: string;
-  port: number;
-  username?: string;
-  password?: string;
-  maxRetriesPerRequest: null;
-} {
+import type { BullmqConnection } from "./redis-connection.types";
+
+export function bullmqConnection(redisUrl: string): BullmqConnection {
   const parsed = new URL(redisUrl);
   const username = decodeURIComponent(parsed.username);
   const password = decodeURIComponent(parsed.password);

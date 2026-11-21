@@ -146,6 +146,10 @@ describe("push notifications (integration)", () => {
       category: "snacks",
       source: "user_submission",
       status: "live",
+      // With no ingredients there's no verdict to send (design 2c).
+      ingredients: [
+        { raw: "Potato", canonical_id: null, status: "unresolved" },
+      ],
       nutrition: { sugar_per_100g: 18 },
     });
     const submission = await submissions.create({

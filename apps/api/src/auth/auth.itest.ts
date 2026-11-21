@@ -13,6 +13,7 @@ import { after, before, describe, it } from "node:test";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import type { JWTPayload } from "jose";
+import { HEALTH_CONSENT_NOTICE_VERSION } from "@foodscanner/shared";
 import mongoose, { Types } from "mongoose";
 import {
   TEST_REDIS_URL,
@@ -134,7 +135,9 @@ describe("auth (integration)", () => {
     household,
     storage as never,
     sessions,
-    appleCredentials
+    appleCredentials,
+    // Re-checking past scans is covered in products/household.itest.ts.
+    { forgetPersonalVerdicts: async () => {} } as never
   );
   const signIn = new SocialSignInService(
     config as never,
@@ -153,15 +156,21 @@ describe("auth (integration)", () => {
     appleCredentials
   );
 
-  const setSelf = (
+  // Health info needs "I agree" first (design 0b).
+  const setSelf = async (
     account: { user: { id: string; default_member_id: string } },
     patch: object
-  ) =>
-    household.updateForUser(
+  ) => {
+    await accounts.recordHealthConsent(
+      account.user.id,
+      HEALTH_CONSENT_NOTICE_VERSION
+    );
+    return household.updateForUser(
       account.user.id,
       account.user.default_member_id,
       patch as never
     );
+  };
 
   before(() => connectTestDb("foodscanner_test_auth"));
 
@@ -366,6 +375,41 @@ describe("auth (integration)", () => {
       assert.ok(user);
       assert.equal(user.apple_sub, undefined);
       await assert.rejects(sessions.refresh(account.refresh_token));
+    });
+  });
+
+  describe("withdrawing consent", () => {
+    it("erases everyone's health info and the consent, keeping the family", async () => {
+      const account = await accounts.createAnonymous();
+      await setSelf(account, { conditions: ["diabetic"] });
+      const amma = await household.createForUser(account.user.id, {
+        name: "Amma",
+        relationship: "parent",
+        age_band: "60_plus",
+        conditions: ["hypertensive"],
+        allergies: ["peanuts"],
+        consent_basis: "member_agreed",
+      });
+
+      const { user } = await accounts.withdrawHealthConsent(account.user.id);
+
+      assert.equal(user.health_consent, null);
+      const { members: after } = await household.listForUser(account.user.id);
+      assert.equal(after.length, 2);
+      for (const member of after) {
+        assert.deepEqual(member.conditions, []);
+        assert.deepEqual(member.allergies, []);
+      }
+      const kept = after.find((m) => m.id === amma.id);
+      assert.equal(kept?.name, "Amma");
+      assert.equal(kept?.age_band, "60_plus");
+      // Health info now needs "I agree" again.
+      await assert.rejects(
+        household.updateForUser(account.user.id, amma.id, {
+          conditions: ["hypertensive"],
+        }),
+        /Agree to how we use health info/
+      );
     });
   });
 

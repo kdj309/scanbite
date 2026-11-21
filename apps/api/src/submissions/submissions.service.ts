@@ -10,7 +10,7 @@ import type {
   SubmissionStatusResponse,
 } from "@foodscanner/shared";
 import { createHash } from "node:crypto";
-import { Model } from "mongoose";
+import { Model, Types } from "mongoose";
 import { isDuplicateKeyError } from "../common/mongo-errors";
 import { ObjectStorageService } from "../common/object-storage.service";
 import {
@@ -18,6 +18,7 @@ import {
   SubmissionDocument,
 } from "../database/schemas/submission.schema";
 import { JobQueuesService } from "../workers/job-queues.service";
+import type { UploadedPhoto } from "./submissions.types";
 
 @Injectable()
 export class SubmissionsService {
@@ -30,12 +31,13 @@ export class SubmissionsService {
     private readonly queues: JobQueuesService
   ) {}
 
+  /** barcode null = a label check (a pack with no barcode), checked for
+   *  forMemberId (null = everyone). */
   async create(
-    barcode: string,
+    barcode: string | null,
     userId: string,
-    files:
-      | Array<{ buffer: Buffer; mimetype: string; originalname: string }>
-      | undefined
+    files: UploadedPhoto[] | undefined,
+    forMemberId: string | null = null
   ): Promise<CreateSubmissionResponse> {
     if (!files?.length) {
       throw new BadRequestException("at least one photo is required");
@@ -49,16 +51,20 @@ export class SubmissionsService {
       .update([...photoHashes].sort().join(":"))
       .digest("hex");
 
-    const existing = await this.submissions
-      .findOne({ barcode, photo_hash: setHash })
-      .exec();
+    // Matches the unique indexes: a label check is only a repeat for the
+    // same person.
+    const owner = new Types.ObjectId(userId);
+    const same = barcode
+      ? { barcode, photo_hash: setHash }
+      : { barcode: null, user_id: owner, photo_hash: setHash };
+    const existing = await this.submissions.findOne(same).exec();
     if (existing) {
       return { submission_id: existing.id as string };
     }
 
     const photoKeys = files.map(
       (file, index) =>
-        `labels/${barcode}/${setHash}/${photoHashes[index]}${extension(file.originalname)}`
+        `labels/${barcode ?? `no-barcode/${userId}`}/${setHash}/${photoHashes[index]}${extension(file.originalname)}`
     );
     await Promise.all(
       files.map((file, index) =>
@@ -72,15 +78,14 @@ export class SubmissionsService {
         barcode,
         photo_hash: setHash,
         photo_keys: photoKeys,
-        user_id: userId,
+        user_id: owner,
         status: "processing",
         product_version_id: null,
+        for_member_id: forMemberId ? new Types.ObjectId(forMemberId) : null,
       });
     } catch (error) {
       if (isDuplicateKeyError(error)) {
-        const dup = await this.submissions
-          .findOne({ barcode, photo_hash: setHash })
-          .exec();
+        const dup = await this.submissions.findOne(same).exec();
         if (dup) {
           return { submission_id: dup.id as string };
         }

@@ -32,8 +32,9 @@ import {
   canonicalIdsFromVersion,
   confidenceForVersion,
   factsFromVersion,
-  type ExtractionConfidence,
+  type LabelFields,
 } from "./facts";
+import type { ScoredVersion } from "./scoring.types";
 
 /** The cached verdict plus display labels read from the active rule set at
  *  serve time — labels are copy, so changing one never needs a re-score or
@@ -69,7 +70,7 @@ export class ScoringService {
   }
 
   async factsForVersion(
-    version: ProductVersion
+    version: LabelFields
   ): Promise<Record<string, unknown>> {
     const ids = canonicalIdsFromVersion(version);
     const docs =
@@ -96,14 +97,7 @@ export class ScoringService {
   async ensureScoringRecord(
     version: ProductVersionDocument,
     preloadedRuleSet?: RuleSetDocument
-  ): Promise<{
-    facts: Record<string, unknown>;
-    record: ScoringRecordDocument;
-    evaluation: EvaluationResult;
-    ruleSetVersion: string;
-    unresolved_ingredients: string[];
-    confidence: ExtractionConfidence;
-  }> {
+  ): Promise<ScoredVersion> {
     const facts = await this.factsForVersion(version);
     const coverage = confidenceForVersion(version);
     const ruleSet = preloadedRuleSet ?? (await this.activeRuleSet());
@@ -169,19 +163,8 @@ export class ScoringService {
       versionId,
       ruleSet.version
     );
-    const live = (verdict: CachedObjectiveVerdict): ObjectiveVerdict => ({
-      ...verdict,
-      rule_labels: ruleLabels(ruleSet.rules),
-      passed_rules: passedRules(ruleSet.rules, verdict, {
-        productForm: verdict.facts.product_form,
-        // No list at all isn't "all recognised": nothing was read.
-        allIngredientsRecognised:
-          version.ingredients.length > 0 &&
-          verdict.unresolved_ingredients.length === 0,
-      }),
-    });
     if (cached) {
-      return live(cached);
+      return withServeTimeLabels(cached, version, ruleSet);
     }
 
     const scored = await this.ensureScoringRecord(version, ruleSet);
@@ -195,7 +178,32 @@ export class ScoringService {
       rule_set_version: ruleSet.version,
     };
     await this.cache.set(version.barcode, versionId, ruleSet.version, fresh);
-    return live(fresh);
+    return withServeTimeLabels(fresh, version, ruleSet);
+  }
+
+  /**
+   * The objective verdict for a label check (a pack with no barcode). It
+   * has no product version, so no scoring record or cache entry: one
+   * person opens it, and scoring it again is cheap.
+   */
+  async objectiveVerdictForLabel(
+    label: LabelFields
+  ): Promise<ObjectiveVerdict> {
+    const ruleSet = await this.activeRuleSet();
+    const facts = await this.factsForVersion(label);
+    const evaluation = this.evaluate(facts, ruleSet);
+    return withServeTimeLabels(
+      {
+        facts,
+        severity: evaluation.severity,
+        breakdown: evaluation.breakdown,
+        unevaluated: evaluation.unevaluated,
+        ...confidenceForVersion(label),
+        rule_set_version: ruleSet.version,
+      },
+      label,
+      ruleSet
+    );
   }
 
   /** Scoring with no rules would make everything look green — refuse. */
@@ -206,6 +214,24 @@ export class ScoringService {
       throw new ServiceUnavailableException(MISSING_ACTIVE_RULE_SET);
     }
   }
+}
+
+function withServeTimeLabels(
+  verdict: CachedObjectiveVerdict,
+  label: Pick<ProductVersion, "ingredients">,
+  ruleSet: RuleSetDocument
+): ObjectiveVerdict {
+  return {
+    ...verdict,
+    rule_labels: ruleLabels(ruleSet.rules),
+    passed_rules: passedRules(ruleSet.rules, verdict, {
+      productForm: verdict.facts.product_form,
+      // No list at all isn't "all recognised": nothing was read.
+      allIngredientsRecognised:
+        label.ingredients.length > 0 &&
+        verdict.unresolved_ingredients.length === 0,
+    }),
+  };
 }
 
 function ruleLabels(rules: RuleSet["rules"]): Record<string, string> {

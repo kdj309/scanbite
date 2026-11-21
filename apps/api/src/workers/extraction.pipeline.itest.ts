@@ -76,10 +76,13 @@ describe("verifying photo-read products (integration)", () => {
     productModel as never
   );
   const queued: string[] = [];
+  const notified: string[] = [];
+  const recorded: string[] = [];
+  let read = READ;
   const pipeline = new ExtractionPipeline(
     submissions as never,
     versions as never,
-    { extract: async () => READ },
+    { extract: async () => read },
     new ProductVersionIngestionService(
       productModel as never,
       versions as never,
@@ -93,7 +96,14 @@ describe("verifying photo-read products (integration)", () => {
       enqueuePromote: async (job: { productVersionId: string }) => {
         queued.push(job.productVersionId);
       },
-      enqueueNotification: async () => undefined,
+      enqueueNotification: async (job: { event: string }) => {
+        notified.push(job.event);
+      },
+    } as never,
+    {
+      recordLabelCheck: async (check: { id: string }) => {
+        recorded.push(check.id);
+      },
     } as never
   );
 
@@ -150,5 +160,49 @@ describe("verifying photo-read products (integration)", () => {
     await submitPhotos("8920000000003", sender);
     await submitPhotos("8920000000003", sender);
     assert.equal((await liveSummary("8920000000003")).verifying, true);
+  });
+
+  describe("label checks (no barcode)", () => {
+    /** One user's label photos of a pack with no barcode, run through the worker. */
+    async function checkLabel() {
+      const submission = await submissions.create({
+        barcode: null,
+        photo_hash: `hash-${seq++}`,
+        photo_keys: [`labels/no-barcode/${seq}.jpg`],
+        user_id: new Types.ObjectId(),
+      });
+      await pipeline.processSubmission(submission.id as string);
+      return (await submissions.findById(submission.id).exec())!;
+    }
+
+    it("keeps what was read on the submission and never makes a product", async () => {
+      const versionsBefore = await versions.countDocuments();
+      notified.length = 0;
+      const check = await checkLabel();
+      assert.equal(check.status, "ready");
+      assert.equal(check.product_version_id, null);
+      assert.deepEqual(
+        [
+          check.label_facts?.name,
+          check.label_facts?.ingredients.map((i) => i.raw),
+          check.label_facts?.nutrition,
+        ],
+        [READ.name, READ.ingredients, READ.nutrition]
+      );
+      assert.equal(await versions.countDocuments(), versionsBefore);
+      assert.deepEqual(queued, [], "nothing to promote");
+      assert.deepEqual(notified, ["ready"]);
+      assert.deepEqual(recorded, [check.id], "in Recent scans");
+    });
+
+    it("fails photos of two different packs instead of mixing them", async () => {
+      read = { ...READ, photo_consistency: "inconsistent" };
+      try {
+        const check = await checkLabel();
+        assert.deepEqual([check.status, check.label_facts], ["failed", null]);
+      } finally {
+        read = READ;
+      }
+    });
   });
 });

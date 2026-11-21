@@ -1,7 +1,8 @@
 /**
  * Household verdicts against real Mongo + Redis: product lookup answers for
  * every member, and scans record each member's verdict for Home recents.
- * Uses the dev seed rules (HLD examples + diabetic solid/drink).
+ * Uses the dev seed rules (HLD examples, diabetic sugar and condition salt
+ * rules, solid/drink).
  *
  *   pnpm --filter api build && pnpm --filter api test:integration
  */
@@ -46,6 +47,11 @@ import { AlternativesService } from "../alternatives/alternatives.service";
 import { ConsensusService } from "../consensus/consensus.service";
 import { Product, ProductSchema } from "../database/schemas/product.schema";
 import { Scan, ScanSchema } from "../database/schemas/scan.schema";
+import {
+  Submission,
+  SubmissionSchema,
+} from "../database/schemas/submission.schema";
+import { LabelChecksService } from "../submissions/label-checks.service";
 import type { OffExtraction } from "../off/off-extraction";
 import { ProductSummaryService } from "../product-versions/product-summary";
 import { ProductVersionIngestionService } from "../product-versions/product-version-ingestion.service";
@@ -144,13 +150,27 @@ describe("household verdicts (integration)", () => {
     summaries
   );
   const scanModel = mongoose.model(Scan.name, ScanSchema);
+  const submissions = mongoose.model(Submission.name, SubmissionSchema);
+  const deletedPhotos: string[] = [];
+  const labelChecks = new LabelChecksService(
+    submissions as never,
+    scanModel as never,
+    householdVerdicts,
+    {
+      deleteLabelPhoto: async (key: string) => {
+        deletedPhotos.push(key);
+      },
+    } as never,
+    summaries
+  );
   const scans = new ScansService(
     scanModel as never,
     versions as never,
     household,
     householdVerdicts,
     products,
-    summaries
+    summaries,
+    labelChecks
   );
 
   let seq = 0;
@@ -202,6 +222,34 @@ describe("household verdicts (integration)", () => {
       nutrition,
     });
     return barcode;
+  }
+
+  /** A read label check (a pack with no barcode) of this user's; returns its id. */
+  async function readLabelCheck(
+    userId: string,
+    nutrition: Record<string, number>,
+    status: "ready" | "processing" = "ready"
+  ): Promise<string> {
+    const check = await submissions.create({
+      barcode: null,
+      photo_hash: `label-${seq++}`,
+      photo_keys: ["labels/no-barcode/a.jpg"],
+      user_id: new Types.ObjectId(userId),
+      status,
+      label_facts:
+        status === "ready"
+          ? {
+              name: "Besan laddoo",
+              brand: "Local shop",
+              category: "sweets",
+              ingredients: [
+                { raw: "gram flour", canonical_id: null, status: "unresolved" },
+              ],
+              nutrition,
+            }
+          : null,
+    });
+    return check.id as string;
   }
 
   /** Catalog tests each use their own category, so they only see their own products. */
@@ -281,6 +329,62 @@ describe("household verdicts (integration)", () => {
       });
       assert.ok(result.members.every((m) => m.verdict.severity === "green"));
     });
+
+    it("escalates a very salty snack to Avoid for the BP member only", async () => {
+      // Ompudi (8908022078125): 1415 mg sodium/100 g.
+      const { user, ids } = await newHousehold();
+      const result = await lookup(
+        await liveProduct({ sugar_per_100g: 0, sodium_per_100g: 1415.2 }),
+        user
+      );
+      assert.deepEqual(result.overall, {
+        severity: "red",
+        member_id: ids.amma,
+      });
+      assert.deepEqual(
+        result.members.map((m) => [m.name, m.verdict.severity]),
+        [
+          ["You", "yellow"],
+          ["Amma", "red"],
+          ["Papa", "yellow"],
+        ]
+      );
+      const amma = result.members[1].verdict.reasons[0];
+      assert.equal(amma.rule_id, "hypertensive_sodium_escalation");
+      assert.equal(amma.label, "Too salty for BP");
+    });
+
+    it("says salt was checked for BP when it's low", async () => {
+      const { user } = await newHousehold();
+      const result = await lookup(
+        await liveProduct({ sugar_per_100g: 1, sodium_per_100g: 10 }),
+        user
+      );
+      const salt = result.members[1].verdict.checked.find(
+        (check) => check.label === "Salt"
+      );
+      assert.deepEqual(salt?.for, ["hypertension"]);
+    });
+
+    it("is never Safe for the BP member when salt is missing", async () => {
+      const { user } = await newHousehold();
+      const result = await lookup(
+        await liveProduct({ sugar_per_100g: 1 }),
+        user
+      );
+      const amma = result.members[1].verdict;
+      assert.equal(amma.severity, "yellow");
+      assert.deepEqual(
+        amma.reasons.map((r) => [r.kind, r.label, r.text]),
+        [
+          [
+            "unchecked",
+            "Salt not checked",
+            "Couldn't check salt for hypertension",
+          ],
+        ]
+      );
+    });
   });
 
   describe("what we checked", () => {
@@ -332,7 +436,10 @@ describe("household verdicts (integration)", () => {
     it("flags an allergen found in the ingredients, for that member only", async () => {
       const { user, ids } = await newHousehold();
       await members.updateOne({ _id: ids.you }, { allergies: ["peanuts"] });
-      const barcode = await liveProduct({ sugar_per_100g: 1 });
+      const barcode = await liveProduct({
+        sugar_per_100g: 1,
+        sodium_per_100g: 10,
+      });
       await versions.updateOne(
         { barcode },
         {
@@ -358,16 +465,18 @@ describe("household verdicts (integration)", () => {
   });
 
   describe("better options", () => {
-    it("finds same-category products Safe for everyone it isn't Safe for", async () => {
+    it("finds products on the same shelf Safe for everyone it isn't Safe for", async () => {
       const { user, ids } = await newHousehold();
-      const category = newCategory();
+      // A shelf no other test here uses; both categories sit on it.
+      const category = "Sweets";
       const sweet = await liveProduct(
         { sugar_per_100g: 30 },
         { category, name: "Sweet" }
       );
+      // Salt known and low, or it couldn't be Safe for Amma (BP).
       await liveProduct(
-        { sugar_per_100g: 1 },
-        { category, name: "Barely sweet" }
+        { sugar_per_100g: 1, sodium_per_100g: 10 },
+        { category: "Chocolate products", name: "Barely sweet" }
       );
       await liveProduct(
         { sugar_per_100g: 10 },
@@ -398,6 +507,27 @@ describe("household verdicts (integration)", () => {
       assert.equal(result.alternatives[0].product.buy_links.length, 2);
     });
 
+    it("finds a better ice cream whatever unit either label uses", async () => {
+      const { user, ids } = await newHousehold();
+      // Per 100 ml, as Indian ice cream labels usually are: never a drink.
+      const sweet = await liveProduct(
+        { sugar_per_100ml: 20, sodium_per_100ml: 40 },
+        { category: "Ice cream", name: "Butterscotch" }
+      );
+      // Per 100 g, under the WHO frozen-dessert limits (12 g sugar).
+      await liveProduct(
+        { sugar_per_100g: 9, sodium_per_100g: 40 },
+        { category: "Ice cream", name: "Less sweet" }
+      );
+      const result = await betterOptions.forProduct(sweet, user);
+      // High sugar for a frozen dessert; Avoid for Papa (diabetes).
+      assert.ok(result.for_member_ids.includes(ids.papa));
+      assert.deepEqual(
+        result.alternatives.map((a) => a.product.name),
+        ["Less sweet"]
+      );
+    });
+
     it("uses the general verdict when nobody has a profile yet", async () => {
       // A brand-new household: only "You", no conditions or allergies.
       const userId = new Types.ObjectId();
@@ -408,9 +538,15 @@ describe("household verdicts (integration)", () => {
         conditions: [],
       });
       const user = { userId: userId.toHexString() } as RequestUser;
-      const category = newCategory();
-      const sweet = await liveProduct({ sugar_per_100g: 30 }, { category });
-      await liveProduct({ sugar_per_100g: 1 }, { category, name: "Plain" });
+      // Another shelf of its own: Dals, nuts & dry fruit.
+      const sweet = await liveProduct(
+        { sugar_per_100g: 30 },
+        { category: "Legumes" }
+      );
+      await liveProduct(
+        { sugar_per_100g: 1 },
+        { category: "Nuts", name: "Plain" }
+      );
 
       const result = await betterOptions.forProduct(sweet, user);
       assert.deepEqual(result.for_member_ids, []);
@@ -422,8 +558,12 @@ describe("household verdicts (integration)", () => {
 
     it("has nothing to offer when the product is already Safe for them", async () => {
       const { user } = await newHousehold();
-      const category = newCategory();
-      const plain = await liveProduct({ sugar_per_100g: 1 }, { category });
+      // A real shelf, so it's the safety check that says no.
+      const category = "Fats";
+      const plain = await liveProduct(
+        { sugar_per_100g: 1, sodium_per_100g: 10 },
+        { category }
+      );
       await liveProduct({ sugar_per_100g: 0 }, { category });
       const result = await betterOptions.forProduct(plain, user);
       assert.deepEqual([result.for_member_ids, result.alternatives], [[], []]);
@@ -517,7 +657,10 @@ describe("household verdicts (integration)", () => {
     it("splits into 'good for everyone' and 'not for everyone'", async () => {
       const { user } = await newHousehold();
       const category = newCategory();
-      await liveProduct({ sugar_per_100g: 1 }, { category, name: "Plain" });
+      await liveProduct(
+        { sugar_per_100g: 1, sodium_per_100g: 10 },
+        { category, name: "Plain" }
+      );
       await liveProduct({ sugar_per_100g: 18 }, { category, name: "Sweet" });
 
       const good = await products.catalog(user, {
@@ -665,6 +808,31 @@ describe("household verdicts (integration)", () => {
       assert.equal(scan.product?.name, "Test product");
     });
 
+    it("forgets what each person was shown once consent is withdrawn", async () => {
+      const { user, ids } = await newHousehold();
+      const barcode = await liveProduct({
+        sugar_per_100g: 0,
+        sodium_per_100g: 1415.2,
+      });
+      const { scan_id } = await scans.create(user, { barcode });
+      assert.equal((await recorded(user, scan_id)).severity, "red");
+
+      await household.clearHealthInfo(user.userId);
+      await scans.forgetPersonalVerdicts(user.userId);
+
+      // The general verdict now, for everyone: nothing left hints at BP.
+      const scan = await recorded(user, scan_id);
+      assert.equal(scan.severity, "yellow");
+      assert.deepEqual(
+        scan.verdicts.map((v) => [v.member_id, v.severity]),
+        [
+          [ids.you, "yellow"],
+          [ids.amma, "yellow"],
+          [ids.papa, "yellow"],
+        ]
+      );
+    });
+
     it("stores the chosen member's own verdict for 'Scan for Amma'", async () => {
       const { user, ids } = await newHousehold();
       const barcode = await liveProduct({ sugar_per_100g: 18 });
@@ -712,11 +880,13 @@ describe("household verdicts (integration)", () => {
         barcode: "8900000000099",
       });
       assert.deepEqual(result, { found: false });
-      const scan = await recorded(user, scan_id);
+      // Kept in the log, though Recent scans leaves misses out.
+      const scan = (await scanModel.findById(scan_id).lean().exec())!;
       assert.deepEqual(
-        [scan.found, scan.product, scan.severity, scan.verdicts],
+        [scan.found, scan.product_version_id, scan.severity, scan.verdicts],
         [false, null, null, []]
       );
+      assert.equal(await recorded(user, scan_id), undefined);
     });
 
     it("lists household recents newest first, and pages", async () => {
@@ -744,6 +914,134 @@ describe("household verdicts (integration)", () => {
         [barcodes[0]]
       );
       assert.equal(rest.next_cursor, null);
+    });
+  });
+  describe("label checks (no barcode)", () => {
+    it("checks a label for the family, like a product but never in the catalog", async () => {
+      const { user, ids } = await newHousehold();
+      const id = await readLabelCheck(user.userId, { sugar_per_100g: 38 });
+      const result = await labelChecks.verdict(id, user.userId);
+      const papa = result.members.find((m) => m.member_id === ids.papa);
+      assert.equal(papa?.verdict.severity, "red");
+      assert.equal(
+        papa?.verdict.reasons[0].rule_id,
+        "diabetic_sugar_escalation"
+      );
+      assert.deepEqual(
+        [
+          result.product.source,
+          result.product.product_version_id,
+          result.product.verifying,
+        ],
+        ["label_check", id, false]
+      );
+      // Store searches by brand and name; the app shows them only when Safe.
+      assert.deepEqual(
+        result.product.buy_links.map((link) => link.store),
+        ["amazon", "bigbasket"]
+      );
+    });
+
+    it("is only for the person who sent it, once it's read", async () => {
+      const { user } = await newHousehold();
+      const { user: other } = await newHousehold();
+      const id = await readLabelCheck(user.userId, {});
+      await assert.rejects(labelChecks.verdict(id, other.userId), /not found/);
+      const reading = await readLabelCheck(user.userId, {}, "processing");
+      await assert.rejects(
+        labelChecks.verdict(reading, user.userId),
+        /not found/
+      );
+      await assert.rejects(
+        labelChecks.verdict("not-an-id", user.userId),
+        /not found/
+      );
+    });
+
+    it("records each check's scan for who it's for, and lists them apart", async () => {
+      const { user, ids } = await newHousehold();
+      const first = await readLabelCheck(user.userId, { sugar_per_100g: 38 });
+      const second = await readLabelCheck(user.userId, {});
+      await submissions.updateOne(
+        { _id: first },
+        { $set: { for_member_id: new Types.ObjectId(ids.papa) } }
+      );
+      const record = async (id: string) =>
+        scans.recordLabelCheck(
+          (await submissions.findById(id).exec()) as never
+        );
+      await record(first);
+      await record(second);
+      await record(first);
+
+      const recent = await scans.listForHousehold(user, {});
+      assert.deepEqual(
+        recent.items.map((s) => [
+          s.barcode,
+          s.label_check_id,
+          s.product?.source,
+        ]),
+        [
+          [null, first, "label_check"],
+          [null, second, "label_check"],
+        ]
+      );
+      assert.deepEqual(
+        [recent.items[0].member_id, recent.items[0].severity],
+        [ids.papa, "red"]
+      );
+      const forPapa = await scans.listForMember(user, ids.papa, {});
+      assert.deepEqual(
+        forPapa.items.map((s) => s.label_check_id),
+        [first]
+      );
+    });
+  });
+  describe("removing a recent scan", () => {
+    it("removes every scan of that product, and keeps the product", async () => {
+      const { user } = await newHousehold();
+      const kept = await liveProduct({});
+      const removed = await liveProduct({});
+      await scans.create(user, { barcode: removed });
+      await scans.create(user, { barcode: kept });
+      const { scan_id } = await scans.create(user, { barcode: removed });
+
+      await scans.remove(user, scan_id);
+
+      const recent = await scans.listForHousehold(user, {});
+      assert.deepEqual(
+        recent.items.map((s) => s.barcode),
+        [kept]
+      );
+      assert.ok(
+        await versions.exists({ barcode: removed, status: "live" }),
+        "still in the catalog"
+      );
+    });
+
+    it("erases a label check whole: photos, what was read, its scans", async () => {
+      const { user } = await newHousehold();
+      const id = await readLabelCheck(user.userId, {});
+      await scans.recordLabelCheck(
+        (await submissions.findById(id).exec()) as never
+      );
+      const [row] = (await scans.listForHousehold(user, {})).items;
+
+      await scans.remove(user, row.id);
+
+      assert.equal(await submissions.exists({ _id: id }), null);
+      assert.equal(await scanModel.exists({ label_check_id: id }), null);
+      assert.ok(deletedPhotos.includes("labels/no-barcode/a.jpg"));
+    });
+
+    it("can't remove someone else's scan", async () => {
+      const { user } = await newHousehold();
+      const { user: other } = await newHousehold();
+      const { scan_id } = await scans.create(user, {
+        barcode: await liveProduct({}),
+      });
+      await assert.rejects(scans.remove(other, scan_id), /not found/i);
+      assert.ok(await scanModel.exists({ _id: scan_id }));
     });
   });
 });

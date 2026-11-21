@@ -6,7 +6,7 @@ import {
 } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 import type { UserRole } from "../database/schemas/user.schema";
-import type { RequestUser } from "./auth.types";
+import type { AuthenticatedRequest } from "./auth.types";
 import { ROLES_KEY } from "./roles.decorator";
 
 @Injectable()
@@ -21,7 +21,9 @@ export class RolesGuard implements CanActivate {
     if (!requiredRoles || requiredRoles.length === 0) {
       return true;
     }
-    const request = context.switchToHttp().getRequest<{ user?: RequestUser }>();
+    const request = context
+      .switchToHttp()
+      .getRequest<Partial<AuthenticatedRequest>>();
     const role = request.user?.role;
     if (!role || !requiredRoles.includes(role)) {
       throw new ForbiddenException();

@@ -1,10 +1,6 @@
 import type { Check } from "@foodscanner/shared";
-import type { EvaluationResult, PassedRule } from "../scoring/evaluate-rules";
-import {
-  checkTopic,
-  type MemberOverlay,
-  type TopicCheck,
-} from "./member-overlay";
+import { checkTopic, type TopicCheck } from "./member-overlay";
+import type { WhatWeCheckedInput } from "./what-we-checked.types";
 
 /**
  * "What we checked" for one member: every topic a general rule, one of
@@ -12,12 +8,7 @@ import {
  * grouped by topic, with what it was also checked for. A topic flagged by
  * any rule is left out: "Sugar ✓" next to "High sugar" would contradict.
  */
-export function whatWeChecked(input: {
-  basePassed: PassedRule[];
-  base: Pick<EvaluationResult, "breakdown">;
-  ruleLabels: Record<string, string>;
-  overlay: Pick<MemberOverlay, "checked" | "flaggedTopics">;
-}): Check[] {
+export function whatWeChecked(input: WhatWeCheckedInput): Check[] {
   const { basePassed, base, ruleLabels, overlay } = input;
   const flagged = new Set([
     ...base.breakdown.map((item) =>

@@ -26,7 +26,11 @@ export const scanMemberVerdictSchema = z.object({
 // product (GET /products/:barcode) for today's verdicts.
 export const scanSchema = z.object({
   id: objectIdSchema,
-  barcode: barcodeSchema,
+  // One of these two: a product's barcode, or a label check's id (a pack
+  // with no barcode — open it with GET /label-checks/:id). A label check's
+  // scan is recorded by the server once its label is read.
+  barcode: barcodeSchema.nullable(),
+  label_check_id: objectIdSchema.nullable(),
   // Who it was scanned for; null = everyone.
   member_id: objectIdSchema.nullable(),
   product_version_id: objectIdSchema.nullable(),

@@ -21,9 +21,11 @@ import {
   type UserRole,
 } from "../database/schemas/user.schema";
 import { HouseholdService } from "../household/household.service";
+import { ScansService } from "../scans/scans.service";
 import { AppleCredentials } from "./apple/apple-credentials";
 import { serializeUser } from "./serialize-user";
 import { SessionService } from "./session.service";
+import type { DeleteAccountOptions } from "./auth.types";
 
 export type NewAccountFields = {
   google_sub?: string;
@@ -50,7 +52,8 @@ export class AccountService {
     private readonly household: HouseholdService,
     private readonly storage: ObjectStorageService,
     private readonly sessions: SessionService,
-    private readonly appleCredentials: AppleCredentials
+    private readonly appleCredentials: AppleCredentials,
+    private readonly scanHistory: ScansService
   ) {}
 
   /** First app open: an account with no identity, so scanning and family setup work immediately. */
@@ -74,6 +77,50 @@ export class AccountService {
     return { user: serializeUser(user), household_members: members };
   }
 
+  /** Records "I agree" on this version of the health-info notice. */
+  async recordHealthConsent(userId: string, noticeVersion: string) {
+    const user = await this.users
+      .findByIdAndUpdate(
+        userId,
+        {
+          $set: {
+            health_consent: {
+              notice_version: noticeVersion,
+              agreed_at: new Date(),
+            },
+          },
+        },
+        { new: true }
+      )
+      .exec();
+    if (!user) {
+      throw new UnauthorizedException();
+    }
+    return { user: serializeUser(user) };
+  }
+
+  /**
+   * "Withdraw consent" (design 13b, DPDP Act s.6(4)): erases everyone's
+   * health info first, then the consent, so a failure part-way never
+   * leaves health info held without consent; then past scans lose the
+   * verdicts worked out from it. Safe to retry.
+   */
+  async withdrawHealthConsent(userId: string) {
+    await this.household.clearHealthInfo(userId);
+    const user = await this.users
+      .findByIdAndUpdate(
+        userId,
+        { $set: { health_consent: null } },
+        { new: true }
+      )
+      .exec();
+    if (!user) {
+      throw new UnauthorizedException();
+    }
+    await this.scanHistory.forgetPersonalVerdicts(userId);
+    return { user: serializeUser(user) };
+  }
+
   /**
    * Deletes the account and everything tied to it: Apple token (revoked at
    * Apple first), submissions and their label photos, scans, sessions,
@@ -82,7 +129,7 @@ export class AccountService {
    */
   async delete(
     userId: string | Types.ObjectId,
-    options: { revokeApple?: boolean } = {}
+    options: DeleteAccountOptions = {}
   ): Promise<void> {
     const user = await this.users.findById(userId).exec();
     if (!user) {

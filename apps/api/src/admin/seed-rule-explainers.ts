@@ -1,8 +1,9 @@
 import "reflect-metadata";
 /**
  * Seeds the rule_explainers collection (HLD §16, educational content
- * feature) — human-reviewed content for the current 9 example rules,
- * grouped into 5 topics since several rule_ids are the same educational
+ * feature) — human-reviewed content for the example rules and the
+ * condition salt rules and the WHO dessert limits, grouped into 7 topics since several rule_ids are
+ * the same educational
  * concept at different solid/liquid thresholds, not separate things to
  * explain. AI-drafted, human-reviewed and edited before going in here —
  * see the product-strategy conversation this came out of, not auto-
@@ -15,6 +16,7 @@ import "reflect-metadata";
  */
 import mongoose from "mongoose";
 import {
+  type ConditionVariant,
   RuleExplainer,
   RuleExplainerSchema,
 } from "../database/schemas/rule-explainer.schema";
@@ -26,7 +28,7 @@ type SeedEntry = {
   rule_ids: string[];
   title: string;
   explainer: string;
-  condition_variants: Array<{ condition: string; addendum: string }>;
+  condition_variants: ConditionVariant[];
   citations: string;
 };
 
@@ -75,6 +77,44 @@ const ENTRIES: SeedEntry[] = [
       "FSSAI Food Safety and Standards (Advertising & Claims) Regulations, 2018.",
   },
   {
+    rule_ids: [
+      "hypertensive_sodium_escalation",
+      "hypertensive_sodium_escalation_liquid",
+      "cardiovascular_sodium_escalation",
+      "cardiovascular_sodium_escalation_liquid",
+      "chronic_kidney_disease_sodium_escalation",
+      "chronic_kidney_disease_sodium_escalation_liquid",
+      "hypertensive_sodium_escalation_frozen_dessert",
+      "hypertensive_sodium_escalation_curded_dessert",
+      "cardiovascular_sodium_escalation_frozen_dessert",
+      "cardiovascular_sodium_escalation_curded_dessert",
+      "chronic_kidney_disease_sodium_escalation_frozen_dessert",
+      "chronic_kidney_disease_sodium_escalation_curded_dessert",
+    ],
+    title: "High salt for your condition",
+    explainer:
+      "This product is above the level ICMR–NIN calls high in salt for packaged food: 625mg of salt per 100g (about 250mg sodium), or 175mg per 100ml for drinks (about 70mg sodium). India's dietary guidelines link high salt to high blood pressure, heart disease and extra strain on the kidneys, which is why we're stricter about it for you than for everyone else. It's a per-100g level, not a daily limit — how much of this you eat still matters most.",
+    condition_variants: [
+      {
+        condition: "hypertensive",
+        addendum:
+          "Cutting salt is one of the most direct ways to help keep blood pressure down. Check this against whatever limit your doctor's given you.",
+      },
+      {
+        condition: "cardiovascular",
+        addendum:
+          "Salt raises blood pressure, which puts more load on your heart. Check this against whatever limit your doctor's given you.",
+      },
+      {
+        condition: "chronic_kidney_disease",
+        addendum:
+          "Your kidneys are what clear extra sodium, so cutting salt is often part of managing kidney disease. Check this against whatever limit your doctor's given you.",
+      },
+    ],
+    citations:
+      "ICMR–NIN Dietary Guidelines for Indians, 2024 (Table 15.1, nutrients of concern threshold criteria).",
+  },
+  {
     rule_ids: ["palm_oil"],
     title: "Contains palm oil",
     explainer:
@@ -121,6 +161,26 @@ const ENTRIES: SeedEntry[] = [
       },
     ],
     citations: "NOVA classification system (Monteiro et al., 2016/2019).",
+  },
+  {
+    rule_ids: [
+      "who_frozen_dessert_sugar",
+      "who_frozen_dessert_sodium",
+      "who_curded_dessert_sugar",
+      "who_curded_dessert_sodium",
+    ],
+    title: "Over the limit for a dessert",
+    explainer:
+      "Ice cream and dairy desserts are checked against the WHO's own limits for desserts in South-East Asia, not the ones for snacks or drinks. Per 100 g (or 100 ml, as the label gives it), ice cream and frozen desserts go over at 12 g sugar or 100 mg sodium; shrikhand, flavoured yoghurt and puddings at 6 g sugar or 100 mg sodium. These limits were set to decide which desserts are fine to advertise to children, so they're a fair line for an everyday treat, not a personal limit.",
+    condition_variants: [
+      {
+        condition: "diabetic",
+        addendum:
+          "Over its sugar limit, a dessert can push your blood glucose up more than the general line accounts for. Worth talking to your doctor or dietitian about how often it fits in.",
+      },
+    ],
+    citations:
+      "WHO Nutrient Profile Model for the South-East Asia Region (2017), food categories 7 and 8.",
   },
 ];
 

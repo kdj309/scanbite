@@ -12,11 +12,9 @@ import {
   type EvaluationResult,
   type PassedRule,
 } from "../scoring/evaluate-rules";
-import {
-  applyPersonalization,
-  type PersonalizationRuleInput,
-} from "./apply-personalization";
+import { applyPersonalization } from "./apply-personalization";
 import { combineOverlays } from "./member-overlay";
+import type { PersonalizationRuleInput } from "./personalization.types";
 import { buildVerdictReasons } from "./verdict-reasons";
 import { whatWeChecked } from "./what-we-checked";
 

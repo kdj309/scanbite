@@ -2,7 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { ClaudeVisionAdapter } from "./claude-vision.adapter";
 import type { ExtractionOutput } from "./extraction-output";
 import { GeminiVisionAdapter } from "./gemini-vision.adapter";
-import type { VisionPort } from "./vision.port";
+import type { ExtractionRequest, VisionPort } from "./vision.port";
 
 /**
  * Below this, trust Claude's independent read over Gemini's own uncertain
@@ -28,10 +28,7 @@ export class TieredVisionAdapter implements VisionPort {
     private readonly claude: ClaudeVisionAdapter
   ) {}
 
-  async extract(input: {
-    barcode: string;
-    photoKeys: string[];
-  }): Promise<ExtractionOutput> {
+  async extract(input: ExtractionRequest): Promise<ExtractionOutput> {
     let primary: ExtractionOutput | undefined;
     try {
       primary = await this.gemini.extract(input);

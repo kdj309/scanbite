@@ -1,0 +1,611 @@
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { CameraView, useCameraPermissions } from "expo-camera";
+import { type Href, router, useLocalSearchParams } from "expo-router";
+import { useEffect, useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  Animated,
+  KeyboardAvoidingView,
+  Linking,
+  Pressable,
+  StyleSheet,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Bitey, Button, IconButton, Text, TextField } from "@/components";
+import { useHousehold } from "@/features/household/api";
+import {
+  BARCODE_TYPES,
+  createReadConfirmer,
+  parseBarcode,
+} from "@/features/scanner/barcode";
+import { createScan, refreshRecentScans } from "@/features/scans/api";
+import { sentenceName } from "@/features/scans/recent";
+import { LabelFlow } from "@/features/label/label-flow";
+import { productQueryKey } from "@/features/verdict/api";
+import { useLoop } from "@/hooks/use-loop";
+import { colors, radii, screenGutter, spacing } from "@/theme";
+import { closeScreen } from "@/navigation/close-screen";
+import type {
+  CameraPermissionProps,
+  LookupQuery,
+  LookupSheetProps,
+  LookupState,
+  ScanParams,
+  ScannerProps,
+  TypeBarcodeProps,
+  ViewfinderProps,
+} from "@/features/scanner/scanner.types";
+
+/** A label being sent and read: a new product's, or with no barcode, a
+ *  label check's (design 2d). */
+type LabelJob = { key: string; barcode: string | null };
+
+/** Point at a barcode; it scans by itself (design S10, step 1). */
+export default function Scan() {
+  const {
+    for: memberId,
+    label,
+    noBarcode,
+  } = useLocalSearchParams<ScanParams>();
+  const [permission, requestPermission] = useCameraPermissions();
+
+  if (!permission) {
+    return <View style={styles.camera} />;
+  }
+  return (
+    <Scanner
+      memberId={memberId}
+      label={label}
+      noBarcode={noBarcode !== undefined}
+      permission={permission}
+      onAllow={requestPermission}
+    />
+  );
+}
+
+function Scanner({
+  memberId,
+  label,
+  noBarcode,
+  permission,
+  onAllow,
+}: ScannerProps) {
+  const queryClient = useQueryClient();
+  const household = useHousehold();
+  const [torch, setTorch] = useState(false);
+  // On Android, a camera starting up switches off any other one already
+  // running: a label camera opened before this one is up would go dark
+  // or stop recording ("stopped before any data could be produced").
+  const [cameraUp, setCameraUp] = useState(false);
+  const [typing, setTyping] = useState(false);
+  // Labels being read (new products and label checks), and the one in front.
+  const checks = useRef(0);
+  const [labels, setLabels] = useState<LabelJob[]>(() =>
+    noBarcode
+      ? [{ key: "check-0", barcode: null }]
+      : label
+        ? [{ key: label, barcode: label }]
+        : []
+  );
+  const [front, setFront] = useState<string | undefined>(labels[0]?.key);
+  // A label camera switches this one off too when it closes; turn it back
+  // on when scanning again. A moment later: closing the label camera
+  // (e.g. "Not now") finishes on the native side after this runs, and
+  // would switch off a camera restarted sooner.
+  const camera = useRef<CameraView>(null);
+  const hadLabelInFront = useRef(front !== undefined);
+  useEffect(() => {
+    const returning = front === undefined && hadLabelInFront.current;
+    hadLabelInFront.current = front !== undefined;
+    if (!returning) {
+      return;
+    }
+    const restart = setTimeout(
+      () => void camera.current?.resumePreview(),
+      CAMERA_RESTART_DELAY_MS
+    );
+    return () => clearTimeout(restart);
+  }, [front]);
+  // The camera reports the same barcode many times a second; take one.
+  const taken = useRef(false);
+  const [confirmRead] = useState(createReadConfirmer);
+
+  const lookup = useMutation({
+    mutationFn: (barcode: string) =>
+      createScan({ barcode, member_id: memberId }),
+    onSuccess: ({ result }, barcode) => {
+      refreshRecentScans(queryClient);
+      if (!result.found) {
+        // New to us: straight on to its label, if the camera's allowed.
+        if (permission.granted) {
+          setLabels((all) =>
+            all.some((job) => job.key === barcode)
+              ? all
+              : [...all, { key: barcode, barcode }]
+          );
+          setFront(barcode);
+          lookup.reset();
+        }
+        return;
+      }
+      // The verdict screen shows this straight away (fresh for a minute).
+      queryClient.setQueryData(productQueryKey(barcode), result);
+      openVerdict(barcode, labels.length > 0);
+    },
+  });
+
+  function openVerdict(barcode: string, labelsWaiting: boolean) {
+    open(
+      {
+        pathname: "/product/[barcode]",
+        params: memberId ? { barcode, for: memberId } : { barcode },
+      },
+      labelsWaiting
+    );
+  }
+
+  function open(route: Href, labelsWaiting: boolean) {
+    // Labels still being read live on this screen: keep it under the
+    // verdict, or they'd stop checking and never show their banner.
+    if (labelsWaiting) {
+      router.push(route);
+    } else {
+      router.replace(route);
+    }
+  }
+
+  function checkLabel() {
+    checks.current += 1;
+    const key = `check-${checks.current}`;
+    setLabels((all) => [...all, { key, barcode: null }]);
+    setFront(key);
+  }
+
+  function look(barcode: string) {
+    taken.current = true;
+    setTyping(false);
+    lookup.mutate(barcode);
+  }
+  function scanAnother() {
+    taken.current = false;
+    lookup.reset();
+  }
+
+  function closeLabel(key: string) {
+    setLabels((all) => all.filter((job) => job.key !== key));
+    setFront(undefined);
+    scanAnother();
+  }
+
+  const member = household.data?.members.find((m) => m.id === memberId);
+  const scanning = lookup.isIdle && !typing && front === undefined;
+
+  // Typing a barcode works without the camera too.
+  const sheets = (
+    <>
+      {typing && (
+        <TypeBarcode onCancel={() => setTyping(false)} onLookUp={look} />
+      )}
+      {!lookup.isIdle && (
+        <LookupSheet
+          barcode={lookup.variables ?? ""}
+          state={lookupState(lookup)}
+          onRetry={() => lookup.mutate(lookup.variables ?? "")}
+          onScanAnother={scanAnother}
+        />
+      )}
+    </>
+  );
+  if (!permission.granted) {
+    return (
+      <View style={styles.fill}>
+        <CameraPermission
+          permission={permission}
+          onAllow={onAllow}
+          onType={() => setTyping(true)}
+        />
+        {sheets}
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.camera}>
+      <CameraView
+        ref={camera}
+        style={StyleSheet.absoluteFill}
+        facing="back"
+        enableTorch={torch}
+        onCameraReady={() => setCameraUp(true)}
+        // A camera that can't start never gets ready: don't leave a label
+        // waiting on it forever.
+        onMountError={() => setCameraUp(true)}
+        barcodeScannerSettings={{ barcodeTypes: [...BARCODE_TYPES] }}
+        // Always set, never switched off: on Android, turning scanning off
+        // restarts this camera, which switches off a label camera opened
+        // meanwhile (its video then has no data). Reads are ignored instead.
+        onBarcodeScanned={({ data }) => {
+          if (!scanning) {
+            return;
+          }
+          const barcode = parseBarcode(data);
+          if (barcode && confirmRead(barcode) && !taken.current) {
+            look(barcode);
+          }
+        }}
+      />
+      <SafeAreaView style={styles.overlay}>
+        <View style={styles.topBar}>
+          <IconButton
+            icon="close"
+            label="Close scanner"
+            color={colors.onBrand}
+            onPress={closeScreen}
+          />
+          {member && (
+            <View style={styles.forChip}>
+              <Text variant="label" color="onBrand">
+                For {sentenceName(member)}
+              </Text>
+            </View>
+          )}
+          <IconButton
+            icon="torch"
+            label={torch ? "Turn off the light" : "Turn on the light"}
+            accessibilityState={{ selected: torch }}
+            color={torch ? colors.mango : colors.onBrand}
+            onPress={() => setTorch((on) => !on)}
+          />
+        </View>
+        <Viewfinder scanning={scanning} />
+        {scanning && (
+          <View style={styles.hint}>
+            <Text variant="h2" color="onBrand" style={styles.centered}>
+              Point at the barcode
+            </Text>
+            <Text variant="caption" color="onBrand" style={styles.centered}>
+              It scans by itself — no button needed
+            </Text>
+          </View>
+        )}
+        <View style={styles.bottom}>
+          {scanning && (
+            <>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => setTyping(true)}
+                style={styles.typePill}
+              >
+                <Text variant="label" color="onBrand">
+                  Type the barcode instead
+                </Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                onPress={checkLabel}
+                style={styles.noBarcode}
+              >
+                <Text variant="label" color="onBrand" style={styles.underline}>
+                  No barcode? Check the label
+                </Text>
+              </Pressable>
+            </>
+          )}
+        </View>
+      </SafeAreaView>
+      {sheets}
+      {cameraUp &&
+        labels.map(({ key, barcode }) => (
+          <LabelFlow
+            key={key}
+            barcode={barcode}
+            memberId={memberId}
+            inFront={front === key}
+            onBack={() => {
+              setFront(undefined);
+              scanAnother();
+            }}
+            onFront={() => setFront(key)}
+            onDone={() => closeLabel(key)}
+            onReady={(submissionId) => {
+              closeLabel(key);
+              if (barcode === null) {
+                // Read: the server has added it to Recent scans.
+                refreshRecentScans(queryClient);
+                open(
+                  {
+                    pathname: "/label-check/[id]",
+                    params: memberId
+                      ? { id: submissionId, for: memberId }
+                      : { id: submissionId },
+                  },
+                  labels.some((job) => job.key !== key)
+                );
+              } else {
+                // Scanned again, now found: that scan is what puts it in
+                // Recent scans (they list found scans only).
+                look(barcode);
+              }
+            }}
+          />
+        ))}
+    </View>
+  );
+}
+
+/** The frame with mango corners and a sweeping line (design S10). */
+function Viewfinder({ scanning }: ViewfinderProps) {
+  const progress = useLoop(1800);
+  const translateY = progress.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [0, FRAME_HEIGHT - 6, 0],
+  });
+  return (
+    <View
+      style={styles.frame}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+    >
+      <View style={[styles.corner, styles.tl]} />
+      <View style={[styles.corner, styles.tr]} />
+      <View style={[styles.corner, styles.bl]} />
+      <View style={[styles.corner, styles.br]} />
+      {scanning && (
+        <Animated.View style={[styles.line, { transform: [{ translateY }] }]} />
+      )}
+    </View>
+  );
+}
+
+function TypeBarcode({ onCancel, onLookUp }: TypeBarcodeProps) {
+  const [text, setText] = useState("");
+  const barcode = parseBarcode(text);
+  return (
+    <KeyboardAvoidingView style={styles.sheetHost} behavior="padding">
+      <View style={styles.sheet}>
+        <TextField
+          label="Barcode"
+          placeholder="The numbers under the bars"
+          value={text}
+          onChangeText={setText}
+          keyboardType="number-pad"
+          maxLength={17}
+          autoFocus
+          returnKeyType="search"
+          onSubmitEditing={() => barcode && onLookUp(barcode)}
+        />
+        <Button
+          title="Look it up"
+          disabled={!barcode}
+          onPress={() => barcode && onLookUp(barcode)}
+        />
+        <Button title="Cancel" variant="link" onPress={onCancel} />
+      </View>
+    </KeyboardAvoidingView>
+  );
+}
+
+/** "found" isn't a state here: the verdict screen replaces this one. */
+function lookupState(lookup: LookupQuery): LookupState {
+  if (lookup.isError && lookup.error) {
+    return { kind: "error", message: lookup.error.message };
+  }
+  return lookup.data?.result.found === false
+    ? { kind: "notFound" }
+    : { kind: "looking" };
+}
+
+function LookupSheet({
+  barcode,
+  state,
+  onRetry,
+  onScanAnother,
+}: LookupSheetProps) {
+  return (
+    <View style={styles.sheetHost}>
+      <View style={styles.sheet} accessibilityLiveRegion="polite">
+        {state.kind === "looking" && (
+          <View style={styles.row}>
+            <ActivityIndicator color={colors.brand} />
+            <Text color="secondary">Looking up {barcode}…</Text>
+          </View>
+        )}
+        {state.kind === "notFound" && (
+          <>
+            <View style={styles.row}>
+              <Bitey size={56} />
+              <View style={styles.fill}>
+                <Text variant="h2">New product!</Text>
+                <Text variant="caption">
+                  We don’t know this one yet. Allow the camera to add it from
+                  its label.
+                </Text>
+              </View>
+            </View>
+            <Button title="Scan another" onPress={onScanAnother} />
+          </>
+        )}
+        {state.kind === "error" && (
+          <>
+            <Text accessibilityRole="alert">
+              Couldn’t look that up. {state.message}
+            </Text>
+            <Button title="Try again" onPress={onRetry} />
+            <Button
+              title="Scan another"
+              variant="link"
+              onPress={onScanAnother}
+            />
+          </>
+        )}
+      </View>
+    </View>
+  );
+}
+
+/** Before the first scan: ask for the camera, or point to Settings. */
+function CameraPermission({
+  permission,
+  onAllow,
+  onType,
+}: CameraPermissionProps) {
+  return (
+    <SafeAreaView style={styles.permission}>
+      <IconButton icon="close" label="Close scanner" onPress={closeScreen} />
+      <View style={styles.permissionBody}>
+        <Bitey size={110} />
+        <Text variant="h1" style={styles.centered}>
+          Let ScanBite use the camera
+        </Text>
+        <Text color="secondary" style={styles.centered}>
+          It reads barcodes. Nothing is recorded.
+        </Text>
+      </View>
+      <View style={styles.actions}>
+        {permission.canAskAgain ? (
+          <Button title="Allow camera" onPress={() => void onAllow()} />
+        ) : (
+          <Button
+            title="Open Settings"
+            onPress={() => void Linking.openSettings()}
+          />
+        )}
+        <Button
+          title="Type the barcode instead"
+          variant="link"
+          onPress={onType}
+          style={styles.centerSelf}
+        />
+      </View>
+    </SafeAreaView>
+  );
+}
+
+const CAMERA_RESTART_DELAY_MS = 400;
+const FRAME_HEIGHT = 170;
+const CORNER = 34;
+
+const styles = StyleSheet.create({
+  fill: { flex: 1 },
+  camera: { flex: 1, backgroundColor: colors.ink },
+  overlay: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    justifyContent: "space-between",
+  },
+  topBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: spacing.xs,
+  },
+  forChip: {
+    paddingVertical: 6,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radii.pill,
+    backgroundColor: "rgba(26,21,35,0.55)",
+  },
+  frame: {
+    alignSelf: "center",
+    width: 280,
+    height: FRAME_HEIGHT,
+  },
+  corner: {
+    position: "absolute",
+    width: CORNER,
+    height: CORNER,
+    borderColor: colors.mango,
+  },
+  tl: {
+    top: 0,
+    left: 0,
+    borderTopWidth: 5,
+    borderLeftWidth: 5,
+    borderTopLeftRadius: 14,
+  },
+  tr: {
+    top: 0,
+    right: 0,
+    borderTopWidth: 5,
+    borderRightWidth: 5,
+    borderTopRightRadius: 14,
+  },
+  bl: {
+    bottom: 0,
+    left: 0,
+    borderBottomWidth: 5,
+    borderLeftWidth: 5,
+    borderBottomLeftRadius: 14,
+  },
+  br: {
+    bottom: 0,
+    right: 0,
+    borderBottomWidth: 5,
+    borderRightWidth: 5,
+    borderBottomRightRadius: 14,
+  },
+  line: {
+    position: "absolute",
+    left: 14,
+    right: 14,
+    top: 3,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: colors.mango,
+  },
+  hint: { gap: spacing.xxs, paddingHorizontal: screenGutter },
+  centered: { textAlign: "center" },
+  bottom: {
+    alignItems: "center",
+    gap: spacing.xxs,
+    minHeight: 60,
+    paddingBottom: spacing.md,
+  },
+  noBarcode: {
+    minHeight: 44,
+    justifyContent: "center",
+    paddingHorizontal: spacing.sm,
+  },
+  underline: { textDecorationLine: "underline" },
+  typePill: {
+    minHeight: 44,
+    justifyContent: "center",
+    paddingHorizontal: spacing.md,
+    borderRadius: radii.pill,
+    backgroundColor: "rgba(26,21,35,0.55)",
+  },
+  sheetHost: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    justifyContent: "flex-end",
+  },
+  sheet: {
+    gap: spacing.sm,
+    padding: screenGutter,
+    paddingBottom: spacing.xxl,
+    borderTopLeftRadius: radii.sheet,
+    borderTopRightRadius: radii.sheet,
+    backgroundColor: colors.background,
+  },
+  row: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  permission: {
+    flex: 1,
+    padding: screenGutter,
+    backgroundColor: colors.background,
+  },
+  actions: { gap: 10 },
+  centerSelf: { alignSelf: "center" },
+  permissionBody: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm,
+  },
+});

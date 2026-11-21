@@ -1,22 +1,25 @@
 import {
-  isLiquidQuantity,
-  isPlausibleGrams,
-  type Nutrient,
-  type NutritionBasis,
-} from "./off-mapper";
+  LABEL_NUTRIENTS,
+  NUTRIENT_KEYS,
+  type Nutrition,
+} from "@foodscanner/shared";
+import { isLiquidQuantity, isPlausibleAmount } from "./off-mapper";
+import type { NutritionField } from "./nutrition-repair.types";
 
-type Nutrition = Record<string, number | string | null>;
-
-/** Stored nutrition field -> what it measures. Sodium is stored in mg. */
-export const NUTRITION_FIELDS: Record<
-  string,
-  { nutrient: Nutrient; basis: NutritionBasis; toGrams: number }
-> = {
-  sugar_per_100g: { nutrient: "sugar", basis: "solid", toGrams: 1 },
-  sugar_per_100ml: { nutrient: "sugar", basis: "liquid", toGrams: 1 },
-  sodium_per_100g: { nutrient: "sodium", basis: "solid", toGrams: 1 / 1000 },
-  sodium_per_100ml: { nutrient: "sodium", basis: "liquid", toGrams: 1 / 1000 },
-};
+/**
+ * Stored nutrition field -> what it measures, and the factor back to OFF's
+ * unit for the plausibility check (stored mg -> g; g and kcal as they are).
+ */
+export const NUTRITION_FIELDS: Record<string, NutritionField> =
+  Object.fromEntries(
+    NUTRIENT_KEYS.flatMap((nutrient) => {
+      const toOffUnit = LABEL_NUTRIENTS[nutrient] === "mg" ? 1 / 1000 : 1;
+      return [
+        [`${nutrient}_per_100g`, { nutrient, basis: "solid", toOffUnit }],
+        [`${nutrient}_per_100ml`, { nutrient, basis: "liquid", toOffUnit }],
+      ];
+    })
+  );
 
 /**
  * Applies today's import checks to nutrition stored before they existed
@@ -59,7 +62,7 @@ function withoutImpossible(nutrition: Nutrition): Nutrition {
       return (
         !spec ||
         typeof value !== "number" ||
-        isPlausibleGrams(spec.nutrient, spec.basis, value * spec.toGrams)
+        isPlausibleAmount(spec.nutrient, spec.basis, value * spec.toOffUnit)
       );
     })
   );
