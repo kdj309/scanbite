@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Bitey, Text } from "@/components";
+import { askForPushAfterLabel, ignorePushError } from "@/features/push/push";
 import { colors, radii, spacing } from "@/theme";
 import { uploadLabel, useSubmission } from "./api";
 import { LabelCapture } from "./label-capture";
@@ -31,7 +32,11 @@ export function LabelFlow({
   const upload = useMutation({
     mutationFn: (photoUris: string[]) =>
       uploadLabel(barcode, photoUris, memberId),
-    onSuccess: ({ submission_id }) => setSubmissionId(submission_id),
+    onSuccess: ({ submission_id }) => {
+      setSubmissionId(submission_id);
+      // "We'll tell you when it's ready": the moment to ask (decided 11-21).
+      void askForPushAfterLabel().catch(ignorePushError);
+    },
   });
 
   if (submissionId === undefined) {

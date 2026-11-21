@@ -41,3 +41,6 @@ example
 # generated native folders
 /ios
 /android
+
+# Firebase config: kept out of git; EAS gets it as the GOOGLE_SERVICES_JSON file variable (app.config.ts)
+google-services.json

@@ -8,6 +8,7 @@ import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
+import { usePush } from "@/features/push/use-push";
 import { queryClient } from "@/query/query-client";
 import { SessionProvider } from "@/session/session-provider";
 import { colors } from "@/theme";
@@ -37,14 +38,22 @@ export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <SessionProvider>
-        <Stack
-          screenOptions={{
-            // Every screen draws its own top bar (design canvas).
-            headerShown: false,
-            contentStyle: { backgroundColor: colors.background },
-          }}
-        />
+        <AppStack />
       </SessionProvider>
     </QueryClientProvider>
+  );
+}
+
+/** The screens, once there's a session (push registers with it). */
+function AppStack() {
+  usePush();
+  return (
+    <Stack
+      screenOptions={{
+        // Every screen draws its own top bar (design canvas).
+        headerShown: false,
+        contentStyle: { backgroundColor: colors.background },
+      }}
+    />
   );
 }
