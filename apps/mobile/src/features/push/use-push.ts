@@ -1,11 +1,7 @@
 import * as Notifications from "expo-notifications";
 import { router } from "expo-router";
 import { useEffect } from "react";
-import {
-  ignorePushError,
-  refreshPushRegistration,
-  registerToken,
-} from "./push";
+import { ignorePushError, refreshPushRegistration } from "./push";
 import { routeForPush } from "./push-route";
 import type { PushData } from "./push.types";
 
@@ -22,17 +18,14 @@ Notifications.setNotificationHandler({
 });
 
 /**
- * Once there's a session: keeps this phone registered (on open, and when
- * the token changes), and opens what a tapped notification is about,
+ * Once there's a session: keeps this phone registered, and opens what a tapped notification is about,
  * including the one that launched the app.
  */
 export function usePush(): void {
+  // Re-registered on every open, which covers a changed token. No token
+  // listener: fetching the Expo token fires it, which loops (2026-11-21).
   useEffect(() => {
     void refreshPushRegistration().catch(ignorePushError);
-    const subscription = Notifications.addPushTokenListener((token) => {
-      void registerToken(token.data).catch(ignorePushError);
-    });
-    return () => subscription.remove();
   }, []);
 
   // Covers both a tap while running and the tap that launched the app.

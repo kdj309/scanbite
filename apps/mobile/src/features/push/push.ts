@@ -47,6 +47,7 @@ export async function refreshPushRegistration(): Promise<void> {
   }
 }
 
+/** Fetches this phone's Expo push token and registers it. */
 async function registerThisPhone(): Promise<void> {
   await createChannel();
   const projectId = Constants.expoConfig?.extra?.eas?.projectId as
@@ -58,7 +59,7 @@ async function registerThisPhone(): Promise<void> {
 }
 
 /** Tells the API where to reach this phone (PUT /devices is idempotent). */
-export async function registerToken(token: string): Promise<void> {
+async function registerToken(token: string): Promise<void> {
   await api("/devices", NO_CONTENT, {
     method: "PUT",
     body: {
