@@ -9,7 +9,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Button, IconButton, Text } from "@/components";
+import { Button, IconButton, LinkRow, Text } from "@/components";
 import {
   deleteMember,
   showRemovedMember,
@@ -60,8 +60,11 @@ export default function EditMember() {
       </SafeAreaView>
     );
   }
-  // Keyed, so switching to another person starts a fresh form.
-  return <EditForm key={member.id} member={member} />;
+  // Keyed, so switching to another person starts a fresh form, and so
+  // does health info changed elsewhere (withdrawn from Privacy & data):
+  // a stale form would save the erased conditions back.
+  const key = [member.id, ...member.conditions, "|", ...member.allergies];
+  return <EditForm key={key.join(",")} member={member} />;
 }
 
 function EditForm({ member }: EditFormProps) {
@@ -154,6 +157,13 @@ function EditForm({ member }: EditFormProps) {
               onChange={(allergies) => update({ allergies })}
             />
           </View>
+          {self && (
+            <LinkRow
+              icon="lock"
+              label="Privacy & data"
+              onPress={() => router.push("/privacy")}
+            />
+          )}
         </ScrollView>
         <View style={styles.footer}>
           {/* By the buttons, not the end of the form: always in view. */}

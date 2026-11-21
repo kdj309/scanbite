@@ -28,6 +28,12 @@ export interface RequireHealthConsentProps {
   setup?: boolean;
 }
 
+/** One line of "What we save, and why" (design 0c). */
+export interface SavedItem {
+  what: string;
+  why: string;
+}
+
 /** One of the three promises on the consent screen. */
 export interface ConsentPoint {
   icon: IconName;

@@ -11,7 +11,7 @@ import { api, NO_CONTENT } from "@/api/client";
 import { productsQueryKey } from "@/features/verdict/api";
 import { withMember, withoutMember } from "./members";
 
-const householdQueryKey = ["household"] as const;
+export const householdQueryKey = ["household"] as const;
 
 /** Everyone in the household, in the order they were added. */
 export function useHousehold() {

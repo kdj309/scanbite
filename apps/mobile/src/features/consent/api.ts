@@ -5,6 +5,9 @@ import {
 } from "@foodscanner/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/api/client";
+import { householdQueryKey } from "@/features/household/api";
+import { recentScansQueryKey } from "@/features/scans/api";
+import { productsQueryKey } from "@/features/verdict/api";
 
 export const meQueryKey = ["me"] as const;
 
@@ -42,6 +45,28 @@ export function useAgreeToHealthInfo() {
       queryClient.setQueryData<MeResponse>(meQueryKey, (me) =>
         me ? { ...me, user } : me
       );
+    },
+  });
+}
+
+/**
+ * "Withdraw consent" (design 13b): the API erases everyone's conditions
+ * and allergies, so the family and every verdict reload as general.
+ */
+export function useWithdrawHealthConsent() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () =>
+      api("/me/health-consent", consentResponseSchema, { method: "DELETE" }),
+    onSuccess: ({ user }) => {
+      queryClient.setQueryData<MeResponse>(meQueryKey, (me) =>
+        me ? { ...me, user } : me
+      );
+      // /me also lists the family, whose health info just went.
+      void queryClient.invalidateQueries({ queryKey: meQueryKey });
+      void queryClient.invalidateQueries({ queryKey: householdQueryKey });
+      void queryClient.invalidateQueries({ queryKey: productsQueryKey });
+      void queryClient.invalidateQueries({ queryKey: recentScansQueryKey });
     },
   });
 }

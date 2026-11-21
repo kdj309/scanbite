@@ -14,6 +14,7 @@ import {
   DotPattern,
   Icon,
   IconButton,
+  LinkRow,
   Text,
 } from "@/components";
 import { useHousehold } from "@/features/household/api";
@@ -67,6 +68,11 @@ export default function Family() {
         ) : (
           <FamilyFull />
         )}
+        <LinkRow
+          icon="lock"
+          label="Privacy & data"
+          onPress={() => router.push("/privacy")}
+        />
         <Text variant="caption" style={styles.centered}>
           Conditions stay on your account. We never share them.
         </Text>
