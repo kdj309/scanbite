@@ -808,6 +808,31 @@ describe("household verdicts (integration)", () => {
       assert.equal(scan.product?.name, "Test product");
     });
 
+    it("forgets what each person was shown once consent is withdrawn", async () => {
+      const { user, ids } = await newHousehold();
+      const barcode = await liveProduct({
+        sugar_per_100g: 0,
+        sodium_per_100g: 1415.2,
+      });
+      const { scan_id } = await scans.create(user, { barcode });
+      assert.equal((await recorded(user, scan_id)).severity, "red");
+
+      await household.clearHealthInfo(user.userId);
+      await scans.forgetPersonalVerdicts(user.userId);
+
+      // The general verdict now, for everyone: nothing left hints at BP.
+      const scan = await recorded(user, scan_id);
+      assert.equal(scan.severity, "yellow");
+      assert.deepEqual(
+        scan.verdicts.map((v) => [v.member_id, v.severity]),
+        [
+          [ids.you, "yellow"],
+          [ids.amma, "yellow"],
+          [ids.papa, "yellow"],
+        ]
+      );
+    });
+
     it("stores the chosen member's own verdict for 'Scan for Amma'", async () => {
       const { user, ids } = await newHousehold();
       const barcode = await liveProduct({ sugar_per_100g: 18 });

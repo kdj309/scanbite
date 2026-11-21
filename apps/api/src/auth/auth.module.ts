@@ -5,6 +5,7 @@ import { JwtModule, type JwtSignOptions } from "@nestjs/jwt";
 import { PassportModule } from "@nestjs/passport";
 import type { Env } from "../config/env";
 import { HouseholdModule } from "../household/household.module";
+import { ScansModule } from "../scans/scans.module";
 import { AccountController } from "./account.controller";
 import { AccountService } from "./account.service";
 import { AppleCredentials } from "./apple/apple-credentials";
@@ -24,6 +25,7 @@ import { SocialSignInService } from "./social-sign-in.service";
 @Module({
   imports: [
     HouseholdModule,
+    ScansModule,
     PassportModule.register({ defaultStrategy: "jwt" }),
     JwtModule.registerAsync({
       inject: [ConfigService],

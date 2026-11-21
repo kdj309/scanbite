@@ -27,6 +27,12 @@ export class AccountController {
     return this.accounts.recordHealthConsent(user.userId, body.notice_version);
   }
 
+  /** "Withdraw consent" (design 13b): erases everyone's health info. */
+  @Delete("health-consent")
+  withdrawHealthConsent(@CurrentUser() user: RequestUser) {
+    return this.accounts.withdrawHealthConsent(user.userId);
+  }
+
   /** In-app account deletion (App Store 5.1.1(v), Google Play policy). */
   @Delete()
   @HttpCode(204)

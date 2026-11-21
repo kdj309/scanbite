@@ -196,6 +196,19 @@ export class HouseholdService {
     return serializeHouseholdMember(member);
   }
 
+  /**
+   * Consent withdrawn (design 13b): everyone's conditions and allergies go;
+   * names, relationships and age bands stay, so results become general.
+   */
+  async clearHealthInfo(userId: string): Promise<void> {
+    await this.members
+      .updateMany(
+        { owner_user_id: new Types.ObjectId(userId) },
+        { $set: { conditions: [], allergies: [] } }
+      )
+      .exec();
+  }
+
   async deleteForUser(userId: string, memberId: string): Promise<void> {
     const member = await this.requireOwnedMember(userId, memberId);
     const owner = await this.users.findById(userId).exec();

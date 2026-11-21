@@ -16,7 +16,10 @@ import {
 import { Scan, ScanDocument } from "../database/schemas/scan.schema";
 import { HouseholdService } from "../household/household.service";
 import type { Severity } from "../database/schemas/scoring-record.schema";
-import { HouseholdVerdictService } from "../personalization/household-verdict.service";
+import {
+  HouseholdVerdictService,
+  type HouseholdProductVerdict,
+} from "../personalization/household-verdict.service";
 import type {
   LabelFacts,
   SubmissionDocument,
@@ -98,6 +101,70 @@ export class ScansService {
     });
   }
 
+  /**
+   * Consent withdrawn (design 13b): past scans keep their rows but not what
+   * each person was shown, which came from their health info. Each is
+   * re-checked for the family as it is now (no health info), so the row
+   * shows the general verdict. Runs after the health info is cleared.
+   */
+  async forgetPersonalVerdicts(userId: string): Promise<void> {
+    const scans = await this.scans
+      .find({ user_id: new Types.ObjectId(userId), found: true })
+      .exec();
+    const general = new Map<string, HouseholdProductVerdict | null>();
+    for (const scan of scans) {
+      const key = String(scan.product_version_id ?? scan.label_check_id);
+      if (!general.has(key)) {
+        general.set(key, await this.generalVerdict(scan, userId));
+      }
+      const verdict = general.get(key) ?? null;
+      await this.scans
+        .updateOne(
+          { _id: scan._id },
+          {
+            $set: verdict
+              ? {
+                  severity: verdict.response.overall.severity,
+                  verdicts: memberVerdicts(verdict),
+                }
+              : { verdicts: [] },
+          }
+        )
+        .exec();
+    }
+  }
+
+  /** Today's verdict for a scanned product or label check; null if it's gone. */
+  private async generalVerdict(
+    scan: ScanDocument,
+    userId: string
+  ): Promise<HouseholdProductVerdict | null> {
+    if (scan.product_version_id) {
+      const version = await this.versions
+        .findById(scan.product_version_id)
+        .exec();
+      return version
+        ? this.householdVerdicts.forVersion(version, userId)
+        : null;
+    }
+    if (scan.label_check_id) {
+      const check = await this.labelChecks
+        .findReady(String(scan.label_check_id), userId)
+        .catch((error: unknown) => {
+          if (error instanceof NotFoundException) return null;
+          throw error;
+        });
+      return check
+        ? this.householdVerdicts.forLabelCheck(
+            check.id as string,
+            check.label_facts,
+            userId
+          )
+        : null;
+    }
+    return null;
+  }
+
   private record(input: ScanRecordInput): Promise<ScanDocument> {
     const { verdict } = input;
     return this.scans.create({
@@ -112,11 +179,7 @@ export class ScansService {
       severity: verdict
         ? severityFor(verdict.response, input.forMemberId)
         : null,
-      verdicts:
-        verdict?.response.members.map((member) => ({
-          member_id: new Types.ObjectId(member.member_id),
-          severity: member.verdict.severity,
-        })) ?? [],
+      verdicts: verdict ? memberVerdicts(verdict) : [],
       rule_set_version: verdict?.ruleSetVersion ?? null,
     });
   }
@@ -254,6 +317,14 @@ export class ScansService {
 }
 
 /** The verdict of whoever it was scanned for, or the overall one. */
+/** Every member's verdict, as a scan stores it. */
+function memberVerdicts(verdict: HouseholdProductVerdict) {
+  return verdict.response.members.map((member) => ({
+    member_id: new Types.ObjectId(member.member_id),
+    severity: member.verdict.severity,
+  }));
+}
+
 function severityFor(
   result: ProductFoundResponse,
   memberId: string | undefined
