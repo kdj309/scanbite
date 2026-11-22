@@ -778,6 +778,67 @@ describe("household verdicts (integration)", () => {
     });
   });
 
+  describe("search from Home (design 1e)", () => {
+    it("finds live products by name or brand, best match first, with barcodes", async () => {
+      // A made-up word, so other tests' products never match.
+      const crunch = await liveProduct(
+        {},
+        { name: "Choco Zorbit Cream", brand: "Kwik" }
+      );
+      const first = await liveProduct(
+        {},
+        { name: "Zorbit Classic", brand: "Kwik" }
+      );
+      const byBrand = await liveProduct(
+        {},
+        { name: "Rusk", brand: "Zorbit Foods" }
+      );
+      await versions.create({
+        product_id: new Types.ObjectId(),
+        barcode: "8910000999999",
+        name: "Zorbit Draft",
+        brand: "Kwik",
+        category: "snacks",
+        source: "manual_seed",
+        status: "pending",
+        nutrition: {},
+      });
+
+      const { items } = await products.search("zorbit");
+
+      assert.deepEqual(
+        items.map((i) => i.barcode),
+        [first, crunch, byBrand]
+      );
+      assert.equal(items[0].name, "Zorbit Classic");
+      assert.equal(items[0].brand, "Kwik");
+    });
+
+    it("leaves out products whose barcode the product screen can't open", async () => {
+      await versions.create({
+        product_id: new Types.ObjectId(),
+        barcode: "12345",
+        name: "Quorbel Snack",
+        brand: "Kwik",
+        category: "snacks",
+        source: "off",
+        status: "live",
+        nutrition: {},
+      });
+      const ok = await liveProduct({}, { name: "Quorbel Crisps" });
+      const { items } = await products.search("quorbel");
+      assert.deepEqual(
+        items.map((i) => i.barcode),
+        [ok]
+      );
+    });
+
+    it("treats the query as text, not a pattern", async () => {
+      const { items } = await products.search("(.*");
+      assert.deepEqual(items, []);
+    });
+  });
+
   describe("scans", () => {
     const recorded = async (user: RequestUser, scanId: string) =>
       (await scans.listForHousehold(user, {})).items.find(

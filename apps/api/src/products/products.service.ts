@@ -6,11 +6,12 @@ import type {
   CatalogItem,
   CatalogQuery,
   CatalogResponse,
+  ProductSearchResponse,
   ProductLookupResponse,
 } from "@foodscanner/shared";
+import { barcodeSchema } from "@foodscanner/shared";
 import { FilterQuery, Model, Types } from "mongoose";
 import type { RequestUser } from "../auth/auth.types";
-import { escapeRegex } from "../common/escape-regex";
 import { ConsensusService } from "../consensus/consensus.service";
 import {
   ProductVersion,
@@ -30,6 +31,12 @@ import { ProductVersionIngestionService } from "../product-versions/product-vers
 import { SEVERITY_RANK } from "../scoring/evaluate-rules";
 import { ScoringService } from "../scoring/scoring.service";
 import { catalogEntry } from "./catalog-entry";
+import {
+  nameOrBrandFilter,
+  rankSearchMatches,
+  SEARCH_LIMIT,
+  wordStartFilter,
+} from "./product-search";
 import type { CategoryCount } from "./products.types";
 
 @Injectable()
@@ -104,8 +111,7 @@ export class ProductsService {
       filter.brand = query.brand;
     }
     if (query.q) {
-      const pattern = new RegExp(escapeRegex(query.q), "i");
-      filter.$or = [{ name: pattern }, { brand: pattern }];
+      filter.$or = nameOrBrandFilter(query.q).$or;
     }
     if (query.cursor && Types.ObjectId.isValid(query.cursor)) {
       const cursorDoc = await this.versions.findById(query.cursor).exec();
@@ -170,6 +176,56 @@ export class ProductsService {
       ),
       next_cursor: hasMore ? (page[page.length - 1].id as string) : null,
     };
+  }
+
+  /**
+   * Search from Home (design 1e): live catalogue products whose name or
+   * brand contains the query, best match first. Products only: opening one
+   * asks for its verdict as a scan would, and records nothing.
+   */
+  async search(query: string): Promise<ProductSearchResponse> {
+    // Word-start matches first, so a strong match is never crowded out by
+    // newer products that merely contain the letters; then the rest.
+    const strong = await this.newestMatches(
+      wordStartFilter(query),
+      SEARCH_LIMIT * 3
+    );
+    const rest =
+      strong.length >= SEARCH_LIMIT
+        ? []
+        : await this.newestMatches(
+            {
+              ...nameOrBrandFilter(query),
+              _id: { $nin: strong.map((v) => v._id) },
+            },
+            SEARCH_LIMIT - strong.length
+          );
+    const items = rankSearchMatches([...strong, ...rest], query)
+      // The product screen opens by barcode, which must be a valid one.
+      .filter((version) => barcodeSchema.safeParse(version.barcode).success)
+      .slice(0, SEARCH_LIMIT)
+      .map((version) => {
+        const summary = this.summaries.summarize(version);
+        return {
+          barcode: version.barcode,
+          name: summary.name,
+          brand: summary.brand,
+          image_url: summary.image_url,
+          quantity: summary.quantity,
+        };
+      });
+    return { items };
+  }
+
+  private newestMatches(
+    filter: FilterQuery<ProductVersionDocument>,
+    limit: number
+  ): Promise<ProductVersionDocument[]> {
+    return this.versions
+      .find(filter)
+      .sort({ created_at: -1, _id: -1 })
+      .limit(limit)
+      .exec();
   }
 
   /**

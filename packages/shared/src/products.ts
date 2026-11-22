@@ -220,3 +220,25 @@ export const catalogResponseSchema = z.object({
   next_cursor: objectIdSchema.nullable(),
 });
 export type CatalogResponse = z.infer<typeof catalogResponseSchema>;
+
+// Search from Home (design 1e): products only, no verdicts; opening one
+// asks for its verdict like a scan does.
+export const productSearchQuerySchema = z.object({
+  q: z.string().trim().min(2).max(60),
+});
+export type ProductSearchQuery = z.infer<typeof productSearchQuerySchema>;
+
+export const productSearchItemSchema = z.object({
+  barcode: barcodeSchema,
+  name: z.string(),
+  brand: z.string(),
+  // Open Food Facts front photo (CC BY-SA); null otherwise.
+  image_url: z.string().nullable(),
+  quantity: z.string().nullable(),
+});
+export type ProductSearchItem = z.infer<typeof productSearchItemSchema>;
+
+export const productSearchResponseSchema = z.object({
+  items: z.array(productSearchItemSchema), // best match first
+});
+export type ProductSearchResponse = z.infer<typeof productSearchResponseSchema>;

@@ -2,7 +2,9 @@ import { Controller, Get, Param, Query } from "@nestjs/common";
 import {
   barcodeSchema,
   catalogQuerySchema,
+  productSearchQuerySchema,
   type CatalogQuery,
+  type ProductSearchQuery,
 } from "@foodscanner/shared";
 import { AlternativesService } from "../alternatives/alternatives.service";
 import { CurrentUser } from "../auth/current-user.decorator";
@@ -23,6 +25,16 @@ export class ProductsController {
     @Query(new ZodValidationPipe(catalogQuerySchema)) query: CatalogQuery
   ) {
     return this.products.catalog(user, query);
+  }
+
+  /** Search from Home (design 1e): products only, best match first. Before
+   *  ":barcode" so "search" isn't read as one. */
+  @Get("search")
+  search(
+    @Query(new ZodValidationPipe(productSearchQuerySchema))
+    query: ProductSearchQuery
+  ) {
+    return this.products.search(query.q);
   }
 
   /** Better options — Safe for everyone this product isn't Safe for. */
