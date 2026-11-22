@@ -13,6 +13,7 @@ import { Bitey, Button, DotPattern, Text } from "@/components";
 import { ScanCard } from "@/features/home/scan-card";
 import { scanCardCopy } from "@/features/home/scan-copy";
 import { ScanFor } from "@/features/home/scan-for";
+import { SearchBar } from "@/features/home/search-bar";
 import { useHousehold } from "@/features/household/api";
 import { openEdit } from "@/features/household/edit-link";
 import { HouseholdLoading } from "@/features/household/household-loading";
@@ -94,6 +95,7 @@ export default function Home() {
         )}
       </View>
       <ScrollView contentContainerStyle={styles.content}>
+        <SearchBar />
         <RecentScans
           members={members}
           checked={checked}

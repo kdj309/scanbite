@@ -62,6 +62,13 @@ const ICONS = {
       <Path d="M7 9.5V7a3 3 0 0 1 6 0v2.5" strokeWidth={1.8} />
     </>
   ),
+  /** Search a product or brand (design 1e). */
+  search: (
+    <>
+      <Circle cx={9} cy={9} r={5.5} strokeWidth={1.9} />
+      <Path d="M13.2 13.2L16.5 16.5" strokeWidth={1.9} />
+    </>
+  ),
   /** "Scan the label again" (design 2c). */
   camera: (
     <>
