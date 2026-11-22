@@ -43,6 +43,31 @@ const svg = (body, { size, bg, scale = 1, viewBox = "0 0 132 132" }) => {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="${viewBox}">${fill}${inner}</svg>`;
 };
 
+// Bitey whole (as in the app, 120 x 130 grid), for the splash. Android 12+
+// shows the splash image inside a circle two-thirds of its width, so he's
+// sized to fit inside it.
+const BITEY = `
+  <path d="M60 22c0-9 5-15 14-16-1 9-6 15-14 16z" fill="#127A4E"/>
+  <path d="M60 22c0-7-4-11-10-12 1 7 4 11 10 12z" fill="#3FA66B"/>
+  <rect x="14" y="22" width="92" height="88" rx="34" fill="#3A6EC4"/>
+  <ellipse cx="60" cy="98" rx="24" ry="9" fill="#5B8BDB"/>
+  <path d="M6 38V24a10 10 0 0 1 10-10h12" stroke="#FFD23F" stroke-width="6" stroke-linecap="round" fill="none"/>
+  <path d="M114 38V24a10 10 0 0 0-10-10H92" stroke="#FFD23F" stroke-width="6" stroke-linecap="round" fill="none"/>
+  <ellipse cx="45" cy="57" rx="10" ry="12" fill="#FFF"/>
+  <ellipse cx="75" cy="57" rx="10" ry="12" fill="#FFF"/>
+  <circle cx="47" cy="59" r="5.2" fill="${INK}"/>
+  <circle cx="77" cy="59" r="5.2" fill="${INK}"/>
+  <circle cx="49" cy="56.5" r="1.8" fill="#FFF"/>
+  <circle cx="79" cy="56.5" r="1.8" fill="#FFF"/>
+  <path d="M50 75Q60 89 70 75Z" fill="${INK}"/>
+  <path d="M55 81.5Q60 86.5 65 81.5Q60 79 55 81.5Z" fill="#FF8FA0"/>
+  <ellipse cx="42" cy="114" rx="13" ry="7" fill="#2D5BA8"/>
+  <ellipse cx="78" cy="114" rx="13" ry="7" fill="#2D5BA8"/>`;
+const splash = () => {
+  const s = 4; // his 114 x 115 box: diagonal 162 x 4 = 648 < 683 (2/3 of 1024)
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024"><g transform="translate(${512 - 60 * s} ${512 - 63.5 * s}) scale(${s})">${BITEY}</g></svg>`;
+};
+
 const files = {
   // iOS: full bleed, no transparency; iOS rounds the corners itself.
   "icon.png": svg(`${corners}${face}`, { size: 1024, bg: BLUE }),
@@ -54,8 +79,9 @@ const files = {
     size: 1024,
     scale: 0.84,
   }),
-  // Splash: the face on the brand-blue splash background.
-  "splash-icon.png": svg(face, { size: 1024 }),
+  // Splash: Bitey whole, on the app's cream background (decided 11-22:
+  // the bare face on blue had no outline).
+  "splash-icon.png": splash(),
   // Status bar and notification shade: white silhouette, 96 px (24 dp @4x).
   "notification-icon.png": svg(silhouette("#FFF"), {
     size: 96,
