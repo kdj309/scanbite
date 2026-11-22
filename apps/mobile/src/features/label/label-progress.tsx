@@ -133,13 +133,26 @@ function Reading({ sending, labelCheck, onScanNext }: ReadingProps) {
     >
       <Checklist sending={sending} />
       <Text variant="caption" accessibilityLiveRegion="polite">
-        {seconds >= SLOW_SECONDS
-          ? "This is taking longer than usual. I’ll let you know when it’s ready."
-          : "Keep shopping. I’ll show the result here as soon as it’s ready."}
+        {waitingCaption(sending, seconds)}
       </Text>
       <Button title="Scan the next product" onPress={onScanNext} />
     </Sheet>
   );
+}
+
+/**
+ * While the photos send, the app must stay open: Android freezes it in
+ * the background and the upload stalls (seen 2026-11-22). Once sent,
+ * leaving is fine: the result comes as a notification.
+ */
+function waitingCaption(sending: boolean, seconds: number): string {
+  if (sending) {
+    return "Keep ScanBite open while it sends.";
+  }
+  if (seconds >= SLOW_SECONDS) {
+    return "This is taking longer than usual. I’ll let you know when it’s ready.";
+  }
+  return "Keep shopping. I’ll show the result here as soon as it’s ready.";
 }
 
 /** The three steps, ticking along while we wait. */
