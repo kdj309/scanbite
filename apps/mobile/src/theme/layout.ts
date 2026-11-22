@@ -11,6 +11,15 @@ export const spacing = {
 
 export const screenGutter = spacing.lg;
 
+/**
+ * Bottom padding for a sheet at the screen's foot: clear of the home
+ * indicator (iOS) and the navigation bar, which Android draws over the
+ * app edge to edge.
+ */
+export function sheetBottomPadding(bottomInset: number): number {
+  return Math.max(spacing.xxl, bottomInset + spacing.md);
+}
+
 export const radii = {
   /** Small flags, veg mark corners. */
   xs: 8,

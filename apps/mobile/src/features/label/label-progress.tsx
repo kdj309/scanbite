@@ -1,7 +1,15 @@
 import { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Bitey, Button, Icon, Text } from "@/components";
-import { colors, radii, screenGutter, severityColors, spacing } from "@/theme";
+import {
+  colors,
+  radii,
+  screenGutter,
+  severityColors,
+  spacing,
+  sheetBottomPadding,
+} from "@/theme";
 import type {
   ChecklistProps,
   LabelProgressProps,
@@ -172,9 +180,15 @@ function Checklist({ sending }: ChecklistProps) {
 }
 
 function Sheet({ tint, title, line, jump = false, children }: SheetProps) {
+  const insets = useSafeAreaInsets();
   return (
     <View style={styles.host}>
-      <View style={styles.sheet}>
+      <View
+        style={[
+          styles.sheet,
+          { paddingBottom: sheetBottomPadding(insets.bottom) },
+        ]}
+      >
         <View style={styles.grab} />
         <View style={styles.head}>
           <View style={[styles.badge, { backgroundColor: tint }]}>
@@ -209,7 +223,6 @@ const styles = StyleSheet.create({
     gap: 14,
     paddingHorizontal: screenGutter,
     paddingTop: spacing.sm,
-    paddingBottom: spacing.xxl,
     borderTopLeftRadius: radii.sheet,
     borderTopRightRadius: radii.sheet,
     backgroundColor: colors.background,

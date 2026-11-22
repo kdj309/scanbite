@@ -11,7 +11,10 @@ import {
   StyleSheet,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import { Bitey, Button, IconButton, Text, TextField } from "@/components";
 import { useHousehold } from "@/features/household/api";
 import {
@@ -24,7 +27,13 @@ import { sentenceName } from "@/features/scans/recent";
 import { LabelFlow } from "@/features/label/label-flow";
 import { productQueryKey } from "@/features/verdict/api";
 import { useLoop } from "@/hooks/use-loop";
-import { colors, radii, screenGutter, spacing } from "@/theme";
+import {
+  colors,
+  radii,
+  screenGutter,
+  spacing,
+  sheetBottomPadding,
+} from "@/theme";
 import { closeScreen } from "@/navigation/close-screen";
 import type {
   CameraPermissionProps,
@@ -359,11 +368,17 @@ function Viewfinder({ scanning }: ViewfinderProps) {
 }
 
 function TypeBarcode({ onCancel, onLookUp }: TypeBarcodeProps) {
+  const insets = useSafeAreaInsets();
   const [text, setText] = useState("");
   const barcode = parseBarcode(text);
   return (
     <KeyboardAvoidingView style={styles.sheetHost} behavior="padding">
-      <View style={styles.sheet}>
+      <View
+        style={[
+          styles.sheet,
+          { paddingBottom: sheetBottomPadding(insets.bottom) },
+        ]}
+      >
         <TextField
           label="Barcode"
           placeholder="The numbers under the bars"
@@ -402,9 +417,16 @@ function LookupSheet({
   onRetry,
   onScanAnother,
 }: LookupSheetProps) {
+  const insets = useSafeAreaInsets();
   return (
     <View style={styles.sheetHost}>
-      <View style={styles.sheet} accessibilityLiveRegion="polite">
+      <View
+        style={[
+          styles.sheet,
+          { paddingBottom: sheetBottomPadding(insets.bottom) },
+        ]}
+        accessibilityLiveRegion="polite"
+      >
         {state.kind === "looking" && (
           <View style={styles.row}>
             <ActivityIndicator color={colors.brand} />
@@ -589,7 +611,6 @@ const styles = StyleSheet.create({
   sheet: {
     gap: spacing.sm,
     padding: screenGutter,
-    paddingBottom: spacing.xxl,
     borderTopLeftRadius: radii.sheet,
     borderTopRightRadius: radii.sheet,
     backgroundColor: colors.background,

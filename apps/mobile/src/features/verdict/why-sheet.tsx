@@ -1,10 +1,18 @@
 import { Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button, IconButton, Text } from "@/components";
-import { colors, radii, screenGutter, spacing } from "@/theme";
+import {
+  colors,
+  radii,
+  screenGutter,
+  spacing,
+  sheetBottomPadding,
+} from "@/theme";
 import type { WhySheetProps } from "./verdict.types";
 
 /** "Why does this matter?" for one rule (design S3). */
 export function WhySheet({ explainer, forWhom, onClose }: WhySheetProps) {
+  const insets = useSafeAreaInsets();
   return (
     <Modal
       visible={explainer !== undefined}
@@ -18,7 +26,12 @@ export function WhySheet({ explainer, forWhom, onClose }: WhySheetProps) {
         onPress={onClose}
       />
       {explainer && (
-        <View style={styles.sheet}>
+        <View
+          style={[
+            styles.sheet,
+            { paddingBottom: sheetBottomPadding(insets.bottom) },
+          ]}
+        >
           <View style={styles.head}>
             <Text variant="h1" accessibilityRole="header" style={styles.fill}>
               {explainer.title}
@@ -54,7 +67,6 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     paddingHorizontal: screenGutter,
     paddingTop: spacing.sm,
-    paddingBottom: spacing.xxl,
     borderTopLeftRadius: radii.sheet,
     borderTopRightRadius: radii.sheet,
     backgroundColor: colors.background,

@@ -15,9 +15,9 @@ import { WhatWeSave } from "./what-we-save";
 export const PRIVACY_POLICY_URL = "https://scanbite.in/privacy";
 
 const POINTS: readonly ConsentPoint[] = [
-  { icon: "lock", text: "Only used to check food for your family" },
-  { icon: "never", text: "Never sold or shared" },
-  { icon: "trash", text: "Change your mind or delete it any time" },
+  { icon: "lock", text: "Only to check your food" },
+  { icon: "never", text: "Never sold" },
+  { icon: "trash", text: "Delete any time" },
 ];
 
 /**
@@ -55,7 +55,7 @@ export function ConsentScreen({
       <View style={styles.intro}>
         <Bitey size={72} />
         <SpeechBubble style={styles.bubble}>
-          Before I ask about health, here's how I keep it safe.
+          Your health info stays safe with me.
         </SpeechBubble>
       </View>
       <ScrollView style={styles.fill} contentContainerStyle={styles.body}>
@@ -76,7 +76,7 @@ export function ConsentScreen({
       </ScrollView>
       <View style={styles.actions}>
         <Text variant="caption" style={styles.centered}>
-          By tapping I agree, you confirm you're 18 or older and agree to our{" "}
+          I'm 18+ and agree to the{" "}
           <Text
             variant="caption"
             color="brand"
@@ -85,7 +85,7 @@ export function ConsentScreen({
           >
             Privacy policy
           </Text>
-          . Withdraw any time in Privacy & data.
+          .
         </Text>
         <Button title="I agree" onPress={onAgree} loading={agree.isPending} />
         <Button
@@ -95,7 +95,7 @@ export function ConsentScreen({
           disabled={agree.isPending}
         />
         <Text variant="caption" style={styles.centered}>
-          You can still scan products and see general results.
+          You can still scan.
         </Text>
         {agree.isError && (
           <Text

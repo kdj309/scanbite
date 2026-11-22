@@ -13,9 +13,9 @@ const SAVED: readonly SavedItem[] = [
   { what: "Your yes, and when", why: "To prove you agreed" },
 ];
 
-/** "What we save, and why" (design 0c): open at first, folds away. */
+/** "What we save, and why" (design 0c): folded, one tap shows it (a layered notice). */
 export function WhatWeSave() {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   return (
     <View style={styles.card}>
       <Pressable
